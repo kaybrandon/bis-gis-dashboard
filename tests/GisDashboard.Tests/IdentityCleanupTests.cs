@@ -1,0 +1,41 @@
+using FluentAssertions;
+using GisDashboard.Domain;
+
+namespace GisDashboard.Tests;
+
+public sealed class IdentityCleanupTests
+{
+    [Fact]
+    public void Person_name_becomes_title_case_and_initial_last_username()
+    {
+        UserIdentity.LooksLikePersonName("Alex Rivera").Should().BeTrue();
+        UserIdentity.ToTitleCase("alex rivera").Should().Be("Alex Rivera");
+        UserIdentity.FromPersonName("Alex Rivera").Should().Be("arivera");
+    }
+
+    [Fact]
+    public void Role_labels_and_emails_are_not_person_names()
+    {
+        UserIdentity.LooksLikePersonName("Global Administrator").Should().BeFalse();
+        UserIdentity.LooksLikePersonName("Demo Client Administrator").Should().BeFalse();
+        UserIdentity.LooksLikePersonName("admin@bisconsultants.local").Should().BeFalse();
+        UserIdentity.LooksLikePersonName("Token upload").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Username_from_email_local_part_and_collision_suffix()
+    {
+        UserIdentity.FromEmail("admin@bisconsultants.local").Should().Be("admin");
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "admin" };
+        UserIdentity.UniqueUsername("admin", taken).Should().Be("admin2");
+        taken.Add("admin2");
+        UserIdentity.UniqueUsername("admin", taken).Should().Be("admin3");
+    }
+
+    [Fact]
+    public void Needs_rewrite_only_when_username_is_still_an_email()
+    {
+        UserIdentity.NeedsUsernameRewrite("admin@bisconsultants.local", "admin@bisconsultants.local").Should().BeTrue();
+        UserIdentity.NeedsUsernameRewrite("arivera", "editor@bisconsultants.local").Should().BeFalse();
+    }
+}

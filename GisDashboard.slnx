@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GisDashboard.Api/GisDashboard.Api.csproj" />
+    <Project Path="src/GisDashboard.Application/GisDashboard.Application.csproj" />
+    <Project Path="src/GisDashboard.Domain/GisDashboard.Domain.csproj" />
+    <Project Path="src/GisDashboard.Infrastructure/GisDashboard.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GisDashboard.Tests/GisDashboard.Tests.csproj" />
+  </Folder>
+</Solution>
