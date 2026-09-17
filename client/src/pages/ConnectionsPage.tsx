@@ -35,9 +35,18 @@ type ConnRow = {
   canManage: boolean
 }
 
+function normalizeAzurePath(path?: string | null) {
+  let value = (path ?? '').trim().replace(/\\/g, '/')
+  while (value.startsWith('/')) value = value.slice(1)
+  if (value.toLowerCase().startsWith('workfiles/')) {
+    value = value.slice('workfiles/'.length)
+  }
+  return value
+}
+
 function isAzurePath(path?: string | null) {
-  const value = (path ?? '').trim().replace(/\\/g, '/').toLowerCase()
-  return value.startsWith('/orgs/') || value.startsWith('orgs/')
+  const value = normalizeAzurePath(path).toLowerCase()
+  return value.startsWith('orgs/')
 }
 
 function isUncPath(path?: string | null) {
@@ -53,15 +62,27 @@ function inferKind(path?: string | null): SourceKind {
 
 function displayPath(path?: string | null) {
   const trimmed = (path ?? '').trim()
-  if (isAzurePath(trimmed) && !trimmed.replace(/\\/g, '/').startsWith('/')) {
-    return `/${trimmed.replace(/\\/g, '/')}`
+  if (!trimmed) return '—'
+  if (isAzurePath(trimmed)) {
+    const prefix = normalizeAzurePath(trimmed).replace(/\/+$/, '')
+    return `workfiles/${prefix}`
   }
-  return trimmed || '—'
+  return trimmed
 }
 
 function azureOrgPath(code?: string) {
   const slug = (code ?? 'client').toLowerCase().replace(/[^a-z0-9]+/g, '')
-  return `/orgs/${slug || 'client'}/shapefiles`
+  return `workfiles/orgs/${slug || 'client'}/shapefiles`
+}
+
+function formatHeartbeat(agent?: LanConnection) {
+  if (agent?.lastHeartbeatAt) {
+    const date = new Date(agent.lastHeartbeatAt)
+    if (!Number.isNaN(date.getTime())) return date.toLocaleString()
+  }
+  if (agent?.heartbeatLabel) return agent.heartbeatLabel
+  if (agent?.enrolled) return 'Never — enrolled agent has not checked in'
+  return 'None — agent not enrolled or not running'
 }
 
 function rowStatus(ftp?: FileConnection, agent?: LanConnection) {
@@ -199,8 +220,10 @@ export function ConnectionsPage() {
       ...defaults(row.organizationId),
       organizationId: row.organizationId,
       sourceKind: inferKind(source),
-      sourcePath: source,
-      remoteFolder: row.agent?.remoteFolder ?? 'C:\\GIS\\Outgoing',
+      sourcePath: isAzurePath(source) ? displayPath(source) : source,
+      remoteFolder: row.agent?.remoteFolder
+        ? (isAzurePath(row.agent.remoteFolder) ? displayPath(row.agent.remoteFolder) : row.agent.remoteFolder)
+        : 'C:\\GIS\\Outgoing',
       direction: row.agent?.direction ?? 'Bidirectional',
       scheduleMinutes: row.agent?.scheduleMinutes ?? 15,
       includeFtp: Boolean(row.ftp && (row.ftp.passwordConfigured || row.ftp.ftpUrl)),
@@ -211,11 +234,12 @@ export function ConnectionsPage() {
 
   const applySourceKind = (kind: SourceKind) => {
     const org = orgs.find((item) => item.id === organizationId) ?? orgs[0]
+    const current = (form.getFieldValue('sourcePath') as string | undefined) ?? ''
     if (kind === 'azure') {
-      form.setFieldValue('sourcePath', azureOrgPath(org?.code))
+      form.setFieldValue('sourcePath', isAzurePath(current) ? displayPath(current) : azureOrgPath(org?.code))
     } else if (kind === 'local') {
-      form.setFieldValue('sourcePath', 'C:\\GIS\\Outgoing')
-    } else {
+      if (isAzurePath(current)) form.setFieldValue('sourcePath', 'C:\\GIS\\Outgoing')
+    } else if (!isUncPath(current)) {
       form.setFieldValue('sourcePath', org ? `\\\\server\\gis\\${org.code.toLowerCase()}` : '\\\\server\\gis\\share')
     }
   }
@@ -266,8 +290,8 @@ export function ConnectionsPage() {
     scheduleMinutes: number
     fileServerId?: string
   }, runAfter: boolean) => {
-    const source = values.sourcePath.trim()
-    const dest = values.remoteFolder.trim()
+    const source = isAzurePath(values.sourcePath) ? displayPath(values.sourcePath) : values.sourcePath.trim()
+    const dest = isAzurePath(values.remoteFolder) ? displayPath(values.remoteFolder) : values.remoteFolder.trim()
     if (editing?.ftp) {
       await api.updateConnection(editing.ftp.id, { sourcePath: source, fileServerId: values.fileServerId })
     } else {
@@ -364,7 +388,10 @@ export function ConnectionsPage() {
                   options={orgs.map((org) => ({ value: org.id, label: org.name }))}
                   placeholder="Select the organization"
                   onChange={(id) => {
-                    if (sourceKind === 'azure') form.setFieldValue('sourcePath', azureOrgPath(orgs.find((org) => org.id === id)?.code))
+                    if (sourceKind === 'azure') {
+                      const current = (form.getFieldValue('sourcePath') as string | undefined) ?? ''
+                      form.setFieldValue('sourcePath', isAzurePath(current) ? displayPath(current) : azureOrgPath(orgs.find((org) => org.id === id)?.code))
+                    }
                   }}
                 />
               </Form.Item>
@@ -414,7 +441,7 @@ export function ConnectionsPage() {
                 extra={
                   sourceKind === 'azure' ? (
                     <>
-                      Folder path <PathText path={sourcePath || '/orgs/...'} />
+                      Folder path <PathText path={sourcePath || 'workfiles/orgs/...'} />
                     </>
                   ) : sourceKind === 'unc' ? (
                     'UNC works only if the share is reachable; otherwise use a PC local drive path.'
@@ -423,7 +450,7 @@ export function ConnectionsPage() {
                   )
                 }
               >
-                <Input placeholder={sourceKind === 'azure' ? '/orgs/client/files' : sourceKind === 'unc' ? '\\\\server\\gis\\outbox' : 'C:\\GIS\\Outgoing'} />
+                <Input placeholder={sourceKind === 'azure' ? 'workfiles/orgs/client/files' : sourceKind === 'unc' ? '\\\\server\\gis\\outbox' : 'C:\\GIS\\Outgoing'} />
               </Form.Item>
               <Form.Item
                 name="remoteFolder"
@@ -439,7 +466,7 @@ export function ConnectionsPage() {
                   )
                 }
               >
-                <Input placeholder={isAzurePath(remoteFolder) ? '/orgs/client/files' : 'C:\\GIS\\Incoming'} />
+                <Input placeholder={isAzurePath(remoteFolder) ? 'workfiles/orgs/client/files' : 'C:\\GIS\\Incoming'} />
               </Form.Item>
               <Form.Item
                 name="direction"
@@ -576,7 +603,7 @@ export function ConnectionsPage() {
                   <span>Destination <PathText path={dest} /></span>
                 </div>
                 <div className="conn-meta">
-                  <span>Last heartbeat {formatWhen(row.agent?.lastHeartbeatAt)}</span>
+                  <span>Last heartbeat {formatHeartbeat(row.agent)}</span>
                   <span>Last sync {formatWhen(row.agent?.lastSyncAt)}</span>
                   {row.agent && (row.agent.lastPullCount || row.agent.lastSyncAt) ? <span>Pull {row.agent.lastPullCount ?? 0} files</span> : null}
                   {row.agent && (row.agent.lastPushCount || row.agent.lastSyncAt) ? <span>Push {row.agent.lastPushCount ?? 0}</span> : null}

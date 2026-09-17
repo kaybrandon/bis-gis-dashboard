@@ -7,10 +7,10 @@ public sealed class LanConnection
     public Guid OrganizationId { get; set; }
     public Organization? Organization { get; set; }
 
-    /// <summary>Destination — PC/share or Azure /orgs/ prefix.</summary>
+    /// <summary>Destination — PC/share or Azure workfiles/orgs/ prefix.</summary>
     public string RemoteFolder { get; set; } = string.Empty;
 
-    /// <summary>Source — PC/share or Azure /orgs/ prefix.</summary>
+    /// <summary>Source — PC/share or Azure workfiles/orgs/ prefix.</summary>
     public string BisFolder { get; set; } = string.Empty;
 
     public string Direction { get; set; } = "Bidirectional";
@@ -32,6 +32,7 @@ public sealed class LanConnection
     public DateTimeOffset? LastErrorAt { get; set; }
 
     public string? MachineName { get; set; }
+    public string? WindowsUserName { get; set; }
     public string? LocalIp { get; set; }
     public string? PublicIp { get; set; }
     public string? AgentVersion { get; set; }

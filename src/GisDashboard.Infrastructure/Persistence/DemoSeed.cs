@@ -572,7 +572,7 @@ public sealed class DemoSeed
                 Id = SeedIds.DemoFileConnection,
                 OrganizationId = SeedIds.DemoClient,
                 FileServerId = SeedIds.LocalFileServer,
-                SourcePath = "/orgs/democlient/shapefiles",
+                SourcePath = "workfiles/orgs/democlient/shapefiles",
                 Enabled = true,
                 Status = "Idle",
                 CreatedAt = DateTimeOffset.UtcNow,
@@ -586,7 +586,7 @@ public sealed class DemoSeed
             {
                 Id = SeedIds.DemoLanConnection,
                 OrganizationId = SeedIds.DemoClient,
-                BisFolder = "/orgs/democlient/shapefiles",
+                BisFolder = "workfiles/orgs/democlient/shapefiles",
                 RemoteFolder = @"C:\GIS\Outgoing",
                 Direction = "Bidirectional",
                 ScheduleMinutes = 15,

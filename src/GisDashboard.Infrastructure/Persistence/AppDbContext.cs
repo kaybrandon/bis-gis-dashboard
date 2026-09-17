@@ -319,6 +319,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
             entity.Property(x => x.LastError).HasMaxLength(2000);
             entity.Property(x => x.LastErrorCode).HasMaxLength(80);
+            entity.Property(x => x.WindowsUserName).HasMaxLength(200);
             entity.HasIndex(x => x.OrganizationId);
             entity.HasOne(x => x.Organization)
                 .WithMany()
