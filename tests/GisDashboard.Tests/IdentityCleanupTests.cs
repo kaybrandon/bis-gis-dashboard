@@ -33,6 +33,18 @@ public sealed class IdentityCleanupTests
     }
 
     [Fact]
+    public void Greeting_first_name_is_full_name_first_token_only()
+    {
+        UserIdentity.GreetingFirstName("Global Admin").Should().Be("Global");
+        UserIdentity.GreetingFirstName("Alex Rivera").Should().Be("Alex");
+        UserIdentity.GreetingFirstName("  Jordan Hale  ").Should().Be("Jordan");
+        UserIdentity.GreetingFirstName(null).Should().BeNull();
+        UserIdentity.GreetingFirstName("").Should().BeNull();
+        UserIdentity.GreetingFirstName("admin@bisconsultants.local").Should().BeNull();
+        UserIdentity.GreetingFirstName("arivera").Should().Be("arivera");
+    }
+
+    [Fact]
     public void Needs_rewrite_only_when_username_is_still_an_email()
     {
         UserIdentity.NeedsUsernameRewrite("admin@bisconsultants.local", "admin@bisconsultants.local").Should().BeTrue();

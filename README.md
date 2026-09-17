@@ -120,6 +120,8 @@ Claim values: `GlobalAdministrator`, `Administrator`, `Editor`, `Viewer`. UI sho
 
 Each organization can mark a **Primary assigned tech**. New uploads prefer that person, then an Editor.
 
+The **app header** shows a time-of-day greeting in America/Chicago — **Good morning / Good afternoon / Good evening, {FirstName}** plus a rotating quoted morale tagline on the same line (first token of signed-in Full name; never email, username, or a hardcoded person). Utility chrome such as **BIS Consultants · All organizations** does not replace that greeting.
+
 **Who’s online:** while signed in, the browser sends a heartbeat about every 45 seconds and on each route change (current page, work item when on `/documents/{id}`, and whether the floating clock is running). Staff see a people icon in the header and a collapsible **Who’s online** panel on the left sider, directly under **Status** (default closed; open/closed persists). Need help raise-hand sits on that same sider panel when it ships. There is no header / menu-bar strip and no Dashboard body card. Global Administrators also have a detailed list on **Status**. Global Administrators see everyone; Editors and organization Administrators see people who share an organization (plus themselves and Global Administrators). Client Viewers do not get the list. Offline after about three minutes without a heartbeat. There is no chat or screen share.
 
 The floating clock writes the same Phase 2 time entries. On a work-item detail route it defaults to that document. Everywhere else the tech must pick a work item (search or My Work Items) before start/stop or add. Time is never unallocated — it always belongs to a GIS work item so it shows on the item and on time report cards. Viewers do not see the clock.

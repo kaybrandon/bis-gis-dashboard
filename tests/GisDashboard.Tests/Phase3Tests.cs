@@ -202,6 +202,7 @@ public sealed class Phase3Tests : IClassFixture<ApiFactory>
         var settings = await (await client.GetAsync("/api/settings")).ReadJsonAsync();
         settings.GetProperty("phase").GetString().Should().Be("Phase 3.1");
         settings.GetProperty("features").GetProperty("dashboard").GetProperty("enabled").GetBoolean().Should().BeTrue();
+        settings.GetProperty("features").GetProperty("headerGreeting").GetProperty("enabled").GetBoolean().Should().BeTrue();
         settings.GetProperty("features").GetProperty("comments").GetProperty("enabled").GetBoolean().Should().BeTrue();
         settings.GetProperty("features").GetProperty("deedAiLinking").GetProperty("enabled").GetBoolean().Should().BeFalse();
         settings.GetProperty("features").GetProperty("entraSso").GetProperty("enabled").GetBoolean().Should().BeFalse();
