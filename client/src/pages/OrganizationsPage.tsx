@@ -154,18 +154,6 @@ export function OrganizationsPage() {
           },
           { title: 'Created', dataIndex: 'createdAt', render: (value: string) => dayjs(value).format('YYYY-MM-DD') },
           {
-            title: 'Time report cards',
-            dataIndex: 'timeReportCardsVisible',
-            render: (value: boolean) => (
-              <Tag color={value ? 'blue' : 'default'}>{value ? 'Client can view' : 'Staff only'}</Tag>
-            ),
-          },
-          {
-            title: 'Members',
-            key: 'members',
-            render: (_: unknown, row: OrgRow) => names(row.members),
-          },
-          {
             title: 'Assigned tech(s)',
             key: 'assignedTechs',
             render: (_: unknown, row: OrgRow) => names(row.assignedTechs),
