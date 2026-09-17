@@ -220,7 +220,7 @@ export function AppShell() {
         placement="left"
         width={280}
         classNames={{ body: 'app-nav-drawer-body' }}
-        styles={{ body: { padding: 0, background: '#001529' }}
+        styles={{ body: { padding: 0, background: '#001529' } }}
       >
         <div className="brand">
           <span className="brand-mark">GIS</span>
