@@ -67,6 +67,8 @@ export function PresencePeople({
           <div
             key={row.userId}
             className={clickable ? 'presence-row is-clickable' : 'presence-row'}
+            data-testid="presence-row"
+            data-user-id={row.userId}
             role={clickable ? 'button' : undefined}
             tabIndex={clickable ? 0 : undefined}
             onClick={() => openPeer(row, selfUserId, openHelp)}
@@ -124,12 +126,16 @@ export function PresenceChips({
       {items.map((row) => {
         const clickable = row.userId !== selfUserId
         return (
-          <Tag
+          <button
             key={row.userId}
+            type="button"
             className={dark ? 'presence-chip is-dark' : 'presence-chip'}
+            data-testid="presence-chip"
+            data-user-id={row.userId}
             data-needs-help={row.needsHelp ? 'true' : 'false'}
-            onClick={clickable ? () => openHelp(row) : undefined}
-            style={clickable ? { cursor: 'pointer' } : undefined}
+            disabled={!clickable}
+            title={clickable ? `Message ${row.displayName}` : undefined}
+            onClick={() => openHelp(row)}
           >
             <span className={`presence-dot is-${row.presenceStatus.toLowerCase()}`} />
             {row.displayName}
@@ -146,7 +152,7 @@ export function PresenceChips({
                   </>
                 )
               : ` · ${row.pageName}`}
-          </Tag>
+          </button>
         )
       })}
     </Space>

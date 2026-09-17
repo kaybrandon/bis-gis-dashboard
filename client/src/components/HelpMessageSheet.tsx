@@ -82,6 +82,7 @@ export function HelpMessageSheet() {
       height={isMobile ? 420 : undefined}
       width={360}
       className="help-message-sheet"
+      data-testid="help-message-sheet"
       destroyOnHidden
     >
       {error && <LoadError message={error} onRetry={() => void load()} />}

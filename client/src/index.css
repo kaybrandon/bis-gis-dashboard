@@ -424,7 +424,28 @@ body,
 }
 
 .presence-chip {
+  display: inline-flex;
+  align-items: center;
   margin-inline-end: 0;
+  padding: 0 7px;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  background: #fafafa;
+  color: inherit;
+  font: inherit;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.presence-chip:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.presence-chip.is-dark {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .presence-dot {
