@@ -1,4 +1,4 @@
-import { TeamOutlined } from '@ant-design/icons'
+import { DownOutlined, TeamOutlined } from '@ant-design/icons'
 import { Badge, Button, Card, Dropdown, Typography } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 import type { PresenceUser } from '../api'
@@ -8,6 +8,27 @@ import { LoadError } from './LoadError'
 import { PresenceChips, PresencePeople } from './PresencePeople'
 
 const POLL_MS = 20_000
+const STRIP_KEY = 'gis.whoIsOnlineOpen'
+
+function stripStorageKey(userId?: string) {
+  return userId ? `${STRIP_KEY}.${userId}` : STRIP_KEY
+}
+
+function readStripOpen(userId?: string) {
+  try {
+    return localStorage.getItem(stripStorageKey(userId)) !== '0'
+  } catch {
+    return true
+  }
+}
+
+function writeStripOpen(userId: string | undefined, open: boolean) {
+  try {
+    localStorage.setItem(stripStorageKey(userId), open ? '1' : '0')
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 function usePresenceList(enabled: boolean) {
   const [items, setItems] = useState<PresenceUser[]>([])
@@ -98,5 +119,49 @@ export function WhoIsOnlineCard({ enabled, compact = false }: { enabled: boolean
       {error && <LoadError message={error} onRetry={() => void load()} />}
       {!error && (compact ? <PresenceChips items={items} /> : <PresencePeople items={items} />)}
     </Card>
+  )
+}
+
+/** App chrome strip immediately under the top menu bar. Same presence rules as the list API. */
+export function WhoIsOnlineStrip({ enabled, userId }: { enabled: boolean; userId?: string }) {
+  const { items, onlineCount, error, load } = usePresenceList(enabled)
+  const [open, setOpen] = useState(() => readStripOpen(userId))
+
+  useEffect(() => {
+    setOpen(readStripOpen(userId))
+  }, [userId])
+
+  const toggle = () => {
+    const next = !open
+    setOpen(next)
+    writeStripOpen(userId, next)
+  }
+
+  if (!enabled) return null
+
+  return (
+    <div className="who-online-strip" role="region" aria-label="Who’s online">
+      <div className="who-online-strip-bar">
+        <button
+          type="button"
+          className="who-online-strip-toggle"
+          aria-expanded={open}
+          aria-controls="who-online-strip-body"
+          onClick={toggle}
+        >
+          <DownOutlined className={open ? 'who-online-chevron is-open' : 'who-online-chevron'} />
+          <TeamOutlined />
+          <Typography.Text strong>Who’s online</Typography.Text>
+          <Typography.Text type="secondary">{onlineCount} online</Typography.Text>
+        </button>
+        {/* Reserved for Need help raise-hand (yellow) on this same strip. */}
+        <div className="who-online-strip-actions" data-slot="need-help-raise-hand" />
+      </div>
+      {open && (
+        <div id="who-online-strip-body" className="who-online-strip-body">
+          {error ? <LoadError message={error} onRetry={() => void load()} /> : <PresenceChips items={items} />}
+        </div>
+      )}
+    </div>
   )
 }

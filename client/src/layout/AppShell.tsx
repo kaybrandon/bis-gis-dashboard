@@ -24,7 +24,7 @@ import { useAuth } from '../auth'
 import { FloatingTimeClock } from '../components/FloatingTimeClock'
 import { NotificationBell } from '../components/NotificationBell'
 import { PoweredByFooter } from '../components/PoweredByFooter'
-import { PresencePopover } from '../components/WhoIsOnline'
+import { PresencePopover, WhoIsOnlineStrip } from '../components/WhoIsOnline'
 import { usePresenceHeartbeat } from '../usePresenceHeartbeat'
 
 const { Header, Sider, Content, Footer } = Layout
@@ -200,6 +200,7 @@ export function AppShell() {
             </Dropdown>
           </div>
         </Header>
+        {user && <WhoIsOnlineStrip enabled={canSeePresence} userId={user.id} />}
         <Content className="content-wrap">
           <Outlet />
         </Content>
