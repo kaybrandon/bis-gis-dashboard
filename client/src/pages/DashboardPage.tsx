@@ -9,7 +9,6 @@ import { useAuth } from '../auth'
 import { DashboardCharts } from '../components/DashboardCharts'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
-import { WhoIsOnlineCard } from '../components/WhoIsOnline'
 import { WorkItemCards } from '../components/WorkItemCards'
 import { documentsHref, type DocumentsHrefQuery } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
@@ -191,8 +190,6 @@ export function DashboardPage() {
           </TitleWithHelp>
         </Typography.Title>
       </div>
-
-      <WhoIsOnlineCard enabled={Boolean(user?.canSeePresence ?? user?.canSeeInternalNotes)} compact />
 
       <div className="filter-toolbar">
         <Select
