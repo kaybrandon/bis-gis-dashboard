@@ -32,11 +32,13 @@ public sealed class ConnectionsTests : IClassFixture<ApiFactory>
 
         var files = await (await client.GetAsync("/api/connections")).ReadJsonAsync();
         files.GetArrayLength().Should().BeGreaterThan(0);
-        files[0].GetProperty("sourcePath").GetString().Should().Be("/orgs/democlient/shapefiles");
+        files[0].GetProperty("sourcePath").GetString().Should().Be("workfiles/orgs/democlient/shapefiles");
 
         var agents = await (await client.GetAsync("/api/lan-connections")).ReadJsonAsync();
-        agents[0].GetProperty("bisFolder").GetString().Should().Be("/orgs/democlient/shapefiles");
+        agents[0].GetProperty("bisFolder").GetString().Should().Be("workfiles/orgs/democlient/shapefiles");
         agents[0].GetProperty("remoteFolder").GetString().Should().Be(@"C:\GIS\Outgoing");
+        agents[0].GetProperty("heartbeatLabel").GetString().Should().Be("None — agent not enrolled or not running");
+        agents[0].GetProperty("lastHeartbeatAt").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
     }
 
     [Fact]
@@ -55,6 +57,26 @@ public sealed class ConnectionsTests : IClassFixture<ApiFactory>
         json.GetProperty("source").GetProperty("message").GetString().Should().NotContain("file server");
         json.GetProperty("source").GetProperty("result").GetString().Should().BeOneOf("Pass", "Fail");
         json.GetProperty("destination").GetProperty("result").GetString().Should().Be("Pass");
+        json.GetProperty("destination").GetProperty("message").GetString().Should().Contain("on ");
+        Directory.Delete(dest, true);
+    }
+
+    [Fact]
+    public async Task Check_folders_treats_workfiles_orgs_as_azure_not_local()
+    {
+        var client = await _factory.LoginAsync("admin@bisconsultants.local");
+        var dest = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), $"gis-dest-{Guid.NewGuid():N}")).FullName;
+        var response = await client.PostAsJsonAsync("/api/connections/check-folders", new
+        {
+            sourcePath = "workfiles/orgs/democlient/shapefiles",
+            remoteFolder = dest
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.ReadJsonAsync();
+        json.GetProperty("source").GetProperty("kind").GetString().Should().Be("azure");
+        json.GetProperty("source").GetProperty("message").GetString().Should().Contain("workfiles/orgs/democlient/shapefiles");
+        json.GetProperty("source").GetProperty("message").GetString().Should().NotContain("file server");
+        json.GetProperty("destination").GetProperty("result").GetString().Should().Be("Pass");
         Directory.Delete(dest, true);
     }
 
@@ -68,7 +90,7 @@ public sealed class ConnectionsTests : IClassFixture<ApiFactory>
         var created = await client.PostAsJsonAsync("/api/lan-connections", new
         {
             organizationId = SeedIds.DemoClient,
-            bisFolder = "/orgs/democlient/empty-sync",
+            bisFolder = "workfiles/orgs/democlient/empty-sync",
             remoteFolder = dest,
             direction = "Bidirectional",
             scheduleMinutes = 15
@@ -86,7 +108,7 @@ public sealed class ConnectionsTests : IClassFixture<ApiFactory>
 
         var check = await (await client.PostAsJsonAsync("/api/connections/check-folders", new
         {
-            sourcePath = "/orgs/democlient/empty-sync",
+            sourcePath = "workfiles/orgs/democlient/empty-sync",
             remoteFolder = dest
         })).ReadJsonAsync();
         check.GetProperty("source").GetProperty("result").GetString().Should().Be("Pass");
@@ -120,6 +142,107 @@ public sealed class ConnectionsTests : IClassFixture<ApiFactory>
         check.GetProperty("source").GetProperty("kind").GetString().Should().Be("azure");
         check.GetProperty("destination").GetProperty("result").GetString().Should().Be("Fail");
         check.GetProperty("destination").GetProperty("message").GetString().Should().Contain("C:\\GIS\\Outgoing");
+        check.GetProperty("destination").GetProperty("message").GetString().Should().Contain("on ");
         check.GetProperty("bothPassed").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Workfiles_orgs_path_persists_as_azure_on_save()
+    {
+        var client = await _factory.LoginAsync("admin@bisconsultants.local");
+        var patch = await client.PatchAsJsonAsync($"/api/lan-connections/{SeedIds.DemoLanConnection}", new
+        {
+            bisFolder = "workfiles/orgs/democlient/shapefiles",
+            remoteFolder = @"C:\GIS\Outgoing",
+            direction = "Bidirectional"
+        });
+        patch.StatusCode.Should().Be(HttpStatusCode.OK);
+        var saved = await patch.ReadJsonAsync();
+        saved.GetProperty("bisFolder").GetString().Should().Be("workfiles/orgs/democlient/shapefiles");
+        saved.GetProperty("remoteFolder").GetString().Should().Be(@"C:\GIS\Outgoing");
+
+        var listed = await (await client.GetAsync("/api/lan-connections")).ReadJsonAsync();
+        var demo = listed.EnumerateArray().First(x => x.GetProperty("id").GetGuid() == SeedIds.DemoLanConnection);
+        demo.GetProperty("bisFolder").GetString().Should().Be("workfiles/orgs/democlient/shapefiles");
+
+        var bareOrgs = await client.PatchAsJsonAsync($"/api/lan-connections/{SeedIds.DemoLanConnection}", new
+        {
+            bisFolder = "/orgs/democlient/shapefiles"
+        });
+        (await bareOrgs.ReadJsonAsync()).GetProperty("bisFolder").GetString().Should().Be("workfiles/orgs/democlient/shapefiles");
+    }
+
+    [Fact]
+    public async Task Agent_destination_exists_passes_check_even_when_api_host_cannot_see_path()
+    {
+        var client = await _factory.LoginAsync("admin@bisconsultants.local");
+        var created = await client.PostAsJsonAsync("/api/lan-connections", new
+        {
+            organizationId = SeedIds.OtherClient,
+            bisFolder = "workfiles/orgs/otherclient/shapefiles",
+            remoteFolder = @"C:\GIS\Outgoing",
+            direction = "Bidirectional"
+        });
+        created.StatusCode.Should().Be(HttpStatusCode.OK);
+        var agent = await created.ReadJsonAsync();
+        var token = agent.GetProperty("enrollToken").GetString();
+        token.Should().NotBeNullOrWhiteSpace();
+
+        var heartbeat = await _factory.CreateClient().PostAsJsonAsync("/api/lan-connections/agent/heartbeat", new
+        {
+            enrollToken = token,
+            machineName = "BRANDON-PC",
+            windowsUserName = @"BIS\brandon",
+            destinationExists = true,
+            sourceExists = true,
+            localFileCount = 3
+        });
+        heartbeat.StatusCode.Should().Be(HttpStatusCode.OK);
+        var live = await heartbeat.ReadJsonAsync();
+        live.GetProperty("lastHeartbeatAt").ValueKind.Should().NotBe(System.Text.Json.JsonValueKind.Null);
+        live.GetProperty("heartbeatFresh").GetBoolean().Should().BeTrue();
+        live.GetProperty("heartbeatOk").GetBoolean().Should().BeTrue();
+        live.GetProperty("windowsUserName").GetString().Should().Be(@"BIS\brandon");
+        live.GetProperty("heartbeatLabel").GetString().Should().NotBeNullOrWhiteSpace();
+        live.GetProperty("heartbeatLabel").GetString().Should().NotBe("—");
+
+        var check = await (await client.PostAsync($"/api/lan-connections/{agent.GetProperty("id").GetGuid()}/check-folders", null)).ReadJsonAsync();
+        check.GetProperty("destination").GetProperty("result").GetString().Should().Be("Pass");
+        check.GetProperty("destination").GetProperty("message").GetString().Should().Contain(@"C:\GIS\Outgoing");
+        check.GetProperty("destination").GetProperty("message").GetString().Should().Contain("BRANDON-PC");
+        check.GetProperty("destination").GetProperty("message").GetString().Should().Contain(@"BIS\brandon");
+        check.GetProperty("source").GetProperty("kind").GetString().Should().Be("azure");
+        check.GetProperty("bothPassed").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Enrolled_agent_without_heartbeat_does_not_claim_path_not_found_on_api_host()
+    {
+        var client = await _factory.LoginAsync("admin@bisconsultants.local");
+        var created = await client.PostAsJsonAsync("/api/lan-connections", new
+        {
+            organizationId = SeedIds.OtherClient,
+            bisFolder = "workfiles/orgs/otherclient/shapefiles",
+            remoteFolder = @"C:\GIS\Outgoing",
+            direction = "Bidirectional"
+        });
+        var createdJson = await created.ReadJsonAsync();
+        var id = createdJson.GetProperty("id").GetGuid();
+        var token = createdJson.GetProperty("enrollToken").GetString();
+
+        await _factory.CreateClient().PostAsJsonAsync("/api/lan-connections/agent/heartbeat", new
+        {
+            enrollToken = token,
+            machineName = "BRANDON-PC",
+            windowsUserName = @"BIS\brandon"
+        });
+
+        var run = await (await client.PostAsync($"/api/lan-connections/{id}/run-now", null)).ReadJsonAsync();
+        run.GetProperty("lastErrorCode").GetString().Should().Be("CHECK_NOT_ON_AGENT");
+        run.GetProperty("lastError").GetString().Should().Contain("BRANDON-PC");
+        run.GetProperty("lastError").GetString().Should().Contain("BIS\\brandon");
+        run.GetProperty("lastError").GetString().Should().NotContain("[PATH_NOT_FOUND]");
+        run.GetProperty("heartbeatLabel").GetString().Should().NotBe("—");
+        run.GetProperty("lastHeartbeatAt").ValueKind.Should().NotBe(System.Text.Json.JsonValueKind.Null);
     }
 }

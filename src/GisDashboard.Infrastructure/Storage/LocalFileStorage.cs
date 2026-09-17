@@ -100,7 +100,7 @@ public sealed class LocalFileStorage : IFileStorage
                 files,
                 null,
                 null,
-                $"Azure folder /{NormalizePrefix(prefix)} is reachable ({files} file{(files == 1 ? "" : "s")})."));
+                $"Azure folder {ConnectionPath.DisplayPath(prefix)} is reachable ({files} file{(files == 1 ? "" : "s")})."));
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -109,7 +109,7 @@ public sealed class LocalFileStorage : IFileStorage
                 false,
                 0,
                 SyncErrorCodes.AzurePrefixForbidden,
-                $"Azure folder /{NormalizePrefix(prefix)} could not be listed. Check storage permissions.",
+                $"Azure folder {ConnectionPath.DisplayPath(prefix)} could not be listed. Check storage permissions.",
                 ex.Message));
         }
     }

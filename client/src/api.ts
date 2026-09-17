@@ -859,6 +859,7 @@ export type AgentTelemetry = {
   lastError?: string | null
   localIp?: string | null
   publicIp?: string | null
+  windowsUserName?: string | null
 }
 
 export type LanConnection = {
@@ -875,6 +876,9 @@ export type LanConnection = {
   status: string
   heartbeatOk: boolean
   lastHeartbeatAt?: string | null
+  heartbeatLabel?: string | null
+  heartbeatFresh?: boolean
+  windowsUserName?: string | null
   lastSyncAt?: string | null
   lastPullCount: number
   lastPushCount: number

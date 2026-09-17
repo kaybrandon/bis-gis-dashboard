@@ -77,7 +77,7 @@ public sealed class SettingsController : ControllerBase
                 aiFillFromPdf = new { enabled = true, note = "Work-item AI fill from PDF text (Title, Type, Property IDs, counts, Worked date). Never writes Status, Assignee, or flags. Amber until Approve or edit; Save is still required. Fail closed unless AzureOpenAI__Endpoint and AzureOpenAI__ApiKey are set (Key Vault for the key). Deployment gpt-4.1-mini on oai-bis-deed-ai." },
                 autoSave = new { enabled = false, note = "Later v1 phase" },
                 presence = new { enabled = true, note = "Signed-in staff (Global Administrator, Administrator, Editor) see who is online, the page or work item they are on, and a Clocked in badge when the floating clock is running. The list is in the header and on Dashboard; Global Administrators also see it on Status. Viewers do not see other organizations’ presence. Offline after about three minutes without a heartbeat." },
-                connections = new { enabled = true, note = "Admin Connections: Source / Destination / Direction. Paths that start with /orgs/ are Azure folders in resource group rg-bis-gis-dashboard. Check folders shows Pass or Fail. Sync errors show on the list and Edit." },
+                connections = new { enabled = true, note = "Admin Connections: Source / Destination / Direction. Azure paths display and persist as workfiles/orgs/… (container + folder) in resource group rg-bis-gis-dashboard. Bare /orgs/… is the same Azure folder. Check folders shows Pass or Fail. Sync errors show on the list and Edit." },
                 clientShell = new { enabled = false, note = "Later v1 phase" }
             }
         });

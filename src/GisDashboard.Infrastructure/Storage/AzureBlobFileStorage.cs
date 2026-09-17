@@ -100,7 +100,7 @@ public sealed class AzureBlobFileStorage : IFileStorage
                     false,
                     0,
                     SyncErrorCodes.AzurePrefixNotFound,
-                    $"Azure folder /{safe} was not found.",
+                    $"Azure folder {ConnectionPath.DisplayPath(safe)} was not found.",
                     $"Container {_container.Name} was not found or this identity cannot see it.");
             }
 
@@ -112,7 +112,7 @@ public sealed class AzureBlobFileStorage : IFileStorage
                 real,
                 null,
                 null,
-                $"Azure folder /{safe} is reachable ({real} file{(real == 1 ? "" : "s")}).");
+                $"Azure folder {ConnectionPath.DisplayPath(safe)} is reachable ({real} file{(real == 1 ? "" : "s")}).");
         }
         catch (RequestFailedException ex) when (ex.Status is 401 or 403)
         {
@@ -121,7 +121,7 @@ public sealed class AzureBlobFileStorage : IFileStorage
                 false,
                 0,
                 SyncErrorCodes.AzurePrefixForbidden,
-                $"Azure folder /{safe} could not be listed. Check storage permissions.",
+                $"Azure folder {ConnectionPath.DisplayPath(safe)} could not be listed. Check storage permissions.",
                 ex.Message);
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
@@ -131,7 +131,7 @@ public sealed class AzureBlobFileStorage : IFileStorage
                 false,
                 0,
                 SyncErrorCodes.AzurePrefixNotFound,
-                $"Azure folder /{safe} was not found.",
+                $"Azure folder {ConnectionPath.DisplayPath(safe)} was not found.",
                 ex.Message);
         }
         catch (RequestFailedException ex)
@@ -141,7 +141,7 @@ public sealed class AzureBlobFileStorage : IFileStorage
                 false,
                 0,
                 SyncErrorCodes.AzurePrefixForbidden,
-                $"Azure folder /{safe} could not be listed. Check storage permissions.",
+                $"Azure folder {ConnectionPath.DisplayPath(safe)} could not be listed. Check storage permissions.",
                 ex.Message);
         }
     }

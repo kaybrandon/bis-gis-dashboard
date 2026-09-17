@@ -49,7 +49,7 @@ public sealed class ConnectionService : IConnectionService
             Id = Guid.NewGuid(),
             OrganizationId = org.Id,
             FileServerId = request.FileServerId,
-            SourcePath = RequiredPath(request.SourcePath, "Source"),
+            SourcePath = ConnectionPath.Canonicalize(RequiredPath(request.SourcePath, "Source")),
             FtpFolder = NullIfEmpty(request.FtpFolder),
             FtpUrl = NullIfEmpty(request.FtpUrl),
             FtpUserName = NullIfEmpty(request.FtpUserName),
@@ -70,7 +70,7 @@ public sealed class ConnectionService : IConnectionService
         var row = await LoadFileAsync(id, cancellationToken);
         if (!string.IsNullOrWhiteSpace(request.SourcePath))
         {
-            row.SourcePath = request.SourcePath.Trim();
+            row.SourcePath = ConnectionPath.Canonicalize(request.SourcePath);
         }
 
         if (request.FileServerId.HasValue)
@@ -111,7 +111,7 @@ public sealed class ConnectionService : IConnectionService
     public Task<FileConnectionDto> RunFileConnectionNowAsync(Guid id, CancellationToken cancellationToken = default)
     {
         EnsureCanManage();
-        throw new ValidationException("Add an agent before Run now. FTP publish is not used for Azure /orgs/ folders.");
+        throw new ValidationException("Add an agent before Run now. FTP publish is not used for Azure workfiles/orgs/ folders.");
     }
 
     public async Task<IReadOnlyList<LanConnectionDto>> ListLanConnectionsAsync(CancellationToken cancellationToken = default)
@@ -140,8 +140,8 @@ public sealed class ConnectionService : IConnectionService
         {
             Id = Guid.NewGuid(),
             OrganizationId = org.Id,
-            BisFolder = RequiredPath(request.BisFolder, "Source"),
-            RemoteFolder = RequiredPath(request.RemoteFolder, "Destination"),
+            BisFolder = ConnectionPath.Canonicalize(RequiredPath(request.BisFolder, "Source")),
+            RemoteFolder = ConnectionPath.Canonicalize(RequiredPath(request.RemoteFolder, "Destination")),
             Direction = NormalizeDirection(request.Direction),
             ScheduleMinutes = request.ScheduleMinutes is > 0 ? request.ScheduleMinutes.Value : 15,
             EnrollTokenHash = HashToken(token),
@@ -161,12 +161,12 @@ public sealed class ConnectionService : IConnectionService
         var row = await LoadLanAsync(id, cancellationToken);
         if (!string.IsNullOrWhiteSpace(request.BisFolder))
         {
-            row.BisFolder = request.BisFolder.Trim();
+            row.BisFolder = ConnectionPath.Canonicalize(request.BisFolder);
         }
 
         if (!string.IsNullOrWhiteSpace(request.RemoteFolder))
         {
-            row.RemoteFolder = request.RemoteFolder.Trim();
+            row.RemoteFolder = ConnectionPath.Canonicalize(request.RemoteFolder);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Direction))
@@ -240,6 +240,7 @@ public sealed class ConnectionService : IConnectionService
         row.HeartbeatOk = true;
         row.LastHeartbeatAt = DateTimeOffset.UtcNow;
         row.MachineName = NullIfEmpty(request.MachineName) ?? row.MachineName;
+        row.WindowsUserName = FirstNonEmpty(request.WindowsUserName, request.UserName, request.User) ?? row.WindowsUserName;
         row.LocalIp = NullIfEmpty(request.LocalIp) ?? row.LocalIp;
         row.PublicIp = NullIfEmpty(request.PublicIp) ?? row.PublicIp;
         row.AgentVersion = NullIfEmpty(request.AgentVersion) ?? row.AgentVersion;
@@ -249,14 +250,16 @@ public sealed class ConnectionService : IConnectionService
         row.Arch = NullIfEmpty(request.Arch) ?? row.Arch;
         row.RuntimeVersion = NullIfEmpty(request.RuntimeVersion) ?? row.RuntimeVersion;
         row.FreeDiskBytes = request.FreeDiskBytes ?? row.FreeDiskBytes;
-        if (request.SourceExists.HasValue)
+        var sourceExists = request.SourceExists ?? request.SourceExistsOnAgent;
+        if (sourceExists.HasValue)
         {
-            row.SourceExistsOnAgent = request.SourceExists.Value;
+            row.SourceExistsOnAgent = sourceExists.Value;
         }
 
-        if (request.DestinationExists.HasValue)
+        var destinationExists = request.DestinationExists ?? request.DestinationExistsOnAgent ?? request.DestExists;
+        if (destinationExists.HasValue)
         {
-            row.DestinationExistsOnAgent = request.DestinationExists.Value;
+            row.DestinationExistsOnAgent = destinationExists.Value;
         }
 
         if (request.LocalFileCount.HasValue)
@@ -371,47 +374,56 @@ public sealed class ConnectionService : IConnectionService
         {
             var prefix = ConnectionPath.ToAzurePrefix(path);
             var probe = await _storage.ProbePrefixAsync(prefix, cancellationToken);
+            var shown = ConnectionPath.DisplayPath(path);
             if (probe.Ok && probe.Listable)
             {
                 return new FolderCheckResult(
                     true,
                     "Pass",
-                    $"{label} Azure folder {ConnectionPath.DisplayPath(path)} is reachable ({probe.FileCount} file{(probe.FileCount == 1 ? "" : "s")}).",
+                    $"{label} Azure folder {shown} is reachable ({probe.FileCount} file{(probe.FileCount == 1 ? "" : "s")}).",
                     "azure");
             }
 
             return new FolderCheckResult(
                 false,
                 "Fail",
-                probe.Error ?? $"{label} Azure folder {ConnectionPath.DisplayPath(path)} was not found.",
+                AzureFailMessage(label, shown, probe.Error),
                 "azure");
         }
 
-        if (TryLocalFolder(path, out var full, out var error))
+        var kind = ConnectionPath.IsUncPath(path) ? "unc" : "local";
+        if (AgentReportedExists(agent, isSource, path))
+        {
+            return new FolderCheckResult(
+                true,
+                "Pass",
+                $"{label} folder {path} was confirmed by the agent as {AgentWho(agent)}.",
+                kind);
+        }
+
+        if (TryLocalFolder(path, out var full, out var hostError))
         {
             var count = Directory.EnumerateFiles(full, "*", SearchOption.AllDirectories).Count();
             return new FolderCheckResult(
                 true,
                 "Pass",
-                $"{label} folder {path} is reachable ({count} file{(count == 1 ? "" : "s")}).",
-                ConnectionPath.IsUncPath(path) ? "unc" : "local");
+                $"{label} folder {path} is reachable ({count} file{(count == 1 ? "" : "s")}) for {ConnectionPath.CheckerIdentity()}.",
+                kind);
         }
 
-        var agentOk = agent is not null && (isSource ? agent.SourceExistsOnAgent : agent.DestinationExistsOnAgent);
-        if (agentOk)
+        if (AgentIsAssigned(agent))
         {
             return new FolderCheckResult(
-                true,
-                "Pass",
-                $"{label} folder {path} was confirmed by the agent.",
-                ConnectionPath.IsUncPath(path) ? "unc" : "local");
+                false,
+                "Fail",
+                AgentUnconfirmedMessage(label, path, agent),
+                kind);
         }
 
-        var kind = ConnectionPath.IsUncPath(path) ? "unc" : "local";
-        var message = error
+        var message = hostError
             ?? (ConnectionPath.IsUncPath(path)
-                ? $"{label} UNC share was not reachable. Use a PC local drive path (C:\\...) unless this share is reachable from the agent."
-                : $"{label} folder was not found on the PC or file server: {path}");
+                ? $"{label} UNC share was not reachable. Use a PC local drive path (C:\\...) unless this share is reachable from the agent. Checked as {ConnectionPath.CheckerIdentity()}."
+                : $"{label} folder was not found on the PC or file server: {path}. Checked as {ConnectionPath.CheckerIdentity()}.");
         return new FolderCheckResult(false, "Fail", message, kind);
     }
 
@@ -424,12 +436,28 @@ public sealed class ConnectionService : IConnectionService
         if (!check.Source.Ok || !check.Destination.Ok)
         {
             var fail = !check.Source.Ok ? check.Source : check.Destination;
-            var code = fail.Kind == "azure"
-                ? (fail.Message.Contains("permission", StringComparison.OrdinalIgnoreCase)
+            if (fail.Kind == "azure")
+            {
+                var code = fail.Message.Contains("permission", StringComparison.OrdinalIgnoreCase)
                     ? SyncErrorCodes.AzurePrefixForbidden
-                    : SyncErrorCodes.AzurePrefixNotFound)
-                : SyncErrorCodes.PathNotFound;
-            SetError(row, code, fail.Message);
+                    : SyncErrorCodes.AzurePrefixNotFound;
+                SetError(row, code, fail.Message);
+                await _db.SaveChangesAsync(cancellationToken);
+                return;
+            }
+
+            var failedPath = !check.Destination.Ok ? row.RemoteFolder : row.BisFolder;
+            var agentOwnsLocal = AgentIsAssigned(row)
+                && (ConnectionPath.IsLocalDrivePath(failedPath) || ConnectionPath.IsUncPath(failedPath));
+            if (agentOwnsLocal)
+            {
+                row.RunNowQueued = true;
+                SetError(row, SyncErrorCodes.CheckNotOnAgent, fail.Message);
+                await _db.SaveChangesAsync(cancellationToken);
+                return;
+            }
+
+            SetError(row, SyncErrorCodes.PathNotFound, fail.Message);
             await _db.SaveChangesAsync(cancellationToken);
             return;
         }
@@ -739,7 +767,7 @@ public sealed class ConnectionService : IConnectionService
             return ConnectionPath.DisplayPath(dest.Path);
         }
 
-        return "/orgs/…";
+        return "workfiles/orgs/…";
     }
 
     private static bool TryLocalFolder(string path, out string full, out string? error)
@@ -748,7 +776,7 @@ public sealed class ConnectionService : IConnectionService
         error = null;
         if (ConnectionPath.IsAzureOrgPath(path))
         {
-            error = "Azure /orgs/ paths are not PC or file-server folders.";
+            error = "Azure workfiles/orgs/ paths are not PC or file-server folders.";
             return false;
         }
 
@@ -846,7 +874,7 @@ public sealed class ConnectionService : IConnectionService
             row.FileServerId,
             row.FileServer?.RootPath,
             row.FileServer?.RootPath,
-            row.SourcePath,
+            ConnectionPath.Canonicalize(row.SourcePath),
             row.FtpFolder,
             row.FtpUrl,
             row.FtpUserName,
@@ -866,15 +894,15 @@ public sealed class ConnectionService : IConnectionService
             row.Id,
             row.OrganizationId,
             row.Organization?.Name ?? "Client",
-            row.RemoteFolder,
-            row.BisFolder,
+            ConnectionPath.Canonicalize(row.RemoteFolder),
+            ConnectionPath.Canonicalize(row.BisFolder),
             row.Direction,
             row.ScheduleMinutes,
             row.Enrolled,
             enrollToken,
             row.EnrollTokenMasked,
             AgentUiStatus(row),
-            row.HeartbeatOk,
+            ConnectionPath.HeartbeatIsFresh(row.LastHeartbeatAt) || (row.HeartbeatOk && row.LastHeartbeatAt.HasValue),
             row.LastHeartbeatAt,
             row.LastSyncAt,
             row.LastPullCount,
@@ -883,6 +911,9 @@ public sealed class ConnectionService : IConnectionService
             row.LastErrorCode,
             row.LastErrorAt,
             row.MachineName,
+            row.WindowsUserName,
+            ConnectionPath.HeartbeatLabel(row.LastHeartbeatAt, row.Enrolled),
+            ConnectionPath.HeartbeatIsFresh(row.LastHeartbeatAt),
             row.LocalIp,
             row.PublicIp,
             row.AgentVersion,
@@ -896,7 +927,8 @@ public sealed class ConnectionService : IConnectionService
                 row.FreeDiskBytes,
                 row.LastError,
                 row.LocalIp,
-                row.PublicIp),
+                row.PublicIp,
+                row.WindowsUserName),
             row.RestartPending,
             false,
             row.RestartResult,
@@ -920,9 +952,15 @@ public sealed class ConnectionService : IConnectionService
             return "Offline";
         }
 
-        if (row.HeartbeatOk || row.Status == "Online")
+        if (ConnectionPath.HeartbeatIsFresh(row.LastHeartbeatAt)
+            || (row.HeartbeatOk && row.LastHeartbeatAt.HasValue))
         {
             return "Online";
+        }
+
+        if (row.Status == "Online")
+        {
+            return "Idle";
         }
 
         return string.IsNullOrWhiteSpace(row.Status) ? "Idle" : row.Status;
@@ -983,6 +1021,64 @@ public sealed class ConnectionService : IConnectionService
 
     private static string MaskToken(string token) =>
         token.Length <= 8 ? "••••••••••••" : token[..4] + "••••••••" + token[^2..];
+
+    private static bool AgentIsAssigned(LanConnection? agent) =>
+        agent is not null && (agent.Enrolled || agent.HeartbeatOk || agent.LastHeartbeatAt.HasValue);
+
+    private static bool AgentReportedExists(LanConnection? agent, bool isSource, string path)
+    {
+        if (agent is null)
+        {
+            return false;
+        }
+
+        if (isSource ? agent.SourceExistsOnAgent : agent.DestinationExistsOnAgent)
+        {
+            return true;
+        }
+
+        if (agent.AgentLocalFileCount <= 0 || ConnectionPath.IsAzureOrgPath(path))
+        {
+            return false;
+        }
+
+        var other = isSource ? agent.RemoteFolder : agent.BisFolder;
+        return ConnectionPath.IsAzureOrgPath(other);
+    }
+
+    private static string AgentWho(LanConnection? agent) =>
+        ConnectionPath.AgentIdentity(agent?.WindowsUserName, agent?.MachineName, agent?.HostName);
+
+    private static string AgentUnconfirmedMessage(string label, string path, LanConnection? agent)
+    {
+        var heartbeat = ConnectionPath.HeartbeatLabel(agent?.LastHeartbeatAt, agent?.Enrolled == true);
+        var agentWho = AgentWho(agent);
+        var apiWho = ConnectionPath.CheckerIdentity();
+        return $"{label} folder {path} was not confirmed by the enrolled agent as {agentWho}. Last heartbeat: {heartbeat}. This Check ran as {apiWho} — not a PATH_NOT_FOUND on that PC.";
+    }
+
+    private static string AzureFailMessage(string label, string shown, string? probeError)
+    {
+        if (!string.IsNullOrWhiteSpace(probeError) && probeError.Contains("workfiles/", StringComparison.OrdinalIgnoreCase))
+        {
+            return probeError;
+        }
+
+        return probeError ?? $"{label} Azure folder {shown} was not found.";
+    }
+
+    private static string? FirstNonEmpty(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+        }
+
+        return null;
+    }
 
     private enum SideKind
     {

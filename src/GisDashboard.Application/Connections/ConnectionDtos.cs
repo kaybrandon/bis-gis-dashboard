@@ -34,7 +34,8 @@ public sealed record AgentTelemetryDto(
     long? FreeDiskBytes,
     string? LastError,
     string? LocalIp,
-    string? PublicIp);
+    string? PublicIp,
+    string? WindowsUserName = null);
 
 public sealed record LanConnectionDto(
     Guid Id,
@@ -57,6 +58,9 @@ public sealed record LanConnectionDto(
     string? LastErrorCode,
     DateTimeOffset? LastErrorAt,
     string? MachineName,
+    string? WindowsUserName,
+    string? HeartbeatLabel,
+    bool HeartbeatFresh,
     string? LocalIp,
     string? PublicIp,
     string? AgentVersion,
@@ -117,7 +121,13 @@ public sealed record AgentHeartbeatRequest(
     string? LastError,
     string? LastErrorCode,
     int? LastPullCount,
-    int? LastPushCount);
+    int? LastPushCount,
+    string? WindowsUserName = null,
+    string? UserName = null,
+    string? User = null,
+    bool? SourceExistsOnAgent = null,
+    bool? DestinationExistsOnAgent = null,
+    bool? DestExists = null);
 
 public sealed record SyncControlDto(bool Paused, string? Message);
 
