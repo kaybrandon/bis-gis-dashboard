@@ -24,7 +24,9 @@ public sealed record AuthUser(
     string? WorkPhone = null,
     bool HasAvatar = false,
     string? UserName = null,
-    bool CanSeePresence = false);
+    bool CanSeePresence = false,
+    bool CanSeeConnections = false,
+    bool CanManageConnections = false);
 
 public sealed record UpdateProfileRequest(
     string? UserName,

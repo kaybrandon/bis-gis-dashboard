@@ -27,6 +27,10 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<CompanyContact> CompanyContacts => Set<CompanyContact>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<UserPresence> UserPresences => Set<UserPresence>();
+    public DbSet<FileServer> FileServers => Set<FileServer>();
+    public DbSet<FileConnection> FileConnections => Set<FileConnection>();
+    public DbSet<LanConnection> LanConnections => Set<LanConnection>();
+    public DbSet<SyncControlState> SyncControl => Set<SyncControlState>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -274,6 +278,59 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<FileServer>(entity =>
+        {
+            entity.ToTable("FileServers");
+            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.RootPath).HasMaxLength(1024).IsRequired();
+        });
+
+        builder.Entity<FileConnection>(entity =>
+        {
+            entity.ToTable("FileConnections");
+            entity.Property(x => x.SourcePath).HasMaxLength(1024).IsRequired();
+            entity.Property(x => x.FtpFolder).HasMaxLength(260);
+            entity.Property(x => x.FtpUrl).HasMaxLength(500);
+            entity.Property(x => x.FtpUserName).HasMaxLength(200);
+            entity.Property(x => x.Status).HasMaxLength(40);
+            entity.Property(x => x.LastError).HasMaxLength(2000);
+            entity.Property(x => x.LastZipName).HasMaxLength(260);
+            entity.HasIndex(x => x.OrganizationId);
+            entity.HasOne(x => x.Organization)
+                .WithMany()
+                .HasForeignKey(x => x.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.FileServer)
+                .WithMany()
+                .HasForeignKey(x => x.FileServerId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<LanConnection>(entity =>
+        {
+            entity.ToTable("LanConnections");
+            entity.Property(x => x.RemoteFolder).HasMaxLength(1024).IsRequired();
+            entity.Property(x => x.BisFolder).HasMaxLength(1024).IsRequired();
+            entity.Property(x => x.Direction).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.EnrollTokenHash).HasMaxLength(88).IsRequired();
+            entity.Property(x => x.EnrollTokenMasked).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.LastError).HasMaxLength(2000);
+            entity.Property(x => x.LastErrorCode).HasMaxLength(80);
+            entity.HasIndex(x => x.OrganizationId);
+            entity.HasOne(x => x.Organization)
+                .WithMany()
+                .HasForeignKey(x => x.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<SyncControlState>(entity =>
+        {
+            entity.ToTable("SyncControl");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Message).HasMaxLength(500);
         });
     }
 }

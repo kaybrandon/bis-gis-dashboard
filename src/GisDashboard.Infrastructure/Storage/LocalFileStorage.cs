@@ -1,4 +1,5 @@
 using GisDashboard.Application.Abstractions;
+using GisDashboard.Application.Connections;
 using Microsoft.Extensions.Options;
 
 namespace GisDashboard.Infrastructure.Storage;
@@ -17,6 +18,9 @@ public sealed class LocalFileStorage : IFileStorage
         _root = options.Value.RootPath;
         Directory.CreateDirectory(_root);
     }
+
+    public string ProviderLabel => "Local disk";
+    public string ContainerName => "workfiles";
 
     public async Task<string> SaveAsync(
         Guid organizationId,
@@ -80,4 +84,111 @@ public sealed class LocalFileStorage : IFileStorage
         File.WriteAllText(probe, DateTimeOffset.UtcNow.ToString("O"));
         return Task.FromResult(new StorageProbe(true, "Local disk", "Local workfiles folder is writable.", null));
     }
+
+    public Task<StoragePrefixProbe> ProbePrefixAsync(string prefix, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var folder = PrefixFolder(prefix);
+        try
+        {
+            var files = Directory.Exists(folder)
+                ? Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Count(path => !IsPlaceholder(path))
+                : 0;
+            return Task.FromResult(new StoragePrefixProbe(
+                true,
+                true,
+                files,
+                null,
+                null,
+                $"Azure folder /{NormalizePrefix(prefix)} is reachable ({files} file{(files == 1 ? "" : "s")})."));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Task.FromResult(new StoragePrefixProbe(
+                false,
+                false,
+                0,
+                SyncErrorCodes.AzurePrefixForbidden,
+                $"Azure folder /{NormalizePrefix(prefix)} could not be listed. Check storage permissions.",
+                ex.Message));
+        }
+    }
+
+    public Task EnsurePrefixAsync(string prefix, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var folder = PrefixFolder(prefix);
+        Directory.CreateDirectory(folder);
+        var keep = Path.Combine(folder, ConnectionPath.AzureKeepBlobName);
+        if (!File.Exists(keep) && !Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Any())
+        {
+            File.WriteAllBytes(keep, Array.Empty<byte>());
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<StoredObjectInfo>> ListPrefixAsync(string prefix, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var folder = PrefixFolder(prefix);
+        if (!Directory.Exists(folder))
+        {
+            return Task.FromResult<IReadOnlyList<StoredObjectInfo>>([]);
+        }
+
+        var items = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
+            .Select(path =>
+            {
+                var relative = Path.GetRelativePath(folder, path).Replace('\\', '/');
+                var info = new FileInfo(path);
+                return new StoredObjectInfo(
+                    $"{NormalizePrefix(prefix)}/{relative}",
+                    relative,
+                    info.Length,
+                    info.LastWriteTimeUtc,
+                    IsPlaceholder(path));
+            })
+            .ToList();
+        return Task.FromResult<IReadOnlyList<StoredObjectInfo>>(items);
+    }
+
+    public async Task<string> SaveUnderPrefixAsync(
+        string prefix,
+        string relativeName,
+        Stream content,
+        string contentType,
+        DateTimeOffset? lastWriteUtc = null,
+        CancellationToken cancellationToken = default)
+    {
+        var folder = PrefixFolder(prefix);
+        var safeName = relativeName.Replace('\\', '/').TrimStart('/');
+        if (safeName.Contains("..", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("File path is not valid.");
+        }
+
+        var full = Path.Combine(folder, safeName.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        await using (var output = File.Create(full))
+        {
+            await content.CopyToAsync(output, cancellationToken);
+        }
+
+        if (lastWriteUtc.HasValue)
+        {
+            File.SetLastWriteTimeUtc(full, lastWriteUtc.Value.UtcDateTime);
+        }
+
+        return $"{NormalizePrefix(prefix)}/{safeName}";
+    }
+
+    private string PrefixFolder(string prefix) =>
+        Path.Combine(_root, NormalizePrefix(prefix).Replace('/', Path.DirectorySeparatorChar));
+
+    private static string NormalizePrefix(string prefix) =>
+        prefix.Replace('\\', '/').Trim().Trim('/');
+
+    private static bool IsPlaceholder(string path) =>
+        string.Equals(Path.GetFileName(path), ConnectionPath.AzureKeepBlobName, StringComparison.OrdinalIgnoreCase);
 }

@@ -71,4 +71,10 @@ public static class Roles
 
     public static bool CanSeePresence(string role) =>
         role is GlobalAdministrator or Administrator or Editor;
+
+    public static bool CanSeeConnections(string role) =>
+        role is GlobalAdministrator or Administrator or Editor;
+
+    public static bool CanManageConnections(string role) =>
+        role is GlobalAdministrator or Administrator;
 }

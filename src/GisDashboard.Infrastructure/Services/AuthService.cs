@@ -260,7 +260,9 @@ public sealed class AuthService : IAuthService
             user.WorkPhone,
             !string.IsNullOrWhiteSpace(user.AvatarBlobPath),
             user.UserName,
-            Roles.CanSeePresence(role));
+            Roles.CanSeePresence(role),
+            Roles.CanSeeConnections(role),
+            Roles.CanManageConnections(role));
     }
 
     private async Task<ApplicationUser?> FindByUsernameOrEmailAsync(string identifier)

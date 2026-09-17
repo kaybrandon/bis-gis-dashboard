@@ -283,6 +283,7 @@ public sealed class DemoSeed
 
         await ApplyOrgDemoInventoryAsync(cancellationToken);
         await SeedReportCatalogAsync(cancellationToken);
+        await SeedDemoConnectionAsync(cancellationToken);
 
         _logger.LogInformation("Demo seed ready. Local passwords use Seed:DemoPassword / documented demo password.");
     }
@@ -545,6 +546,64 @@ public sealed class DemoSeed
                 Body = "Client asked for a second look at the west line before we mark this complete.",
                 CreatedAt = created,
                 CreatedAtSort = created.ToUnixTimeMilliseconds()
+            });
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SeedDemoConnectionAsync(CancellationToken cancellationToken)
+    {
+        if (!await _db.FileServers.AnyAsync(x => x.Id == SeedIds.LocalFileServer, cancellationToken))
+        {
+            _db.FileServers.Add(new FileServer
+            {
+                Id = SeedIds.LocalFileServer,
+                Name = "Local files",
+                RootPath = "workfiles",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        if (!await _db.FileConnections.AnyAsync(x => x.Id == SeedIds.DemoFileConnection, cancellationToken))
+        {
+            _db.FileConnections.Add(new FileConnection
+            {
+                Id = SeedIds.DemoFileConnection,
+                OrganizationId = SeedIds.DemoClient,
+                FileServerId = SeedIds.LocalFileServer,
+                SourcePath = "/orgs/democlient/shapefiles",
+                Enabled = true,
+                Status = "Idle",
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        if (!await _db.LanConnections.AnyAsync(x => x.Id == SeedIds.DemoLanConnection, cancellationToken))
+        {
+            _db.LanConnections.Add(new LanConnection
+            {
+                Id = SeedIds.DemoLanConnection,
+                OrganizationId = SeedIds.DemoClient,
+                BisFolder = "/orgs/democlient/shapefiles",
+                RemoteFolder = @"C:\GIS\Outgoing",
+                Direction = "Bidirectional",
+                ScheduleMinutes = 15,
+                EnrollTokenHash = "SEED",
+                EnrollTokenMasked = "••••••••••••",
+                Status = "Idle",
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        if (!await _db.SyncControl.AnyAsync(x => x.Id == SyncControlState.SingletonId, cancellationToken))
+        {
+            _db.SyncControl.Add(new SyncControlState
+            {
+                Id = SyncControlState.SingletonId,
+                UpdatedAt = DateTimeOffset.UtcNow
             });
         }
 
