@@ -27,6 +27,10 @@ public sealed class PresenceController : ControllerBase
     public Task<PresenceListResponse> List(CancellationToken cancellationToken) =>
         _presence.ListAsync(cancellationToken);
 
+    [HttpPost("need-help")]
+    public Task<NeedHelpResponse> NeedHelp([FromBody] NeedHelpRequest request, CancellationToken cancellationToken) =>
+        _presence.SetNeedsHelpAsync(request.NeedsHelp, cancellationToken);
+
     [HttpGet("{userId:guid}/avatar")]
     public async Task<IActionResult> Avatar(Guid userId, CancellationToken cancellationToken)
     {

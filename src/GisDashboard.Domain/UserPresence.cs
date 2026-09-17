@@ -9,6 +9,8 @@ public sealed class UserPresence
     public Guid? WorkItemId { get; set; }
     public bool ClockedIn { get; set; }
     public Guid? ClockWorkItemId { get; set; }
+    public bool NeedsHelp { get; set; }
+    public DateTimeOffset? NeedsHelpAt { get; set; }
 
     public ApplicationUser? User { get; set; }
 }

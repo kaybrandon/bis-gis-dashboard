@@ -9,6 +9,7 @@ import { CommentsPanel } from '../components/CommentsPanel'
 import { LoadError } from '../components/LoadError'
 import { DocumentViewer } from '../components/DocumentViewer'
 import { InternalNotesPanel } from '../components/InternalNotesPanel'
+import { WorkPresenceMarks } from '../components/PresencePeople'
 import { TimeLogPanel } from '../components/TimeLogPanel'
 import { isNeededByOverdue, neededByLabel } from '../neededBy'
 import { statusLabel } from '../statusLabels'
@@ -507,6 +508,7 @@ export function ViewDocumentPage() {
                   options={assignees.map((u) => ({ value: u.id, label: u.displayName }))}
                   onChange={(value) => setDraft({ ...draft, assignedToUserId: value ?? null })}
                 />
+                <WorkPresenceMarks workItemId={item.id} assignedToUserId={draft.assignedToUserId} />
                 <Space wrap size={[12, 4]} className="detail-flags">
                   <Checkbox checked={draft.isSplit} onChange={(e) => setDraft({ ...draft, isSplit: e.target.checked })}>
                     Split?
@@ -597,7 +599,10 @@ export function ViewDocumentPage() {
               </div>
             ) : (
               <div className="detail-readonly">
-                <span>Assigned to {item.assignedToName || 'Unassigned'}</span>
+                <span>
+                  Assigned to {item.assignedToName || 'Unassigned'}
+                  <WorkPresenceMarks workItemId={item.id} assignedToUserId={item.assignedToUserId} />
+                </span>
                 {item.isPriority && neededByLabel(item.priorityNeededBy) ? (
                   <span>{isNeededByOverdue(item.isPriority, item.priorityNeededBy) ? 'Overdue · ' : ''}{neededByLabel(item.priorityNeededBy)}</span>
                 ) : null}

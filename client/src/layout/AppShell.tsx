@@ -23,9 +23,11 @@ import { authorizedBlob } from '../api'
 import { useAuth } from '../auth'
 import { FloatingTimeClock } from '../components/FloatingTimeClock'
 import { HeaderGreeting } from '../components/HeaderGreeting'
+import { HelpMessageSheet } from '../components/HelpMessageSheet'
 import { NotificationBell } from '../components/NotificationBell'
 import { PoweredByFooter } from '../components/PoweredByFooter'
-import { PresencePopover, WhoIsOnlineSider } from '../components/WhoIsOnline'
+import { PresencePopover, WhoIsOnlineStrip } from '../components/WhoIsOnline'
+import { PresenceProvider } from '../presence'
 import { usePresenceHeartbeat } from '../usePresenceHeartbeat'
 
 const { Header, Sider, Content, Footer } = Layout
@@ -133,6 +135,7 @@ export function AppShell() {
   }
 
   return (
+    <PresenceProvider enabled={canSeePresence} selfUserId={user?.id}>
     <Layout className="app-shell" style={{ minHeight: '100vh' }}>
       {!isMobile && (
         <Sider
@@ -153,7 +156,6 @@ export function AppShell() {
             {!collapsed && <span>GIS Dashboard</span>}
           </div>
           {menu}
-          {user && <WhoIsOnlineSider enabled={canSeePresence} userId={user.id} collapsed={collapsed} />}
         </Sider>
       )}
       <Layout>
@@ -203,6 +205,7 @@ export function AppShell() {
             </Dropdown>
           </div>
         </Header>
+        {user && <WhoIsOnlineStrip enabled={canSeePresence} userId={user.id} />}
         <Content className="content-wrap">
           <Outlet />
         </Content>
@@ -217,15 +220,16 @@ export function AppShell() {
         placement="left"
         width={280}
         classNames={{ body: 'app-nav-drawer-body' }}
-        styles={{ body: { padding: 0, background: '#001529' } }}
+        styles={{ body: { padding: 0, background: '#001529' }}
       >
         <div className="brand">
           <span className="brand-mark">GIS</span>
           <span>GIS Dashboard</span>
         </div>
         {menu}
-        {user && <WhoIsOnlineSider enabled={canSeePresence} userId={user.id} />}
       </Drawer>
+      <HelpMessageSheet />
     </Layout>
+    </PresenceProvider>
   )
 }

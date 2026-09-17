@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { PresenceUser } from '../api'
 import { authorizedBlob } from '../api'
+import { usePresence } from '../presence'
+import { NeedHelpMark } from './NeedHelpMark'
 
 function PresenceAvatar({ user }: { user: PresenceUser }) {
   const [url, setUrl] = useState<string | null>(null)
@@ -33,6 +35,11 @@ function PresenceAvatar({ user }: { user: PresenceUser }) {
   return <Avatar size={28} src={url || undefined} icon={!url ? <UserOutlined /> : undefined} />
 }
 
+function openPeer(row: PresenceUser, selfUserId: string | undefined, openHelp: (peer: PresenceUser) => void) {
+  if (row.userId === selfUserId) return
+  openHelp(row)
+}
+
 export function PresencePeople({
   items,
   empty = 'Nobody else is signed in right now.',
@@ -40,6 +47,7 @@ export function PresencePeople({
   items: PresenceUser[]
   empty?: string
 }) {
+  const { selfUserId, openHelp } = usePresence()
   if (items.length === 0) {
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={empty} />
   }
@@ -54,14 +62,31 @@ export function PresencePeople({
               </Link>
             )
           : row.pageName
+        const clickable = row.userId !== selfUserId
         return (
-          <div key={row.userId} className="presence-row">
+          <div
+            key={row.userId}
+            className={clickable ? 'presence-row is-clickable' : 'presence-row'}
+            role={clickable ? 'button' : undefined}
+            tabIndex={clickable ? 0 : undefined}
+            onClick={() => openPeer(row, selfUserId, openHelp)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                openPeer(row, selfUserId, openHelp)
+              }
+            }}
+          >
             <PresenceAvatar user={row} />
             <div className="presence-row-body">
               <div className="presence-row-name">
                 <Typography.Text strong ellipsis>
                   {row.displayName}
                 </Typography.Text>
+                {row.needsHelp && <NeedHelpMark />}
+                {row.unreadHelpCount > 0 && (
+                  <Tag color="gold" className="presence-status">{row.unreadHelpCount}</Tag>
+                )}
                 <Tag color={row.presenceStatus === 'Online' ? 'success' : 'gold'} className="presence-status">
                   {row.presenceStatus}
                 </Tag>
@@ -82,28 +107,95 @@ export function PresencePeople({
   )
 }
 
-export function PresenceChips({ items }: { items: PresenceUser[] }) {
+export function PresenceChips({
+  items,
+  dark = false,
+}: {
+  items: PresenceUser[]
+  dark?: boolean
+}) {
+  const { selfUserId, openHelp } = usePresence()
   if (items.length === 0) {
     return <Typography.Text type="secondary">Nobody else is signed in right now.</Typography.Text>
   }
 
   return (
     <Space size={[4, 4]} wrap>
-      {items.map((row) => (
-        <Tag key={row.userId} className="presence-chip">
+      {items.map((row) => {
+        const clickable = row.userId !== selfUserId
+        return (
+          <Tag
+            key={row.userId}
+            className={dark ? 'presence-chip is-dark' : 'presence-chip'}
+            data-needs-help={row.needsHelp ? 'true' : 'false'}
+            onClick={clickable ? () => openHelp(row) : undefined}
+            style={clickable ? { cursor: 'pointer' } : undefined}
+          >
+            <span className={`presence-dot is-${row.presenceStatus.toLowerCase()}`} />
+            {row.displayName}
+            {row.needsHelp ? <NeedHelpMark compact /> : null}
+            {row.unreadHelpCount > 0 ? ` · ${row.unreadHelpCount}` : ''}
+            {row.clockedIn ? ' · Clocked in' : ''}
+            {row.workItemTitle
+              ? (
+                  <>
+                    {' · '}
+                    <Link to={`/documents/${row.workItemId}`} onClick={(event) => event.stopPropagation()}>
+                      {row.workItemTitle}
+                    </Link>
+                  </>
+                )
+              : ` · ${row.pageName}`}
+          </Tag>
+        )
+      })}
+    </Space>
+  )
+}
+
+export function WorkPresenceMarks({
+  workItemId,
+  assignedToUserId,
+}: {
+  workItemId: string
+  assignedToUserId?: string | null
+}) {
+  const { enabled, items, openHelp } = usePresence()
+  if (!enabled) return null
+
+  const assigned = assignedToUserId ? items.find((row) => row.userId === assignedToUserId) : undefined
+  const onItem = items.filter((row) => row.workItemId === workItemId && row.userId !== assignedToUserId)
+  if (!assigned?.needsHelp && onItem.length === 0) return null
+
+  return (
+    <span className="work-presence-marks">
+      {assigned?.needsHelp && (
+        <button
+          type="button"
+          className="work-presence-assigned"
+          onClick={(event) => {
+            event.stopPropagation()
+            if (assigned.userId) openHelp(assigned)
+          }}
+        >
+          <NeedHelpMark compact />
+        </button>
+      )}
+      {onItem.map((row) => (
+        <Tag
+          key={row.userId}
+          className="presence-chip work-presence-chip"
+          data-needs-help={row.needsHelp ? 'true' : 'false'}
+          onClick={(event) => {
+            event.stopPropagation()
+            openHelp(row)
+          }}
+        >
           <span className={`presence-dot is-${row.presenceStatus.toLowerCase()}`} />
           {row.displayName}
-          {row.clockedIn ? ' · Clocked in' : ''}
-          {row.workItemTitle
-            ? (
-                <>
-                  {' · '}
-                  <Link to={`/documents/${row.workItemId}`}>{row.workItemTitle}</Link>
-                </>
-              )
-            : ` · ${row.pageName}`}
+          {row.needsHelp ? <NeedHelpMark compact /> : null}
         </Tag>
       ))}
-    </Space>
+    </span>
   )
 }

@@ -79,7 +79,7 @@ public sealed class PresenceService : IPresenceService
         rows = rows.Where(x => visibleIds.Contains(x.UserId)).ToList();
         if (rows.Count == 0)
         {
-            return new PresenceListResponse([], 0);
+            return new PresenceListResponse([], 0, 0);
         }
 
         var userIds = rows.Select(x => x.UserId).ToList();
@@ -102,6 +102,12 @@ public sealed class PresenceService : IPresenceService
                     x => string.IsNullOrWhiteSpace(x.Title) ? x.FileName : x.Title,
                     cancellationToken);
 
+        var unread = await _db.HelpMessages.AsNoTracking()
+            .Where(x => x.ToUserId == _currentUser.UserId && x.ReadAt == null && userIds.Contains(x.FromUserId))
+            .GroupBy(x => x.FromUserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count, cancellationToken);
+
         var now = DateTimeOffset.UtcNow;
         var items = rows
             .Select(row =>
@@ -117,6 +123,7 @@ public sealed class PresenceService : IPresenceService
                 var age = now - row.LastSeen;
                 var status = age <= OnlineWindow ? "Online" : "Away";
                 var pageName = PageName(row.Route);
+                unread.TryGetValue(row.UserId, out var unreadCount);
                 return new PresenceUserDto(
                     row.UserId,
                     user is null
@@ -128,13 +135,72 @@ public sealed class PresenceService : IPresenceService
                     workItemId,
                     title,
                     row.ClockedIn,
-                    row.LastSeen);
+                    row.LastSeen,
+                    row.NeedsHelp,
+                    unreadCount);
             })
-            .OrderBy(x => x.PresenceStatus == "Online" ? 0 : 1)
+            .OrderBy(x => x.NeedsHelp ? 0 : 1)
+            .ThenBy(x => x.PresenceStatus == "Online" ? 0 : 1)
             .ThenBy(x => x.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new PresenceListResponse(items, items.Count(x => x.PresenceStatus == "Online"));
+        return new PresenceListResponse(
+            items,
+            items.Count(x => x.PresenceStatus == "Online"),
+            items.Count(x => x.NeedsHelp));
+    }
+
+    public async Task<NeedHelpResponse> SetNeedsHelpAsync(bool needsHelp, CancellationToken cancellationToken = default)
+    {
+        if (!_currentUser.IsAuthenticated)
+        {
+            throw new ForbiddenException("Authentication is required.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var row = await _db.UserPresences.FirstOrDefaultAsync(x => x.UserId == _currentUser.UserId, cancellationToken);
+        if (row is null)
+        {
+            row = new UserPresence
+            {
+                UserId = _currentUser.UserId,
+                LastSeen = now,
+                LastSeenSort = now.ToUnixTimeMilliseconds(),
+                Route = "/"
+            };
+            _db.UserPresences.Add(row);
+        }
+
+        row.NeedsHelp = needsHelp;
+        row.NeedsHelpAt = needsHelp ? now : null;
+        await _db.SaveChangesAsync(cancellationToken);
+        return new NeedHelpResponse(row.NeedsHelp);
+    }
+
+    public Task<bool> CanSeePresenceUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        CanSeeUserAsync(userId, cancellationToken);
+
+    public async Task<string?> PresenceStatusOfAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var row = await _db.UserPresences.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+        return StatusOf(row);
+    }
+
+    internal static string? StatusOf(UserPresence? row)
+    {
+        if (row is null)
+        {
+            return null;
+        }
+
+        var age = DateTimeOffset.UtcNow - row.LastSeen;
+        if (age > OfflineAfter)
+        {
+            return null;
+        }
+
+        return age <= OnlineWindow ? "Online" : "Away";
     }
 
     public async Task<(Stream Stream, string ContentType)> GetAvatarAsync(Guid userId, CancellationToken cancellationToken = default)

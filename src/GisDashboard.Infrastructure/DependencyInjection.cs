@@ -4,6 +4,7 @@ using GisDashboard.Application.Auth;
 using GisDashboard.Application.Company;
 using GisDashboard.Application.Directory;
 using GisDashboard.Application.Email;
+using GisDashboard.Application.Help;
 using GisDashboard.Application.Notifications;
 using GisDashboard.Application.Presence;
 using GisDashboard.Application.Reports;
@@ -109,6 +110,7 @@ public static class DependencyInjection
         services.AddScoped<ITimeReportService, TimeReportService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IPresenceService, PresenceService>();
+        services.AddScoped<IHelpMessageService, HelpMessageService>();
         services.AddScoped<IWorkflowComms, WorkflowCommsService>();
         services.AddScoped<IEnvironmentStatusService, EnvironmentStatusService>();
         services.AddSingleton<IEmailSettingsCache, EmailSettingsCache>();

@@ -18,6 +18,7 @@ import type { AssignableUser, LookupItem, OrgOption, StatusActions, WorkItemList
 import { api } from '../api'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
+import { WorkPresenceMarks } from '../components/PresencePeople'
 import { WorkItemCards } from '../components/WorkItemCards'
 import { useAuth } from '../auth'
 import { useIsMobile } from '../layout/useIsMobile'
@@ -374,9 +375,17 @@ export function ManageDocumentsPage() {
         sorter: true,
         width: 180,
         render: (v: string | null, row) => {
-          if (!user?.canMutateWorkItems) return v ?? '—'
+          if (!user?.canMutateWorkItems) {
+            return (
+              <span>
+                {v ?? '—'}
+                <WorkPresenceMarks workItemId={row.id} assignedToUserId={row.assignedToUserId} />
+              </span>
+            )
+          }
           return (
             <div onClick={stopRowClick} onMouseDown={stopRowClick}>
+            <WorkPresenceMarks workItemId={row.id} assignedToUserId={row.assignedToUserId} />
             <Select
               allowClear
               size="small"

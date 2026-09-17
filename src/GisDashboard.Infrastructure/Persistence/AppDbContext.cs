@@ -27,6 +27,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<CompanyContact> CompanyContacts => Set<CompanyContact>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<UserPresence> UserPresences => Set<UserPresence>();
+    public DbSet<HelpMessage> HelpMessages => Set<HelpMessage>();
     public DbSet<FileServer> FileServers => Set<FileServer>();
     public DbSet<FileConnection> FileConnections => Set<FileConnection>();
     public DbSet<LanConnection> LanConnections => Set<LanConnection>();
@@ -278,6 +279,24 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<HelpMessage>(entity =>
+        {
+            entity.ToTable("HelpMessages");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Chip).HasMaxLength(40);
+            entity.Property(x => x.Body).HasMaxLength(280).IsRequired();
+            entity.HasIndex(x => new { x.ToUserId, x.CreatedAtSort });
+            entity.HasIndex(x => new { x.FromUserId, x.ToUserId, x.CreatedAtSort });
+            entity.HasOne(x => x.FromUser)
+                .WithMany()
+                .HasForeignKey(x => x.FromUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ToUser)
+                .WithMany()
+                .HasForeignKey(x => x.ToUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<FileServer>(entity =>

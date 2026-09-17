@@ -751,6 +751,15 @@ export const api = {
     request<void>('/api/notifications/read-all', { method: 'POST' }),
   heartbeat: (body: PresenceHeartbeat) =>
     request<void>('/api/presence', { method: 'POST', body: JSON.stringify(body) }),
+  setNeedsHelp: (needsHelp: boolean) =>
+    request<{ needsHelp: boolean }>('/api/presence/need-help', {
+      method: 'POST',
+      body: JSON.stringify({ needsHelp }),
+    }),
+  helpThread: (withUserId: string) =>
+    request<HelpThread>(`/api/help-messages?withUserId=${encodeURIComponent(withUserId)}`),
+  sendHelpMessage: (body: { toUserId: string; chip?: string | null; body?: string | null }) =>
+    request<HelpMessage>('/api/help-messages', { method: 'POST', body: JSON.stringify(body) }),
   connections: () => request<FileConnection[]>('/api/connections'),
   createConnection: (body: Record<string, unknown>) =>
     request<FileConnection>('/api/connections', { method: 'POST', body: JSON.stringify(body) }),
@@ -808,17 +817,53 @@ export type PresenceUser = {
   userId: string
   displayName: string
   hasAvatar: boolean
-  presenceStatus: 'Online' | 'Away' | string
+  presenceStatus: 'Online' | 'Away' | 'Offline' | string
   pageName: string
   workItemId?: string | null
   workItemTitle?: string | null
   clockedIn: boolean
   lastSeen: string
+  needsHelp: boolean
+  unreadHelpCount: number
 }
 
 export type PresenceList = {
   items: PresenceUser[]
   onlineCount: number
+  needsHelpCount: number
+}
+
+export const HELP_SEND_CHIPS = [
+  { chip: 'need-help', label: 'Need help?' },
+  { chip: 'take-a-look', label: 'Can you take a look?' },
+] as const
+
+export const HELP_REPLY_CHIPS = [
+  { chip: 'on-my-way', label: 'On my way' },
+  { chip: 'ping-5', label: 'Ping me in 5' },
+  { chip: 'cant-right-now', label: "Can't right now" },
+] as const
+
+export const HELP_OFFLINE_REASON = "Offline — try when they're back."
+
+export type HelpMessage = {
+  id: string
+  fromUserId: string
+  toUserId: string
+  chip?: string | null
+  chipLabel: string
+  body: string
+  createdAt: string
+  mine: boolean
+}
+
+export type HelpThread = {
+  withUserId: string
+  withDisplayName: string
+  presenceStatus: string
+  canCompose: boolean
+  composeDisabledReason?: string | null
+  items: HelpMessage[]
 }
 
 export type FolderCheckResult = { ok: boolean; result: 'Pass' | 'Fail' | string; message: string; kind: string }
