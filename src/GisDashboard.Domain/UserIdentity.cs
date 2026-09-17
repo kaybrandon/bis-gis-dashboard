@@ -12,6 +12,26 @@ public static class UserIdentity
         "editor", "viewer", "admin", "system", "bis"
     };
 
+    /// <summary>
+    /// Header greeting first name: first token of Full name only.
+    /// Never email, username, userId, or a fallback person name.
+    /// </summary>
+    public static string? GreetingFirstName(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            return null;
+        }
+
+        var tokens = SplitName(fullName);
+        if (tokens.Length == 0 || LooksLikeEmail(tokens[0]))
+        {
+            return null;
+        }
+
+        return tokens[0];
+    }
+
     /// <summary>First name plus last initial only, e.g. Alex R. Never the full last name.</summary>
     public static string ShortPublicName(string? fullName, string? displayName, string? userName = null, string? email = null)
     {

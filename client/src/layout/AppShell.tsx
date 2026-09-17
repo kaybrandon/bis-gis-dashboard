@@ -15,13 +15,14 @@ import {
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Avatar, Button, Drawer, Dropdown, Grid, Layout, Menu, Typography } from 'antd'
+import { Avatar, Button, Drawer, Dropdown, Grid, Layout, Menu } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { accountTriggerLabel, orgScopeLabel } from '../accountLabel'
+import { accountTriggerLabel } from '../accountLabel'
 import { authorizedBlob } from '../api'
 import { useAuth } from '../auth'
 import { FloatingTimeClock } from '../components/FloatingTimeClock'
+import { HeaderGreeting } from '../components/HeaderGreeting'
 import { NotificationBell } from '../components/NotificationBell'
 import { PoweredByFooter } from '../components/PoweredByFooter'
 import { PresencePopover, WhoIsOnlineSider } from '../components/WhoIsOnline'
@@ -42,7 +43,6 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDER_KEY) === '1')
   const isMobile = !screens.lg
   const isPhone = !screens.sm
-  const scope = orgScopeLabel(user)
   const triggerLabel = accountTriggerLabel(user)
   const search = new URLSearchParams(location.search)
   const isPopout = search.get('popout') === '1'
@@ -169,9 +169,7 @@ export function AppShell() {
                 }}
               />
             )}
-            <Typography.Text strong className="app-header-brand" ellipsis>
-              {isPhone ? 'GIS Dashboard' : `BIS Consultants · ${scope}`}
-            </Typography.Text>
+            <HeaderGreeting user={user} />
           </div>
           <div className="app-header-right">
             {user && <PresencePopover enabled={canSeePresence} />}
