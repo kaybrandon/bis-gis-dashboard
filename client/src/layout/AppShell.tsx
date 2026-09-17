@@ -24,7 +24,7 @@ import { useAuth } from '../auth'
 import { FloatingTimeClock } from '../components/FloatingTimeClock'
 import { NotificationBell } from '../components/NotificationBell'
 import { PoweredByFooter } from '../components/PoweredByFooter'
-import { PresencePopover, WhoIsOnlineStrip } from '../components/WhoIsOnline'
+import { PresencePopover, WhoIsOnlineSider } from '../components/WhoIsOnline'
 import { usePresenceHeartbeat } from '../usePresenceHeartbeat'
 
 const { Header, Sider, Content, Footer } = Layout
@@ -149,6 +149,7 @@ export function AppShell() {
             {!collapsed && <span>GIS Dashboard</span>}
           </div>
           {menu}
+          {user && <WhoIsOnlineSider enabled={canSeePresence} userId={user.id} collapsed={collapsed} />}
         </Sider>
       )}
       <Layout>
@@ -200,7 +201,6 @@ export function AppShell() {
             </Dropdown>
           </div>
         </Header>
-        {user && <WhoIsOnlineStrip enabled={canSeePresence} userId={user.id} />}
         <Content className="content-wrap">
           <Outlet />
         </Content>
@@ -214,6 +214,7 @@ export function AppShell() {
         onClose={() => setOpen(false)}
         placement="left"
         width={280}
+        classNames={{ body: 'app-nav-drawer-body' }}
         styles={{ body: { padding: 0, background: '#001529' } }}
       >
         <div className="brand">
@@ -221,6 +222,7 @@ export function AppShell() {
           <span>GIS Dashboard</span>
         </div>
         {menu}
+        {user && <WhoIsOnlineSider enabled={canSeePresence} userId={user.id} />}
       </Drawer>
     </Layout>
   )
