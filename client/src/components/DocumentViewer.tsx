@@ -113,7 +113,7 @@ export function DocumentViewer({ workItemId, contentType, fileName }: Props) {
   }
 
   if (!isPdf) {
-    return <Alert type="info" showIcon message={`${fileName} is not a PDF or image. Download is available from the file API.`} />
+    return <Alert type="info" showIcon message={`${fileName} can be downloaded. Preview is for PDFs and images only.`} />
   }
 
   return (
