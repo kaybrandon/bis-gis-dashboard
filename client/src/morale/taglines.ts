@@ -20,7 +20,7 @@ export function taglineStorageKey(userId?: string | null) {
 
 /** Next tagline in the list so the same user does not see the identical line every load. */
 export function nextMoraleTagline(userId?: string | null, storage?: Pick<Storage, 'getItem' | 'setItem'>): string {
-  const list = MORALE_TAGLINES
+  const list: readonly string[] = MORALE_TAGLINES
   const store = storage ?? (typeof localStorage === 'undefined' ? undefined : localStorage)
   if (!store || list.length === 0) {
     return list[0] ?? ''
