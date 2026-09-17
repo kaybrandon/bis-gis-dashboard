@@ -72,7 +72,7 @@ function PrivateRoutes() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/status" element={user.canManageGlobalDirectory ? <StatusPage /> : <Navigate to="/" replace />} />
         <Route path="/admin/users" element={user.canManageDirectory ? <UsersPage /> : <Navigate to="/" replace />} />
-        <Route path="/admin/organizations" element={user.canManageDirectory ? <OrganizationsPage /> : <Navigate to="/" replace />} />
+        <Route path="/admin/organizations" element={user.canManageAssignedTechs || user.canManageDirectory ? <OrganizationsPage /> : <Navigate to="/" replace />} />
         <Route path="/connections" element={user.canSeeConnections ? <ConnectionsPage /> : <Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

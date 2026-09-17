@@ -253,6 +253,7 @@ public sealed class AuthService : IAuthService
             Roles.CanMutateWorkItems(role),
             Roles.CanManageDirectory(role),
             Roles.CanManageGlobalDirectory(role),
+            Roles.CanManageAssignedTechs(role),
             canViewTimeReport,
             canViewTeamTimeReport,
             Roles.CanSeeAllOrganizations(role),

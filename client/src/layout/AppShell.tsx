@@ -87,9 +87,13 @@ export function AppShell() {
     if (user?.canSeeConnections) {
       nav.push({ key: '/connections', icon: <ApiOutlined />, label: <Link to="/connections">Connections</Link> })
     }
-    if (user?.canManageDirectory) {
+    if (user?.canManageAssignedTechs || user?.canManageDirectory) {
       nav.push(
         { key: '/admin/organizations', icon: <BankOutlined />, label: <Link to="/admin/organizations">Organizations</Link> },
+      )
+    }
+    if (user?.canManageDirectory) {
+      nav.push(
         { key: '/admin/users', icon: <TeamOutlined />, label: <Link to="/admin/users">Users</Link> },
       )
     }
