@@ -53,4 +53,8 @@ public static class SeedIds
     public static readonly Guid TimeEditorDemoPlat = Guid.Parse("ffffffff-0000-0000-0000-000000000001");
     public static readonly Guid TimeAdminDemoPlat = Guid.Parse("ffffffff-0000-0000-0000-000000000002");
     public static readonly Guid CommentDemoPlat = Guid.Parse("ffffffff-2000-0000-0000-000000000001");
+
+    public static readonly Guid LocalFileServer = Guid.Parse("12121212-0000-0000-0000-000000000001");
+    public static readonly Guid DemoFileConnection = Guid.Parse("12121212-0000-0000-0000-000000000010");
+    public static readonly Guid DemoLanConnection = Guid.Parse("12121212-0000-0000-0000-000000000011");
 }

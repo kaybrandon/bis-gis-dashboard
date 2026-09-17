@@ -22,6 +22,8 @@ export type AuthUser = {
   canViewTeamTimeReport: boolean
   canSeeAllOrganizations: boolean
   canSeePresence?: boolean
+  canSeeConnections?: boolean
+  canManageConnections?: boolean
 }
 
 export type NamedCount = { id: string; name: string; color?: string | null; count: number }
@@ -745,6 +747,33 @@ export const api = {
     request<void>('/api/notifications/read-all', { method: 'POST' }),
   heartbeat: (body: PresenceHeartbeat) =>
     request<void>('/api/presence', { method: 'POST', body: JSON.stringify(body) }),
+  connections: () => request<FileConnection[]>('/api/connections'),
+  createConnection: (body: Record<string, unknown>) =>
+    request<FileConnection>('/api/connections', { method: 'POST', body: JSON.stringify(body) }),
+  updateConnection: (id: string, body: Record<string, unknown>) =>
+    request<FileConnection>(`/api/connections/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  runConnectionNow: (id: string) =>
+    request<FileConnection>(`/api/connections/${id}/run-now`, { method: 'POST' }),
+  checkFolders: (body: { sourcePath: string; remoteFolder: string; fileServerId?: string }) =>
+    request<CheckFoldersResponse>('/api/connections/check-folders', { method: 'POST', body: JSON.stringify(body) }),
+  fileServers: () => request<FileServer[]>('/api/file-servers'),
+  fileKinds: () => request<{ kinds: FileKind[] }>('/api/settings/file-kinds'),
+  ftpSettings: () => request<{ nightlyHourUtc: number }>('/api/ftp/settings'),
+  lanConnections: () => request<LanConnection[]>('/api/lan-connections'),
+  createLanConnection: (body: Record<string, unknown>) =>
+    request<LanConnection>('/api/lan-connections', { method: 'POST', body: JSON.stringify(body) }),
+  updateLanConnection: (id: string, body: Record<string, unknown>) =>
+    request<LanConnection>(`/api/lan-connections/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  runLanNow: (id: string) => request<LanConnection>(`/api/lan-connections/${id}/run-now`, { method: 'POST' }),
+  retryLan: (id: string) => request<LanConnection>(`/api/lan-connections/${id}/retry`, { method: 'POST' }),
+  rotateLanToken: (id: string) => request<LanConnection>(`/api/lan-connections/${id}/rotate-token`, { method: 'POST' }),
+  checkLanFolders: (id: string) => request<CheckFoldersResponse>(`/api/lan-connections/${id}/check-folders`, { method: 'POST' }),
+  lanMap: () => request<unknown[]>('/api/lan-connections/map'),
+  syncControl: () => request<SyncControl>('/api/sync-control'),
+  pauseSync: () => request<SyncControl>('/api/sync-control/pause', { method: 'POST' }),
+  resumeSync: () => request<SyncControl>('/api/sync-control/resume', { method: 'POST' }),
+  downloadWindowsInstaller: () => downloadAuthorized('/api/lan-connections/agent/windows-installer'),
+  downloadWindowsAgentZip: () => downloadAuthorized('/api/lan-connections/agent/windows'),
   presence: () => request<PresenceList>('/api/presence'),
 }
 
@@ -787,6 +816,84 @@ export type PresenceList = {
   items: PresenceUser[]
   onlineCount: number
 }
+
+export type FolderCheckResult = { ok: boolean; result: 'Pass' | 'Fail' | string; message: string; kind: string }
+export type CheckFoldersResponse = {
+  source: FolderCheckResult
+  destination: FolderCheckResult
+  bothPassed: boolean
+  canRunNow: boolean
+}
+
+export type FileConnection = {
+  id: string
+  organizationId: string
+  organizationName: string
+  fileServerId?: string | null
+  sourceRoot?: string | null
+  fileServerRoot?: string | null
+  sourcePath: string
+  ftpFolder?: string | null
+  ftpUrl?: string | null
+  ftpUserName?: string | null
+  passwordConfigured: boolean
+  enabled: boolean
+  status?: string | null
+  lastError?: string | null
+  lastPublishedAt?: string | null
+  lastFileCount: number
+  lastZipName?: string | null
+  hasPackage: boolean
+  canDownload: boolean
+  canManage: boolean
+}
+
+export type AgentTelemetry = {
+  hostName?: string | null
+  osDescription?: string | null
+  osVersion?: string | null
+  arch?: string | null
+  runtimeVersion?: string | null
+  agentVersion?: string | null
+  freeDiskBytes?: number | null
+  lastError?: string | null
+  localIp?: string | null
+  publicIp?: string | null
+}
+
+export type LanConnection = {
+  id: string
+  organizationId: string
+  organizationName: string
+  remoteFolder: string
+  bisFolder: string
+  direction: string
+  scheduleMinutes: number
+  enrolled: boolean
+  enrollToken?: string | null
+  enrollTokenMasked?: string | null
+  status: string
+  heartbeatOk: boolean
+  lastHeartbeatAt?: string | null
+  lastSyncAt?: string | null
+  lastPullCount: number
+  lastPushCount: number
+  lastError?: string | null
+  lastErrorCode?: string | null
+  lastErrorAt?: string | null
+  machineName?: string | null
+  localIp?: string | null
+  publicIp?: string | null
+  agentVersion?: string | null
+  telemetry?: AgentTelemetry | null
+  restartPending?: boolean
+  runNowQueued?: boolean
+  canManage: boolean
+}
+
+export type FileServer = { id: string; name: string; rootPath: string; sourceRoot: string }
+export type FileKind = { key: string; displayName: string; extensions: string; enabled: boolean }
+export type SyncControl = { paused: boolean; message?: string | null }
 
 async function downloadAuthorized(path: string) {
   const token = getToken()

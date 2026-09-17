@@ -21,4 +21,6 @@ public interface ICurrentUser
     bool CanManageDirectory { get; }
     bool CanManageGlobalDirectory { get; }
     bool CanSeePresence { get; }
+    bool CanSeeConnections { get; }
+    bool CanManageConnections { get; }
 }

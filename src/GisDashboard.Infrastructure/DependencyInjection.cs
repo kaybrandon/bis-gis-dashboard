@@ -9,6 +9,7 @@ using GisDashboard.Application.Presence;
 using GisDashboard.Application.Reports;
 using GisDashboard.Application.TimeReports;
 using GisDashboard.Application.Status;
+using GisDashboard.Application.Connections;
 using GisDashboard.Application.WorkItems;
 using GisDashboard.Domain;
 using GisDashboard.Infrastructure.AiFill;
@@ -115,6 +116,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailSettingsService, EmailSettingsService>();
         services.AddScoped<ICompanyContactService, CompanyContactService>();
         services.AddScoped<IPasswordResetService, PasswordResetService>();
+        services.AddScoped<IConnectionService, ConnectionService>();
         services.AddScoped<DemoSeed>();
 
         var useAzureBlob = configuration.GetValue("AzureStorage:Enabled", false)

@@ -9,6 +9,7 @@ import {
   MenuOutlined,
   MenuUnfoldOutlined,
   CloudServerOutlined,
+  ApiOutlined,
   SettingOutlined,
   TeamOutlined,
   UploadOutlined,
@@ -82,6 +83,9 @@ export function AppShell() {
     ]
     if (user?.canViewTimeReport) {
       nav.push({ key: '/time-report', icon: <ClockCircleOutlined />, label: <Link to="/time-report">Time Report</Link> })
+    }
+    if (user?.canSeeConnections) {
+      nav.push({ key: '/connections', icon: <ApiOutlined />, label: <Link to="/connections">Connections</Link> })
     }
     if (user?.canManageDirectory) {
       nav.push(

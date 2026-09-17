@@ -1217,6 +1217,103 @@ body,
   font-size: 12px;
 }
 
+.connections-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.conn-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conn-card {
+  background: #fff;
+  border: 1px solid var(--mask-border);
+  border-radius: var(--mask-radius);
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.conn-card-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.conn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8c8c8c;
+  display: inline-block;
+}
+
+.conn-status.is-online .conn-dot { background: #52c41a; }
+.conn-status.is-idle .conn-dot { background: #faad14; }
+.conn-status.is-error .conn-dot { background: #f5222d; }
+.conn-status.is-offline .conn-dot { background: #8c8c8c; }
+
+.conn-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 6px;
+  color: var(--mask-text-secondary);
+  font-size: 13px;
+}
+
+.conn-error {
+  margin-top: 8px;
+  color: #f5222d;
+  font-weight: 600;
+}
+
+.conn-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.conn-section {
+  margin-bottom: 16px;
+}
+
+.conn-section-title {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+
+.conn-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.conn-azure-help {
+  margin-bottom: 12px;
+}
+
 @media (max-width: 575px) {
   .maintenance-report {
     padding: 12px;
