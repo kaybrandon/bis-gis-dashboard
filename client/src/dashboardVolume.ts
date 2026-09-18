@@ -18,8 +18,8 @@ export function isUnassignedVolumeId(id?: string | null) {
   return !id || id === UNASSIGNED_VOLUME_ID
 }
 
-export function technicianVolumeFilterId(id?: string | null) {
-  return isUnassignedVolumeId(id) ? UNASSIGNED : id
+export function technicianVolumeFilterId(id?: string | null): string {
+  return isUnassignedVolumeId(id) ? UNASSIGNED : id ?? UNASSIGNED
 }
 
 export type VolumeFilters = {
