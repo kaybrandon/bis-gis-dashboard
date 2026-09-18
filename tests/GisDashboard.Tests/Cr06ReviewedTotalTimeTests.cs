@@ -70,7 +70,7 @@ public sealed class Cr06ReviewedTotalTimeTests : IClassFixture<ApiFactory>
 
         var afterEntries = await (await client.GetAsync($"/api/work-items/{id}")).ReadJsonAsync();
         afterEntries.GetProperty("hours").GetDecimal().Should().Be(1.75m);
-        afterEntries.GetProperty("hoursLabel").GetString().Should().Be("1h 30m");
+        afterEntries.GetProperty("hoursLabel").GetString().Should().Be("1h 45m");
         afterEntries.GetProperty("isReviewed").GetBoolean().Should().BeFalse();
 
         var log = await (await client.GetAsync($"/api/work-items/{id}/time-entries")).ReadJsonAsync();
@@ -82,13 +82,13 @@ public sealed class Cr06ReviewedTotalTimeTests : IClassFixture<ApiFactory>
 
         var afterReview = await (await client.GetAsync($"/api/work-items/{id}")).ReadJsonAsync();
         afterReview.GetProperty("isReviewed").GetBoolean().Should().BeTrue();
-        afterReview.GetProperty("hoursLabel").GetString().Should().Be("1h 30m");
+        afterReview.GetProperty("hoursLabel").GetString().Should().Be("1h 45m");
 
         var list = await (await client.GetAsync("/api/work-items?pageSize=100")).ReadJsonAsync();
         var row = list.GetProperty("items").EnumerateArray()
             .Single(x => x.GetProperty("id").GetGuid() == id);
         row.GetProperty("isReviewed").GetBoolean().Should().BeTrue();
-        row.GetProperty("hoursLabel").GetString().Should().Be("1h 30m");
+        row.GetProperty("hoursLabel").GetString().Should().Be("1h 45m");
         row.GetProperty("hours").GetDecimal().Should().Be(1.75m);
     }
 

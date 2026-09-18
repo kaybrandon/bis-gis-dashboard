@@ -1,5 +1,5 @@
 import type { WorkItemListItem } from './api'
-import { reviewLabel } from './statusLabels'
+import { reviewLabel } from './statusLabels.ts'
 
 export function totalTimeLabel(hoursLabel: string | undefined): string {
   return hoursLabel?.trim() ? hoursLabel : '0m'
