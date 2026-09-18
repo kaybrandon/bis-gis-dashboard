@@ -1,11 +1,13 @@
 import { Button, Card, Col, Form, Input, Modal, Row, Select, Space, Switch, Table, Tag, Tooltip, message } from 'antd'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { api } from '../api'
 import { useAuth } from '../auth'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
 import { compareLastActivity, compareTitle, formatLastActivity } from '../lastActivity'
+import { usePresence } from '../presence'
 import { roleHasAllOrganizations, roleLabel, roleRequiresOrganizationAssignment } from '../roles'
+import { isLiveOnline } from '../usersPresence'
 
 type UserRow = {
   id: string
@@ -27,8 +29,13 @@ function personName(row: UserRow) {
   return row.fullName?.trim() || row.displayName
 }
 
+function stopRowClick(event: MouseEvent) {
+  event.stopPropagation()
+}
+
 export function UsersPage() {
   const { user } = useAuth()
+  const { items: presenceItems } = usePresence()
   const [rows, setRows] = useState<UserRow[]>([])
   const [orgs, setOrgs] = useState<Array<{ id: string; name: string }>>([])
   const [open, setOpen] = useState(false)
@@ -59,6 +66,26 @@ export function UsersPage() {
   }
 
   useEffect(() => { load(showArchived) }, [showArchived])
+
+  const presenceById = useMemo(
+    () => new Map(presenceItems.map((row) => [row.userId, row.presenceStatus])),
+    [presenceItems],
+  )
+
+  const openEdit = (row: UserRow) => {
+    setEditing(row)
+    editForm.setFieldsValue({
+      displayName: row.displayName,
+      fullName: row.fullName ?? '',
+      title: row.title ?? '',
+      workPhone: row.workPhone ?? '',
+      email: row.email,
+      role: row.role,
+      isActive: row.isActive,
+      organizationIds: row.organizations.map((o) => o.organizationId),
+      password: undefined,
+    })
+  }
 
   const confirmArchive = (row: UserRow) => {
     Modal.confirm({
@@ -118,18 +145,30 @@ export function UsersPage() {
         dataSource={rows}
         pagination={false}
         scroll={{ x: 'max-content' }}
-        rowClassName={(row) => row.isArchived ? 'users-row-archived' : ''}
+        rowClassName={(row) => [
+          'users-row-clickable',
+          row.isArchived ? 'users-row-archived' : '',
+        ].filter(Boolean).join(' ')}
+        onRow={(row) => ({
+          onClick: () => openEdit(row),
+        })}
         columns={[
           {
             title: 'Name',
             key: 'name',
             sorter: (a, b) => compareTitle(personName(a), personName(b)),
-            render: (_, row) => (
-              <span>
-                {personName(row)}
-                {row.isArchived ? ' (archived)' : ''}
-              </span>
-            ),
+            render: (_, row) => {
+              const live = isLiveOnline(presenceById.get(row.id), row.isArchived)
+              return (
+                <span className="users-name-cell">
+                  {live && <span className="presence-dot is-online" aria-label="Online" title="Online" />}
+                  <span>
+                    {personName(row)}
+                    {row.isArchived ? ' (archived)' : ''}
+                  </span>
+                </span>
+              )
+            },
           },
           { title: 'Username', dataIndex: 'displayName' },
           {
@@ -177,39 +216,28 @@ export function UsersPage() {
             title: '',
             key: 'actions',
             render: (_, row) => (
-              <Space size={4}>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    setEditing(row)
-                    editForm.setFieldsValue({
-                      displayName: row.displayName,
-                      fullName: row.fullName ?? '',
-                      title: row.title ?? '',
-                      workPhone: row.workPhone ?? '',
-                      email: row.email,
-                      role: row.role,
-                      isActive: row.isActive,
-                      organizationIds: row.organizations.map((o) => o.organizationId),
-                      password: undefined,
-                    })
-                  }}
-                >
-                  Edit
-                </Button>
-                {row.isArchived ? (
-                  <Button size="small" onClick={() => restoreUser(row)}>Restore</Button>
-                ) : (
+              <div onClick={stopRowClick} onMouseDown={stopRowClick}>
+                <Space size={4}>
                   <Button
                     size="small"
-                    danger
-                    disabled={row.id === user?.id}
-                    onClick={() => confirmArchive(row)}
+                    onClick={() => openEdit(row)}
                   >
-                    Archive
+                    Edit
                   </Button>
-                )}
-              </Space>
+                  {row.isArchived ? (
+                    <Button size="small" onClick={() => restoreUser(row)}>Restore</Button>
+                  ) : (
+                    <Button
+                      size="small"
+                      danger
+                      disabled={row.id === user?.id}
+                      onClick={() => confirmArchive(row)}
+                    >
+                      Archive
+                    </Button>
+                  )}
+                </Space>
+              </div>
             ),
           },
         ]}

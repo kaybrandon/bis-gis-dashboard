@@ -667,6 +667,20 @@ body,
   font-size: 13px;
 }
 
+.users-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.users-name-cell .presence-dot {
+  flex: 0 0 auto;
+}
+
+.ant-table-tbody > tr.users-row-clickable {
+  cursor: pointer;
+}
+
 .ant-table-tbody > tr.users-row-archived > td {
   background: #f0f0f0 !important;
   color: rgba(0, 0, 0, 0.45) !important;
