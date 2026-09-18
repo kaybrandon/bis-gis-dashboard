@@ -53,6 +53,7 @@ export function CommentsPanel({
   return (
     <Card
       size="small"
+      className="bis-theme-panel"
       loading={loading}
       title={(
         <TitleWithHelp help="Client-visible thread. Clients and staff can read this. Uploaders and staff can post. Viewers can read but not post. A new comment emails the assignee and Assigned tech(s). Use @username to ping someone in the bell. Internal Notes stay staff-only.">

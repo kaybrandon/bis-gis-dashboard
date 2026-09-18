@@ -269,7 +269,7 @@ export function DashboardPage() {
                 loading={loading}
                 size="small"
                 hoverable
-                className="kpi-card"
+                className="kpi-card bis-theme-panel"
                 role="button"
                 tabIndex={0}
                 aria-label={`Open ${card?.label ?? kpiFallback[key]} work items`}
@@ -296,7 +296,7 @@ export function DashboardPage() {
 
       <DashboardCharts data={data} loading={loading} filters={filters} onOpen={openDocuments} />
 
-      <Card title="Recently completed" loading={loading && !isMobile}>
+      <Card title="Recently completed" className="bis-theme-panel" loading={loading && !isMobile}>
         {isMobile ? (
           <WorkItemCards
             items={data?.recentCompleted ?? []}
@@ -307,6 +307,7 @@ export function DashboardPage() {
         ) : (
           <Table
             rowKey="id"
+            className="bis-theme-grid"
             size="small"
             pagination={false}
             dataSource={data?.recentCompleted ?? []}

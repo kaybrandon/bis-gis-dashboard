@@ -96,7 +96,7 @@ export function ReportDetailPage() {
 
   if (!loading && !report) {
     return (
-      <Card>
+      <Card className="bis-theme-panel">
         <Space direction="vertical">
           <Link to="/reports"><ArrowLeftOutlined /> All reports</Link>
           <Typography.Text type="danger">{error ?? 'Report was not found.'}</Typography.Text>
@@ -257,7 +257,7 @@ export function ReportDetailPage() {
                 <Empty description={`No work items were completed ${snap?.periodPhrase ?? 'this month'}.`} />
               )}
               {snap?.completedItems.map((row) => (
-                <Card key={`${row.fileName}-${row.uploadedAt}`} size="small">
+                <Card key={`${row.fileName}-${row.uploadedAt}`} size="small" className="bis-theme-panel">
                   <Typography.Text strong>{row.fileName}</Typography.Text>
                   <div><Typography.Text type="secondary">Uploaded {dayjs(row.uploadedAt).format('MMM DD, YYYY')} · Worked {row.workedOn ? dayjs(row.workedOn).format('MMM DD, YYYY') : '—'}</Typography.Text></div>
                   <div>
@@ -272,6 +272,7 @@ export function ReportDetailPage() {
           ) : (
             <Table
               rowKey={(row) => `${row.fileName}-${row.uploadedAt}`}
+              className="bis-theme-grid"
               size="small"
               pagination={false}
               dataSource={snap?.completedItems ?? []}
@@ -299,9 +300,10 @@ export function ReportDetailPage() {
       </div>
 
       {(report?.emails.length ?? 0) > 0 && (
-        <Card title="Email log" size="small">
+        <Card title="Email log" size="small" className="bis-theme-panel">
           <Table
             rowKey="id"
+            className="bis-theme-grid"
             size="small"
             pagination={false}
             dataSource={report?.emails ?? []}

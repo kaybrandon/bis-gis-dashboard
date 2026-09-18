@@ -133,7 +133,7 @@ export function ReportsPage() {
         </Typography.Title>
       </div>
 
-      <Card className="compact-card">
+      <Card className="compact-card bis-theme-panel">
         <div className="filter-toolbar">
           <Select
             placeholder="Client"
@@ -182,16 +182,16 @@ export function ReportsPage() {
 
       {isMobile ? (
         <Space direction="vertical" size={8} style={{ width: '100%' }}>
-          {loading && <Card loading />}
+          {loading && <Card className="bis-theme-panel" loading />}
           {!loading && rows.length === 0 && (
-            <Card>
+            <Card className="bis-theme-panel">
               <Empty description={canGenerate
                 ? 'No reports yet. Generate a month or year to snapshot completed maintenance.'
                 : 'No reports yet for this client. Ask an Editor or Administrator to generate one.'} />
             </Card>
           )}
           {rows.map((row) => (
-            <Card key={row.id} size="small" hoverable onClick={() => navigate(`/reports/${row.id}`)}>
+            <Card key={row.id} size="small" hoverable className="bis-theme-panel" onClick={() => navigate(`/reports/${row.id}`)}>
               <Typography.Text strong>{row.monthLabel}</Typography.Text>
               <div>
                 <Tag color={row.cadence === 'Annual' ? 'purple' : 'blue'}>{row.cadence || 'Monthly'}</Tag>
@@ -209,9 +209,10 @@ export function ReportsPage() {
           ))}
         </Space>
       ) : (
-        <Card title="History">
+        <Card title="History" className="bis-theme-panel">
           <Table
             rowKey="id"
+            className="bis-theme-grid"
             size="small"
             loading={loading}
             dataSource={rows}

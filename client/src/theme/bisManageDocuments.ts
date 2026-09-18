@@ -1,4 +1,4 @@
-/** Locked QC07 tokens — Manage Documents grid only. Do not reuse as a full GIS retheme. */
+/** QC07 tokens. GIS-UI-02 reuses these for app-wide panels, cards, and grids. Do not invent new hex values. */
 export const BIS_MANAGE_DOCUMENTS = {
   navy: '#142642',
   teal: '#00BA8C',
@@ -12,6 +12,10 @@ export const BIS_MANAGE_DOCUMENTS = {
 } as const
 
 export const FORBIDDEN_SELECTION_LIME = ['#AED20F', '#D4FF00', '#D7FF01', '#D8FF00'] as const
+
+/** Shared class tokens — same MD treatments, used on any panel or grid. */
+export const BIS_THEME_PANEL_CLASS = 'bis-theme-panel'
+export const BIS_THEME_GRID_CLASS = 'bis-theme-grid'
 
 export const manageDocumentsTableTheme = {
   components: {

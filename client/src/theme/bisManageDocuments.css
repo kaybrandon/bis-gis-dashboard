@@ -1,4 +1,16 @@
-/* QC07 — BIS colors on Manage Documents grid only. Tokens stay on this wrapper. */
+/* QC07 tokens. GIS-UI-02 shares them with app-wide panels, cards, and grids. */
+:root {
+  --bis-navy: #142642;
+  --bis-teal: #00BA8C;
+  --bis-row-green: #E8F8F3;
+  --bis-row-gray: #F3F4F6;
+  --bis-select: #FDE68A;
+  --bis-select-border: #F59E0B;
+  --bis-hover: #FEF3C7;
+  --bis-text-on-navy: #ffffff;
+  --bis-text-on-row: #111827;
+}
+
 .manage-documents-grid {
   --bis-navy: #142642;
   --bis-teal: #00BA8C;
@@ -12,18 +24,187 @@
   color: var(--bis-text-on-row);
 }
 
+.bis-theme-panel,
+.bis-theme-grid {
+  --bis-navy: #142642;
+  --bis-teal: #00BA8C;
+  --bis-row-green: #E8F8F3;
+  --bis-row-gray: #F3F4F6;
+  --bis-select: #FDE68A;
+  --bis-select-border: #F59E0B;
+  --bis-hover: #FEF3C7;
+  --bis-text-on-navy: #ffffff;
+  --bis-text-on-row: #111827;
+}
+
+/* ---- Panels / cards (MD header + border + distinct body) ---- */
+.content-wrap .ant-card,
+.login-wrap .ant-card,
+.bis-theme-panel.ant-card {
+  border: 1px solid var(--bis-navy);
+  background: #ffffff;
+  color: var(--bis-text-on-row);
+}
+
+.content-wrap .ant-card:not(:has(> .ant-card-head)),
+.login-wrap .ant-card:not(:has(> .ant-card-head)),
+.bis-theme-panel.ant-card:not(:has(> .ant-card-head)) {
+  border-top-width: 4px;
+}
+
+.content-wrap .ant-card > .ant-card-head,
+.login-wrap .ant-card > .ant-card-head,
+.bis-theme-panel.ant-card > .ant-card-head {
+  background: var(--bis-navy);
+  color: var(--bis-text-on-navy);
+  border-bottom: 1px solid var(--bis-navy);
+}
+
+.content-wrap .ant-card-head-title,
+.content-wrap .ant-card-head-title .ant-typography,
+.content-wrap .ant-card-extra,
+.content-wrap .ant-card-extra .ant-typography,
+.content-wrap .ant-card-extra .users-show-archived,
+.login-wrap .ant-card-head-title,
+.bis-theme-panel .ant-card-head-title,
+.bis-theme-panel .ant-card-extra {
+  color: var(--bis-text-on-navy);
+}
+
+.content-wrap .ant-card-head .help-tip,
+.content-wrap .ant-table-thead .help-tip,
+.login-wrap .ant-card-head .help-tip,
+.bis-theme-panel .ant-card-head .help-tip,
+.bis-theme-grid .ant-table-thead .help-tip,
+.manage-documents-grid .ant-table-thead .help-tip {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.content-wrap .ant-card > .ant-card-body,
+.login-wrap .ant-card > .ant-card-body,
+.bis-theme-panel.ant-card > .ant-card-body {
+  background: #ffffff;
+  color: var(--bis-text-on-row);
+}
+
+.content-wrap .kpi-card .ant-statistic-title,
+.content-wrap .time-report-kpis .ant-statistic-title {
+  color: var(--bis-navy);
+}
+
+.content-wrap .kpi-card .ant-statistic-content,
+.content-wrap .time-report-kpis .ant-statistic-content {
+  color: var(--bis-text-on-row);
+}
+
+/* Custom boxes that are not Ant Cards */
+.content-wrap .conn-card,
+.content-wrap .conn-empty.ant-card {
+  border-color: var(--bis-navy);
+  background: #ffffff;
+}
+
+.content-wrap .conn-card {
+  border-top-width: 4px;
+}
+
+.content-wrap .conn-card-title,
+.content-wrap .conn-section-title {
+  color: var(--bis-navy);
+}
+
+.content-wrap .maintenance-report {
+  border-color: var(--bis-navy);
+}
+
+.content-wrap .maintenance-report h3 {
+  background: var(--bis-navy);
+  color: var(--bis-text-on-navy);
+}
+
+.content-wrap .maintenance-report-table th,
+.content-wrap .maintenance-report-table td {
+  border-bottom-color: var(--bis-navy);
+  color: var(--bis-text-on-row);
+}
+
+.content-wrap .maintenance-report-table tr:nth-child(odd) th,
+.content-wrap .maintenance-report-table tr:nth-child(odd) td {
+  background: var(--bis-row-green);
+}
+
+.content-wrap .maintenance-report-table tr:nth-child(even) th,
+.content-wrap .maintenance-report-table tr:nth-child(even) td {
+  background: var(--bis-row-gray);
+}
+
+.content-wrap .ant-descriptions-bordered .ant-descriptions-view,
+.content-wrap .ant-descriptions-bordered .ant-descriptions-row,
+.content-wrap .ant-descriptions-bordered .ant-descriptions-item-label,
+.content-wrap .ant-descriptions-bordered .ant-descriptions-item-content {
+  border-color: var(--bis-navy);
+}
+
+.content-wrap .ant-descriptions-bordered .ant-descriptions-item-label {
+  background: var(--bis-row-green);
+  color: var(--bis-text-on-row);
+}
+
+.content-wrap .ant-descriptions-bordered .ant-descriptions-item-content {
+  background: #ffffff;
+  color: var(--bis-text-on-row);
+}
+
+/* Modals are page panels portaled to body */
+.ant-modal .ant-modal-header {
+  background: var(--bis-navy);
+  color: var(--bis-text-on-navy);
+  border-bottom-color: var(--bis-navy);
+}
+
+.ant-modal .ant-modal-title {
+  color: var(--bis-text-on-navy);
+}
+
+.ant-modal .ant-modal-close {
+  color: var(--bis-text-on-navy);
+}
+
+.ant-modal .ant-modal-content {
+  border: 1px solid var(--bis-navy);
+}
+
+/* ---- Grids (MD header, zebra rows, hover, select) ---- */
 .manage-documents-grid .ant-table-container,
 .manage-documents-grid .ant-table,
 .manage-documents-grid .ant-table-thead > tr > th,
 .manage-documents-grid .ant-table-thead > tr > td,
-.manage-documents-grid .ant-table-tbody > tr > td {
+.manage-documents-grid .ant-table-tbody > tr > td,
+.bis-theme-grid .ant-table-container,
+.bis-theme-grid .ant-table,
+.bis-theme-grid .ant-table-thead > tr > th,
+.bis-theme-grid .ant-table-thead > tr > td,
+.bis-theme-grid .ant-table-tbody > tr > td,
+.content-wrap .ant-table-container,
+.content-wrap .ant-table,
+.content-wrap .ant-table-thead > tr > th,
+.content-wrap .ant-table-thead > tr > td,
+.content-wrap .ant-table-tbody > tr > td {
   border-color: var(--bis-navy);
 }
 
 .manage-documents-grid .ant-table-thead > tr > th,
 .manage-documents-grid .ant-table-thead > tr > td,
 .manage-documents-grid .ant-table-header,
-.manage-documents-grid .ant-table-header .ant-table-cell {
+.manage-documents-grid .ant-table-header .ant-table-cell,
+.bis-theme-grid .ant-table-thead > tr > th,
+.bis-theme-grid .ant-table-thead > tr > td,
+.bis-theme-grid .ant-table-header,
+.bis-theme-grid .ant-table-header .ant-table-cell,
+.content-wrap .ant-table-thead > tr > th,
+.content-wrap .ant-table-thead > tr > td,
+.content-wrap .ant-table-header,
+.content-wrap .ant-table-header .ant-table-cell {
   background: var(--bis-navy) !important;
   color: var(--bis-text-on-navy) !important;
 }
@@ -34,33 +215,61 @@
 .manage-documents-grid .ant-table-thead .ant-table-column-sorter-inner,
 .manage-documents-grid .ant-table-thead .ant-table-column-sorter-up,
 .manage-documents-grid .ant-table-thead .ant-table-column-sorter-down,
-.manage-documents-grid .ant-table-thead .anticon {
+.manage-documents-grid .ant-table-thead .anticon,
+.bis-theme-grid .ant-table-thead .ant-table-column-title,
+.bis-theme-grid .ant-table-thead .ant-table-column-sorters,
+.bis-theme-grid .ant-table-thead .ant-table-column-sorter,
+.bis-theme-grid .ant-table-thead .ant-table-column-sorter-inner,
+.bis-theme-grid .ant-table-thead .ant-table-column-sorter-up,
+.bis-theme-grid .ant-table-thead .ant-table-column-sorter-down,
+.bis-theme-grid .ant-table-thead .anticon,
+.content-wrap .ant-table-thead .ant-table-column-title,
+.content-wrap .ant-table-thead .ant-table-column-sorters,
+.content-wrap .ant-table-thead .ant-table-column-sorter,
+.content-wrap .ant-table-thead .ant-table-column-sorter-inner,
+.content-wrap .ant-table-thead .ant-table-column-sorter-up,
+.content-wrap .ant-table-thead .ant-table-column-sorter-down,
+.content-wrap .ant-table-thead .anticon {
   color: var(--bis-text-on-navy) !important;
 }
 
 .manage-documents-grid .ant-table-thead .ant-table-column-sorter-up:not(.on),
-.manage-documents-grid .ant-table-thead .ant-table-column-sorter-down:not(.on) {
+.manage-documents-grid .ant-table-thead .ant-table-column-sorter-down:not(.on),
+.bis-theme-grid .ant-table-thead .ant-table-column-sorter-up:not(.on),
+.bis-theme-grid .ant-table-thead .ant-table-column-sorter-down:not(.on),
+.content-wrap .ant-table-thead .ant-table-column-sorter-up:not(.on),
+.content-wrap .ant-table-thead .ant-table-column-sorter-down:not(.on) {
   color: rgba(255, 255, 255, 0.45) !important;
 }
 
-.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-a > td {
+.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-a > td,
+.bis-theme-grid .ant-table-tbody > tr:nth-child(odd) > td,
+.content-wrap .ant-table-tbody > tr:nth-child(odd) > td {
   background: var(--bis-row-green);
   color: var(--bis-text-on-row);
 }
 
-.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-b > td {
+.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-b > td,
+.bis-theme-grid .ant-table-tbody > tr:nth-child(even) > td,
+.content-wrap .ant-table-tbody > tr:nth-child(even) > td {
   background: var(--bis-row-gray);
   color: var(--bis-text-on-row);
 }
 
 .manage-documents-grid .ant-table-tbody > tr:hover > td,
-.manage-documents-grid .ant-table-tbody > tr > td.ant-table-cell-row-hover {
+.manage-documents-grid .ant-table-tbody > tr > td.ant-table-cell-row-hover,
+.bis-theme-grid .ant-table-tbody > tr:hover > td,
+.bis-theme-grid .ant-table-tbody > tr > td.ant-table-cell-row-hover,
+.content-wrap .ant-table-tbody > tr:hover > td,
+.content-wrap .ant-table-tbody > tr > td.ant-table-cell-row-hover {
   background: var(--bis-hover) !important;
   color: var(--bis-text-on-row) !important;
 }
 
 .manage-documents-grid .ant-table-tbody > tr.manage-documents-row-selected > td,
-.manage-documents-grid .ant-table-tbody > tr.ant-table-row-selected > td {
+.manage-documents-grid .ant-table-tbody > tr.ant-table-row-selected > td,
+.bis-theme-grid .ant-table-tbody > tr.ant-table-row-selected > td,
+.content-wrap .ant-table-tbody > tr.ant-table-row-selected > td {
   background: var(--bis-select) !important;
   color: var(--bis-text-on-row) !important;
   box-shadow: inset 0 0 0 1px var(--bis-select-border);
@@ -69,22 +278,39 @@
 .manage-documents-grid .ant-table-tbody > tr.manage-documents-row-selected:hover > td,
 .manage-documents-grid .ant-table-tbody > tr.ant-table-row-selected:hover > td,
 .manage-documents-grid .ant-table-tbody > tr.manage-documents-row-selected > td.ant-table-cell-row-hover,
-.manage-documents-grid .ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-row-hover {
+.manage-documents-grid .ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-row-hover,
+.bis-theme-grid .ant-table-tbody > tr.ant-table-row-selected:hover > td,
+.bis-theme-grid .ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-row-hover,
+.content-wrap .ant-table-tbody > tr.ant-table-row-selected:hover > td,
+.content-wrap .ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-row-hover {
   background: var(--bis-select) !important;
   color: var(--bis-text-on-row) !important;
 }
 
-.manage-documents-grid .ant-table-tbody > tr:focus-visible > td {
+.manage-documents-grid .ant-table-tbody > tr:focus-visible > td,
+.bis-theme-grid .ant-table-tbody > tr:focus-visible > td,
+.content-wrap .ant-table-tbody > tr:focus-visible > td {
   outline: 2px solid var(--bis-select-border);
   outline-offset: -2px;
 }
 
-.manage-documents-grid .ant-select-selector {
+.content-wrap .ant-table-tbody > tr.users-row-archived > td {
+  background: var(--bis-row-gray) !important;
+  color: rgba(17, 24, 39, 0.45) !important;
+}
+
+.manage-documents-grid .ant-select-selector,
+.bis-theme-grid .ant-select-selector,
+.content-wrap .ant-table .ant-select-selector {
   color: var(--bis-text-on-row);
 }
 
 .manage-documents-grid .ant-select-focused .ant-select-selector,
-.manage-documents-grid .ant-select-open .ant-select-selector {
+.manage-documents-grid .ant-select-open .ant-select-selector,
+.bis-theme-grid .ant-select-focused .ant-select-selector,
+.bis-theme-grid .ant-select-open .ant-select-selector,
+.content-wrap .ant-table .ant-select-focused .ant-select-selector,
+.content-wrap .ant-table .ant-select-open .ant-select-selector {
   background: var(--bis-select) !important;
   border-color: var(--bis-select-border) !important;
   color: var(--bis-text-on-row) !important;

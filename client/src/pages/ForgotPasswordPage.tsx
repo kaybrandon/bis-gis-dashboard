@@ -26,7 +26,7 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="login-wrap">
-      <Card className="login-card compact-card">
+      <Card className="login-card compact-card bis-theme-panel">
         <Typography.Title level={3} style={{ marginBottom: 4 }}>Forgot password</Typography.Title>
         <Typography.Paragraph type="secondary" className="page-lead">
           Enter the email or username for your GIS Dashboard account.

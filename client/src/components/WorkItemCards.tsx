@@ -41,7 +41,7 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
           key={item.id}
           size="small"
           hoverable
-          className="work-item-card"
+          className="work-item-card bis-theme-panel"
           onClick={() => onOpen(item.id)}
         >
           <Typography.Text strong ellipsis style={{ display: 'block' }}>

@@ -63,7 +63,7 @@ export function StatusPage() {
       </Typography.Title>
       <WhoIsOnlineCard enabled={Boolean(user?.canSeePresence ?? user?.canSeeInternalNotes)} />
       <Card
-        className="compact-card"
+        className="compact-card bis-theme-panel"
         title={(
           <TitleWithHelp help="Live checks from this web app. App Insights, email, and Azure OpenAI are configuration only — not a ping to Azure Resource Manager.">
             Azure environment
@@ -84,6 +84,7 @@ export function StatusPage() {
             </Space>
             <Table<EnvironmentCheck>
               rowKey="key"
+              className="bis-theme-grid"
               size="small"
               pagination={false}
               loading={loading}

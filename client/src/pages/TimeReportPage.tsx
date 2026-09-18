@@ -137,7 +137,7 @@ export function TimeReportPage() {
         </Space>
       </div>
 
-      <Card className="time-report-filters compact-card">
+      <Card className="time-report-filters compact-card bis-theme-panel">
         <div className="filter-toolbar">
           <DatePicker.RangePicker
             value={range}
@@ -181,32 +181,33 @@ export function TimeReportPage() {
       {error && <LoadError message={error} onRetry={() => void load()} />}
 
       <div className="time-report-kpis">
-        <Card loading={loading}><Statistic title="Hours" value={report.totalLabel} /></Card>
-        <Card loading={loading}><Statistic title="People" value={report.peopleCount} /></Card>
-        <Card loading={loading}><Statistic title="Clients" value={report.clientCount} /></Card>
-        <Card loading={loading}><Statistic title="Work items" value={report.workItemCount} /></Card>
+        <Card className="bis-theme-panel" loading={loading}><Statistic title="Hours" value={report.totalLabel} /></Card>
+        <Card className="bis-theme-panel" loading={loading}><Statistic title="People" value={report.peopleCount} /></Card>
+        <Card className="bis-theme-panel" loading={loading}><Statistic title="Clients" value={report.clientCount} /></Card>
+        <Card className="bis-theme-panel" loading={loading}><Statistic title="Work items" value={report.workItemCount} /></Card>
       </div>
 
       {empty ? (
-        <Card>
+        <Card className="bis-theme-panel">
           <Empty description="No hours logged in this period. Time comes from the hours already entered on GIS work items." />
         </Card>
       ) : (
         <>
           <div className="time-report-summaries">
-            <Card title="By person" size="small">
-              <Table rowKey="id" size="small" pagination={false} loading={loading} columns={personColumns} dataSource={report.byPerson} />
+            <Card title="By person" size="small" className="bis-theme-panel">
+              <Table rowKey="id" className="bis-theme-grid" size="small" pagination={false} loading={loading} columns={personColumns} dataSource={report.byPerson} />
             </Card>
-            <Card title="By client" size="small">
-              <Table rowKey="id" size="small" pagination={false} loading={loading} columns={clientColumns} dataSource={report.byClient} />
+            <Card title="By client" size="small" className="bis-theme-panel">
+              <Table rowKey="id" className="bis-theme-grid" size="small" pagination={false} loading={loading} columns={clientColumns} dataSource={report.byClient} />
             </Card>
-            <Card title="By period" size="small">
-              <Table rowKey="key" size="small" pagination={false} loading={loading} columns={periodColumns} dataSource={report.byPeriod} />
+            <Card title="By period" size="small" className="bis-theme-panel">
+              <Table rowKey="key" className="bis-theme-grid" size="small" pagination={false} loading={loading} columns={periodColumns} dataSource={report.byPeriod} />
             </Card>
           </div>
-          <Card title="By work item" size="small">
+          <Card title="By work item" size="small" className="bis-theme-panel">
             <Table
               rowKey="id"
+              className="bis-theme-grid"
               size="small"
               loading={loading}
               columns={workItemColumns}
@@ -215,9 +216,10 @@ export function TimeReportPage() {
               scroll={{ x: 'max-content' }}
             />
           </Card>
-          <Card title="Line items" size="small">
+          <Card title="Line items" size="small" className="bis-theme-panel">
             <Table
               rowKey={(row) => `${row.workItemId}-${row.workedOn}-${row.loggedByName}-${row.minutes}-${row.note ?? ''}`}
+              className="bis-theme-grid"
               size="small"
               loading={loading}
               columns={entryColumns}

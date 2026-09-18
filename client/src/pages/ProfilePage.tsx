@@ -59,7 +59,7 @@ export function ProfilePage() {
       <Typography.Title level={3} className="page-title" style={{ marginBottom: 0 }}>
         Profile
       </Typography.Title>
-      <Card className="form-panel compact-card">
+      <Card className="form-panel compact-card bis-theme-panel">
         <Form
           form={form}
           layout="vertical"

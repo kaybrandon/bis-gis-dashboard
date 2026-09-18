@@ -378,7 +378,7 @@ export function ConnectionsPage() {
               : 'Create Source, Destination, and Direction. The agent can run on a PC or a file server — Client is the organization only.'}
           </Typography.Paragraph>
         </div>
-        <Card className="conn-form-card compact-card">
+        <Card className="conn-form-card compact-card bis-theme-panel">
           <Form form={form} layout="vertical" className="dense-form conn-form">
             <section className="conn-section">
               <h2 className="conn-section-title">Client</h2>
@@ -563,7 +563,7 @@ export function ConnectionsPage() {
       {error && <LoadError message={error} onRetry={() => void load()} />}
 
       {!loading && rows.length === 0 && !error && (
-        <Card className="conn-empty">
+        <Card className="conn-empty bis-theme-panel">
           <Typography.Title level={4}>No connections yet</Typography.Title>
           <Typography.Paragraph type="secondary">
             Add a connection with Source, Destination, and Direction. The agent can run on a PC or a file server.
@@ -582,7 +582,7 @@ export function ConnectionsPage() {
           const dest = row.agent?.remoteFolder
           const direction = row.agent?.direction ?? 'Bidirectional'
           return (
-            <div key={row.key} className="conn-card" role="button" tabIndex={0} onClick={() => openEdit(row)} onKeyDown={(event) => {
+            <div key={row.key} className="conn-card bis-theme-panel" role="button" tabIndex={0} onClick={() => openEdit(row)} onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
                 openEdit(row)

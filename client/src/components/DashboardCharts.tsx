@@ -57,7 +57,7 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
   return (
     <Row gutter={[16, 16]}>
       <Col xs={24} lg={8}>
-        <Card title="Volume by status" loading={loading} size="small" className="chart-card">
+        <Card title="Volume by status" loading={loading} size="small" className="chart-card bis-theme-panel">
           {status.length === 0 ? (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No work items match these filters." />
           ) : (
@@ -81,7 +81,7 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
         </Card>
       </Col>
       <Col xs={24} lg={16}>
-        <Card title={data?.rangeLabel ? `Work over ${data.rangeLabel}` : 'Work over the selected dates'} loading={loading} size="small" className="chart-card">
+        <Card title={data?.rangeLabel ? `Work over ${data.rangeLabel}` : 'Work over the selected dates'} loading={loading} size="small" className="chart-card bis-theme-panel">
           <Line
             data={volume}
             xField="date"
@@ -121,7 +121,7 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
           title={<TitleWithHelp help={DOCUMENTS_BY_CAD_HELP}>{DOCUMENTS_BY_CAD_TITLE}</TitleWithHelp>}
           loading={loading}
           size="small"
-          className="chart-card"
+          className="chart-card bis-theme-panel"
         >
           {documentsByCad.length === 0 ? (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No documents uploaded in this range." />
@@ -149,7 +149,7 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
           title={<TitleWithHelp help={DOCUMENTS_BY_TECHNICIAN_HELP}>{DOCUMENTS_BY_TECHNICIAN_TITLE}</TitleWithHelp>}
           loading={loading}
           size="small"
-          className="chart-card"
+          className="chart-card bis-theme-panel"
         >
           {documentsByTechnician.length === 0 ? (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No documents uploaded in this range." />
@@ -173,7 +173,7 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
         </Card>
       </Col>
       <Col xs={24} lg={12}>
-        <Card title="Hours by assignee" loading={loading} size="small" className="chart-card">
+        <Card title="Hours by assignee" loading={loading} size="small" className="chart-card bis-theme-panel">
           {hoursAssignee.length === 0 ? (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No hours logged for these filters." />
           ) : (
@@ -196,7 +196,7 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
         </Card>
       </Col>
       <Col xs={24} lg={12}>
-        <Card title="Hours by client" loading={loading} size="small" className="chart-card">
+        <Card title="Hours by client" loading={loading} size="small" className="chart-card bis-theme-panel">
           {hoursClient.length === 0 ? (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No hours logged for these filters." />
           ) : (

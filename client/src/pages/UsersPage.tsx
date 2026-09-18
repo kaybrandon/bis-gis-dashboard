@@ -137,11 +137,13 @@ export function UsersPage() {
           <Button type="primary" onClick={() => setOpen(true)}>Add User</Button>
         </Space>
       )}
+      className="bis-theme-panel"
       styles={{ header: { flexWrap: 'wrap', gap: 8 } }}
     >
       {error && <LoadError message={error} onRetry={() => load()} />}
       <Table
         rowKey="id"
+        className="bis-theme-grid"
         dataSource={rows}
         pagination={false}
         scroll={{ x: 'max-content' }}

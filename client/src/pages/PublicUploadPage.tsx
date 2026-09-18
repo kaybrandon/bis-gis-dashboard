@@ -88,7 +88,7 @@ export function PublicUploadPage() {
 
   return (
     <div className="login-wrap">
-      <Card className="login-card compact-card is-upload">
+      <Card className="login-card compact-card is-upload bis-theme-panel">
         <Typography.Title level={3} style={{ marginBottom: 8 }}>
           <TitleWithHelp help="Send one or many PDF, Word, Excel, or image files with this link. You do not need an account. Assigned technician is this client’s organization default — not a person you pick for the file.">
             Upload files

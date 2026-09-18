@@ -12,7 +12,7 @@ export function LoginPage() {
 
   return (
     <div className="login-wrap">
-      <Card className="login-card compact-card">
+      <Card className="login-card compact-card bis-theme-panel">
         <Typography.Title level={3} style={{ marginBottom: 4 }}>GIS Dashboard</Typography.Title>
         <Typography.Paragraph type="secondary" className="page-lead">
           Sign in with your username or email. Global Administrators see every client; other users stay inside their assigned organization.

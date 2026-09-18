@@ -680,7 +680,7 @@ export function ManageDocumentsPage() {
             }))}
           />
         ) : (
-          <Card size="small" className="bucket-sider" styles={{ body: { padding: 8 } }}>
+          <Card size="small" className="bucket-sider bis-theme-panel" styles={{ body: { padding: 8 } }}>
             <Menu
               mode="inline"
               selectedKeys={[bucket]}
