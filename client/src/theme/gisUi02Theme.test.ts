@@ -64,8 +64,8 @@ describe('GIS-UI-02 app-wide Manage Documents theme', () => {
   it('themes Dashboard chart panels and Recently completed (Figure 2) without changing bar colors', () => {
     assert.match(dashboard, /Recently completed/)
     assert.match(dashboard, /<Table/)
-    assert.match(dashboard, /className="kpi-card"/)
-    assert.match(charts, /className="chart-card"/)
+    assert.match(dashboard, /className="kpi-card bis-theme-panel"/)
+    assert.match(charts, /className="chart-card bis-theme-panel"/)
     assert.match(charts, /color="#2f54eb"/)
     assert.match(charts, /color="#fa8c16"/)
     assert.match(charts, /color="#1890ff"/)
