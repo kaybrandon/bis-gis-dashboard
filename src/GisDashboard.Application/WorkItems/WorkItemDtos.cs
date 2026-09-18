@@ -1,3 +1,5 @@
+using GisDashboard.Application.AiFill;
+
 namespace GisDashboard.Application.WorkItems;
 
 public sealed record WorkItemListItem(
@@ -87,7 +89,8 @@ public sealed record WorkItemDetail(
     bool CanSetPriority,
     bool IsReviewed,
     DateTimeOffset? PriorityNeededBy,
-    DocumentDifficulty? Difficulty);
+    DocumentDifficulty? Difficulty,
+    WorkItemAiScan? AiScan = null);
 
 public sealed record WorkItemNeighbors(Guid? PreviousId, Guid? NextId);
 

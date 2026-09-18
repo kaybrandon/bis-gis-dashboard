@@ -1020,6 +1020,10 @@ body,
   gap: 8px;
 }
 
+.ai-scan-banner {
+  margin-bottom: 8px;
+}
+
 .document-difficulty {
   display: inline-flex;
   align-items: center;
