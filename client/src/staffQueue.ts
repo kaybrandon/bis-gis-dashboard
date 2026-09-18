@@ -4,6 +4,9 @@ import { canSeeDashboardAssignee } from './roles.ts'
 /** URL sentinel: staff explicitly chose all assignees (not the CR05 default). */
 export const ALL_ASSIGNEES = 'all'
 
+/** URL/API sentinel: work items with no Assigned to (CR08). Not org Assigned technician. */
+export const UNASSIGNED = 'unassigned'
+
 export const QUEUE_SORT_BY = 'queue'
 export const QUEUE_SORT_DIR = 'asc'
 
@@ -22,8 +25,23 @@ export function resolveAssigneeFilter(
 ): string | undefined {
   if (!canSeeDashboardAssignee(user)) return undefined
   if (raw === ALL_ASSIGNEES) return undefined
+  if (raw === UNASSIGNED) return UNASSIGNED
   if (raw) return raw
   return user?.id
+}
+
+export function isUnassignedFilter(value?: string | null) {
+  return value === UNASSIGNED
+}
+
+/** Translate the Assigned to filter for API query strings (Guid or unassignedOnly). */
+export function assignmentApiParams(assignedTo?: string): {
+  assignedToUserId?: string
+  unassignedOnly?: boolean
+} {
+  if (assignedTo === UNASSIGNED) return { unassignedOnly: true }
+  if (assignedTo) return { assignedToUserId: assignedTo }
+  return {}
 }
 
 /** When leaving Dashboard, staff must pass `all` if Assignee was cleared. */
@@ -32,6 +50,7 @@ export function assigneeHrefValue(
   user?: { canSeeDashboardAssignee?: boolean; role?: string } | null,
 ): string | undefined {
   if (!canSeeDashboardAssignee(user)) return undefined
+  if (assignedTo === UNASSIGNED) return UNASSIGNED
   return assignedTo ?? ALL_ASSIGNEES
 }
 

@@ -3,6 +3,7 @@ import {
   ClockCircleOutlined,
   DownloadOutlined,
   FileOutlined,
+  InboxOutlined,
   PauseCircleOutlined,
   PlusOutlined,
   ThunderboltOutlined,
@@ -16,6 +17,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { AssignableUser, LookupItem, OrgOption, StatusActions, WorkItemListItem, WorkItemQuery } from '../api'
 import { api } from '../api'
+import {
+  ASSIGNED_TO_FILTER_HELP,
+  ASSIGNED_TO_HELP,
+  ASSIGNED_TO_LABEL,
+  UNASSIGNED_LABEL,
+} from '../assignmentLabels'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
 import { WorkPresenceMarks } from '../components/PresencePeople'
@@ -30,23 +37,25 @@ import { canSeeDashboardAssignee } from '../roles'
 import {
   QUEUE_SORT_BY,
   QUEUE_SORT_DIR,
+  UNASSIGNED,
   defaultDocumentsBucket,
   resolveAssigneeFilter,
 } from '../staffQueue'
 import { manageDocumentsRowClassName, manageDocumentsTableTheme } from '../theme/bisManageDocuments'
 import '../theme/bisManageDocuments.css'
 
-type Bucket = 'all' | 'pending' | 'mine' | 'hold' | 'completed' | 'firstdeadline' | 'finaldeadline' | 'priority' | 'duethisweek'
-type QueuePreset = 'mine' | 'priority' | 'duethisweek' | ''
+type Bucket = 'all' | 'pending' | 'mine' | 'unassigned' | 'hold' | 'completed' | 'firstdeadline' | 'finaldeadline' | 'priority' | 'duethisweek'
+type QueuePreset = 'mine' | 'unassigned' | 'priority' | 'duethisweek' | ''
 
 const QUEUE_KEY = 'gis.myQueue'
 
-const bucketKeys: Bucket[] = ['all', 'pending', 'mine', 'hold', 'completed', 'firstdeadline', 'finaldeadline', 'priority', 'duethisweek']
+const bucketKeys: Bucket[] = ['all', 'pending', 'mine', 'unassigned', 'hold', 'completed', 'firstdeadline', 'finaldeadline', 'priority', 'duethisweek']
 
 const bucketItems: { key: Bucket; label: string; countKey: keyof ReturnType<typeof emptyCounts> | null; icon: ReactNode }[] = [
   { key: 'all', label: 'All items', countKey: null, icon: <FileOutlined /> },
   { key: 'pending', label: 'All Pending', countKey: 'pending', icon: <ClockCircleOutlined /> },
   { key: 'mine', label: 'My Work Items', countKey: 'mine', icon: <UserOutlined /> },
+  { key: 'unassigned', label: UNASSIGNED_LABEL, countKey: 'unassigned', icon: <InboxOutlined /> },
   { key: 'priority', label: 'Priority', countKey: 'priority', icon: <ThunderboltOutlined /> },
   { key: 'duethisweek', label: 'Due this week', countKey: 'dueThisWeek', icon: <ThunderboltOutlined /> },
   { key: 'hold', label: 'On Hold', countKey: 'onHold', icon: <PauseCircleOutlined /> },
@@ -56,13 +65,13 @@ const bucketItems: { key: Bucket; label: string; countKey: keyof ReturnType<type
 ]
 
 function emptyCounts() {
-  return { pending: 0, mine: 0, onHold: 0, completed: 0, firstDeadline: 0, finalDeadline: 0, priority: 0, dueThisWeek: 0 }
+  return { pending: 0, mine: 0, onHold: 0, completed: 0, firstDeadline: 0, finalDeadline: 0, priority: 0, dueThisWeek: 0, unassigned: 0 }
 }
 
 function readQueuePreset(): QueuePreset {
   try {
     const value = localStorage.getItem(QUEUE_KEY)
-    if (value === 'mine' || value === 'priority' || value === 'duethisweek') return value
+    if (value === 'mine' || value === 'unassigned' || value === 'priority' || value === 'duethisweek') return value
   } catch {
     /* ignore */
   }
@@ -130,7 +139,7 @@ export function ManageDocumentsPage() {
   })
   const [queuePreset, setQueuePreset] = useState<QueuePreset>(() => {
     const fromUrl = params.get('bucket')
-    if (fromUrl === 'mine' || fromUrl === 'priority' || fromUrl === 'duethisweek') return fromUrl
+    if (fromUrl === 'mine' || fromUrl === 'unassigned' || fromUrl === 'priority' || fromUrl === 'duethisweek') return fromUrl
     return readQueuePreset()
   })
   const [search, setSearch] = useState('')
@@ -234,15 +243,19 @@ export function ManageDocumentsPage() {
       params.get('workedFrom')
     )
     const nextBucket = params.get('bucket')
+    const resolvedBucket = nextBucket && bucketKeys.includes(nextBucket as Bucket)
+      ? nextBucket
+      : defaultDocumentsBucket(null, readQueuePreset(), user, hasFilter)
     if (nextBucket && bucketKeys.includes(nextBucket as Bucket)) {
       setBucket(nextBucket as Bucket)
-      setQueuePreset(nextBucket === 'mine' || nextBucket === 'priority' || nextBucket === 'duethisweek' ? nextBucket : '')
+      setQueuePreset(nextBucket === 'mine' || nextBucket === 'unassigned' || nextBucket === 'priority' || nextBucket === 'duethisweek' ? nextBucket : '')
     } else {
-      setBucket(defaultDocumentsBucket(null, readQueuePreset(), user, hasFilter) as Bucket)
+      setBucket(resolvedBucket as Bucket)
     }
     setOrgId(params.get('organizationId') ?? undefined)
     setStatusId(params.get('statusId') ?? undefined)
-    setAssignedTo(resolveAssigneeFilter(params.get('assignedToUserId'), user))
+    const nextAssigned = resolveAssigneeFilter(params.get('assignedToUserId'), user)
+    setAssignedTo(resolvedBucket === 'unassigned' && !params.get('assignedToUserId') ? UNASSIGNED : nextAssigned)
     setDocTypeId(params.get('documentTypeId') ?? undefined)
     const uploadedFrom = parseDay(params.get('uploadedFrom'))
     const uploadedTo = parseDay(params.get('uploadedTo'))
@@ -261,6 +274,16 @@ export function ManageDocumentsPage() {
     void load()
   }, [load])
 
+  const applyBucket = (next: Bucket) => {
+    setPage(1)
+    setBucket(next)
+    const preset = next === 'mine' || next === 'unassigned' || next === 'priority' || next === 'duethisweek' ? next : ''
+    setQueuePreset(preset)
+    writeQueuePreset(preset)
+    if (next === 'unassigned' && showAssignee) setAssignedTo(UNASSIGNED)
+    if (next === 'mine' && showAssignee && user?.id) setAssignedTo(user.id)
+  }
+
   const applyPreset = (preset: QueuePreset) => {
     setQueuePreset(preset)
     writeQueuePreset(preset)
@@ -268,6 +291,11 @@ export function ManageDocumentsPage() {
     if (preset === 'mine') {
       if (showAssignee && user?.id) setAssignedTo(user.id)
       setBucket('mine')
+      return
+    }
+    if (preset === 'unassigned') {
+      if (showAssignee) setAssignedTo(UNASSIGNED)
+      setBucket('unassigned')
       return
     }
     if (preset === 'priority' || preset === 'duethisweek') {
@@ -379,7 +407,7 @@ export function ManageDocumentsPage() {
         },
       },
       {
-        title: 'Assigned to',
+        title: <TitleWithHelp help={ASSIGNED_TO_HELP}>{ASSIGNED_TO_LABEL}</TitleWithHelp>,
         dataIndex: 'assignedToName',
         key: 'assignedto',
         sorter: true,
@@ -495,14 +523,20 @@ export function ManageDocumentsPage() {
       {showAssignee && (
       <Select
         allowClear
-        placeholder="All assignees"
+        placeholder="All Assigned to"
         className="filter-field"
+        title={ASSIGNED_TO_FILTER_HELP}
         value={assignedTo}
         onChange={(v) => {
           setPage(1)
           setAssignedTo(v)
+          if (v === UNASSIGNED) setBucket('unassigned')
+          else if (bucket === 'unassigned') setBucket('all')
         }}
-        options={assignees.map((a) => ({ value: a.id, label: a.displayName }))}
+        options={[
+          { value: UNASSIGNED, label: UNASSIGNED_LABEL },
+          ...assignees.map((a) => ({ value: a.id, label: a.displayName })),
+        ]}
       />
       )}
       <Select
@@ -557,7 +591,7 @@ export function ManageDocumentsPage() {
         options={[
           { value: 'status', label: 'Status' },
           { value: 'client', label: 'Client' },
-          { value: 'assignedTo', label: 'Assigned to' },
+          { value: 'assignedTo', label: ASSIGNED_TO_LABEL },
           { value: 'documentType', label: 'Document type' },
         ]}
       />
@@ -569,7 +603,7 @@ export function ManageDocumentsPage() {
       <Flex justify="space-between" align="flex-start" wrap="wrap" gap={8}>
         <div>
           <Typography.Title level={3} className="page-title" style={{ margin: 0 }}>
-            <TitleWithHelp help="Staff land on items assigned to you, Pending first then oldest upload. Switch Assignee to all or another person. Viewer and Uploader do not see Assignee and stay in assigned organizations. Editors can change status and assignee in the grid. My queue presets stay in this browser.">
+            <TitleWithHelp help="Staff land on items Assigned to you, Pending first then oldest upload. Switch Assigned to — all, Unassigned, or another person. Assigned to is the work-item assignee (queues/reports). Assigned technician is the org default used only to auto-assign new uploads. Viewer and Uploader do not see Assigned to and stay in assigned organizations. Editors can change status and Assigned to in the grid. My queue presets stay in this browser.">
               Manage Documents
             </TitleWithHelp>
           </Typography.Title>
@@ -595,12 +629,7 @@ export function ManageDocumentsPage() {
             value={bucket}
             style={{ width: '100%' }}
             onChange={(key) => {
-              setPage(1)
-              const next = key as Bucket
-              setBucket(next)
-              const preset = next === 'mine' || next === 'priority' || next === 'duethisweek' ? next : ''
-              setQueuePreset(preset)
-              writeQueuePreset(preset)
+              applyBucket(key as Bucket)
             }}
             options={bucketItems.map((b) => ({
               value: b.key,
@@ -614,12 +643,7 @@ export function ManageDocumentsPage() {
               selectedKeys={[bucket]}
               items={menuItems}
               onClick={({ key }) => {
-                setPage(1)
-                const next = key as Bucket
-                setBucket(next)
-                const preset = next === 'mine' || next === 'priority' || next === 'duethisweek' ? next : ''
-                setQueuePreset(preset)
-                writeQueuePreset(preset)
+                applyBucket(key as Bucket)
               }}
             />
           </Card>
@@ -632,6 +656,11 @@ export function ManageDocumentsPage() {
               <Button size="small" type={queuePreset === 'mine' ? 'primary' : 'default'} onClick={() => applyPreset('mine')}>
                 Assigned to me
               </Button>
+              {showAssignee ? (
+                <Button size="small" type={queuePreset === 'unassigned' ? 'primary' : 'default'} onClick={() => applyPreset('unassigned')}>
+                  {UNASSIGNED_LABEL}
+                </Button>
+              ) : null}
               <Button size="small" type={queuePreset === 'priority' ? 'primary' : 'default'} onClick={() => applyPreset('priority')}>
                 Priority
               </Button>

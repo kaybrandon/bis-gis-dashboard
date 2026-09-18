@@ -7,6 +7,7 @@ import type { AssignableUser, DashboardQuery, DashboardRecipient, DashboardRespo
 import { api } from '../api'
 import { useAuth } from '../auth'
 import { DashboardCharts } from '../components/DashboardCharts'
+import { ASSIGNED_TO_FILTER_HELP, ASSIGNED_TO_HELP, ASSIGNED_TO_LABEL, UNASSIGNED_LABEL } from '../assignmentLabels'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
 import { WorkPresenceMarks } from '../components/PresencePeople'
@@ -14,7 +15,7 @@ import { WorkItemCards } from '../components/WorkItemCards'
 import { documentsHref, type DocumentsHrefQuery } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
 import { canSeeDashboardAssignee } from '../roles'
-import { activeDocumentsQuery, resolveAssigneeFilter } from '../staffQueue'
+import { UNASSIGNED, activeDocumentsQuery, resolveAssigneeFilter } from '../staffQueue'
 
 const kpiIcon: Record<string, ReactNode> = {
   active: <ThunderboltOutlined />,
@@ -199,7 +200,7 @@ export function DashboardPage() {
     <Space direction="vertical" size={8} style={{ width: '100%' }}>
       <div>
         <Typography.Title level={3} className="page-title" style={{ margin: 0 }}>
-          <TitleWithHelp help={`Active, pending, completed, and priority volume for ${user?.displayName ?? 'your account'}. Staff default to items assigned to you; switch Assignee to all or another person. The Active tile is the full matching Active total (not one page) and opens that same queue. The date range filters pending/completed/priority charts (default last 30 days), not the Active count. Viewer and Uploader do not see Assignee and stay in assigned organizations.`}>
+          <TitleWithHelp help={`Active, pending, completed, and priority volume for ${user?.displayName ?? 'your account'}. Staff default to items Assigned to you; switch Assigned to — all, Unassigned, or another person. Assigned to is the work-item assignee (queues/reports), not the organization’s Assigned technician. The Active tile is the full matching Active total (not one page) and opens that same queue. The date range filters pending/completed/priority charts (default last 30 days), not the Active count. Viewer and Uploader do not see Assigned to and stay in assigned organizations.`}>
             Dashboard
           </TitleWithHelp>
         </Typography.Title>
@@ -225,11 +226,15 @@ export function DashboardPage() {
         {showAssignee && (
           <Select
             allowClear
-            placeholder="All assignees"
+            placeholder="All Assigned to"
             className="filter-field"
+            title={ASSIGNED_TO_FILTER_HELP}
             value={assignedTo}
             onChange={setAssignedTo}
-            options={assignees.map((a) => ({ value: a.id, label: a.displayName }))}
+            options={[
+              { value: UNASSIGNED, label: UNASSIGNED_LABEL },
+              ...assignees.map((a) => ({ value: a.id, label: a.displayName })),
+            ]}
           />
         )}
         <DatePicker.RangePicker
@@ -314,7 +319,7 @@ export function DashboardPage() {
               { title: 'Client name', dataIndex: 'organizationName', width: 180 },
               { title: 'Status', dataIndex: 'statusName', width: 120 },
               {
-                title: 'Assigned to',
+                title: <TitleWithHelp help={ASSIGNED_TO_HELP}>{ASSIGNED_TO_LABEL}</TitleWithHelp>,
                 dataIndex: 'assignedToName',
                 width: 180,
                 render: (v: string | null, row) => (

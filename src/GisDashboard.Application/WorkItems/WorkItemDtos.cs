@@ -96,6 +96,8 @@ public sealed class WorkItemQuery
     public Guid? DocumentTypeId { get; set; }
     public Guid? StatusId { get; set; }
     public Guid? AssignedToUserId { get; set; }
+    /// <summary>CR08 — items with no work-item Assigned to. Distinct from org Assigned technician.</summary>
+    public bool UnassignedOnly { get; set; }
     public DateTimeOffset? UploadedFrom { get; set; }
     public DateTimeOffset? UploadedTo { get; set; }
     public DateTimeOffset? WorkedFrom { get; set; }

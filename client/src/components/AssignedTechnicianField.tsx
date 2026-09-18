@@ -1,10 +1,11 @@
 import { Form, Input } from 'antd'
+import { ASSIGNED_TECHNICIAN_LABEL, ASSIGNED_TECHNICIAN_UPLOAD_HELP, UNASSIGNED_LABEL } from '../assignmentLabels'
 
 export type AssignedTechnician = { name: string; isPrimary?: boolean }
 
 export function assignedTechnicianLabel(techs: AssignedTechnician[]) {
   const names = techs.map((row) => row.name).filter(Boolean)
-  return names.length > 0 ? names.join(', ') : 'Not assigned yet'
+  return names.length > 0 ? names.join(', ') : UNASSIGNED_LABEL
 }
 
 export function AssignedTechnicianField({
@@ -16,8 +17,8 @@ export function AssignedTechnicianField({
 }) {
   return (
     <Form.Item
-      label="Assigned technician"
-      tooltip="Who will get this work — the organization’s primary Assigned tech when set, otherwise the Assigned tech(s). First name and last initial only."
+      label={ASSIGNED_TECHNICIAN_LABEL}
+      tooltip={ASSIGNED_TECHNICIAN_UPLOAD_HELP}
     >
       <Input readOnly className="assigned-tech-readonly" value={assignedTechnicianLabel(techs)} disabled={disabled} aria-readonly="true" />
     </Form.Item>

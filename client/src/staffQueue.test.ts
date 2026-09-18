@@ -5,10 +5,13 @@ import {
   ALL_ASSIGNEES,
   QUEUE_SORT_BY,
   QUEUE_SORT_DIR,
+  UNASSIGNED,
   activeDocumentsQuery,
   assigneeHrefValue,
+  assignmentApiParams,
   defaultDocumentsBucket,
   isStaffQueueRole,
+  isUnassignedFilter,
   resolveAssigneeFilter,
 } from './staffQueue.ts'
 
@@ -36,6 +39,15 @@ describe('CR05 staff queue defaults', () => {
     assert.equal(resolveAssigneeFilter(ALL_ASSIGNEES, editor), undefined)
   })
 
+  it('keeps Unassigned as work-item Assigned to with no person', () => {
+    assert.equal(resolveAssigneeFilter(UNASSIGNED, editor), UNASSIGNED)
+    assert.equal(assigneeHrefValue(UNASSIGNED, editor), UNASSIGNED)
+    assert.equal(isUnassignedFilter(UNASSIGNED), true)
+    assert.deepEqual(assignmentApiParams(UNASSIGNED), { unassignedOnly: true })
+    assert.deepEqual(assignmentApiParams('editor-1'), { assignedToUserId: 'editor-1' })
+    assert.deepEqual(assignmentApiParams(undefined), {})
+  })
+
   it('never applies an assignee filter for Viewer or Uploader', () => {
     assert.equal(resolveAssigneeFilter('other-9', viewer), undefined)
     assert.equal(resolveAssigneeFilter(ALL_ASSIGNEES, uploader), undefined)
@@ -51,6 +63,7 @@ describe('CR05 staff queue defaults', () => {
   it('lets a saved preset or URL bucket override the staff default', () => {
     assert.equal(defaultDocumentsBucket(null, 'priority', editor), 'priority')
     assert.equal(defaultDocumentsBucket('mine', '', editor), 'mine')
+    assert.equal(defaultDocumentsBucket(null, 'unassigned', editor), 'unassigned')
   })
 
   it('keeps Viewer default pending when there is no other filter', () => {

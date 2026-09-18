@@ -7,6 +7,8 @@ public sealed class DashboardQuery
     public Guid? OrganizationId { get; set; }
     public Guid? StatusId { get; set; }
     public Guid? AssignedToUserId { get; set; }
+    /// <summary>CR08 — items with no work-item Assigned to. Distinct from org Assigned technician.</summary>
+    public bool UnassignedOnly { get; set; }
     public DateTimeOffset? From { get; set; }
     public DateTimeOffset? To { get; set; }
 }
@@ -71,7 +73,8 @@ public sealed record BucketCounts(
     int FirstDeadline,
     int FinalDeadline,
     int Priority,
-    int DueThisWeek);
+    int DueThisWeek,
+    int Unassigned);
 
 public sealed class PublicUploadReceivedRequest
 {

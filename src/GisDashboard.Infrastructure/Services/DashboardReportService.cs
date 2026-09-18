@@ -200,7 +200,8 @@ public sealed class DashboardReportService : IDashboardReportService
         var qs = new List<string>();
         if (query.OrganizationId is { } org) qs.Add($"organizationId={org:D}");
         if (query.StatusId is { } status) qs.Add($"statusId={status:D}");
-        if (query.AssignedToUserId is { } assigned) qs.Add($"assignedToUserId={assigned:D}");
+        if (query.UnassignedOnly) qs.Add("unassignedOnly=true");
+        else if (query.AssignedToUserId is { } assigned) qs.Add($"assignedToUserId={assigned:D}");
         if (query.From is { } from) qs.Add($"from={Uri.EscapeDataString(from.ToString("o"))}");
         if (query.To is { } to) qs.Add($"to={Uri.EscapeDataString(to.ToString("o"))}");
         return qs.Count == 0 ? $"{origin}/" : $"{origin}/?{string.Join("&", qs)}";

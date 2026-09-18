@@ -10,4 +10,12 @@ describe('documentsHref', () => {
       '/documents?bucket=all&assignedToUserId=all',
     )
   })
+
+  it('keeps the Unassigned Assigned-to sentinel', () => {
+    assert.equal(
+      documentsHref({ bucket: 'unassigned', assignedToUserId: 'unassigned' }),
+      '/documents?bucket=unassigned&assignedToUserId=unassigned',
+    )
+  })
 })
+
