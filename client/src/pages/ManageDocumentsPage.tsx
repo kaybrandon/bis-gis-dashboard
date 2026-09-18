@@ -23,6 +23,7 @@ import { WorkItemCards } from '../components/WorkItemCards'
 import { useAuth } from '../auth'
 import { useIsMobile } from '../layout/useIsMobile'
 import { isNeededByOverdue, neededByLabel } from '../neededBy'
+import { statusSelectOptions } from '../statusSelectOptions'
 import { reviewLabel, statusLabel } from '../statusLabels'
 
 type Bucket = 'all' | 'pending' | 'mine' | 'hold' | 'completed' | 'firstdeadline' | 'finaldeadline' | 'priority' | 'duethisweek'
@@ -347,22 +348,7 @@ export function ManageDocumentsPage() {
                   statusColor: next?.color ?? row.statusColor,
                 })
               }}
-              options={[
-                { value: actions.activeId, label: 'Active' },
-                { value: actions.pendingId, label: 'Pending' },
-                { value: actions.completeId, label: 'Complete' },
-                { value: actions.onHoldId, label: 'On-Hold' },
-                { value: actions.cancelledId, label: 'Cancelled' },
-                ...(![
-                  actions.activeId,
-                  actions.pendingId,
-                  actions.completeId,
-                  actions.onHoldId,
-                  actions.cancelledId,
-                ].includes(row.statusId)
-                  ? [{ value: row.statusId, label: statusLabel(row.statusName) }]
-                  : []),
-              ]}
+              options={statusSelectOptions(actions, { id: row.statusId, name: row.statusName })}
             />
             </div>
           )

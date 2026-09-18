@@ -17,6 +17,7 @@ public static class SeedIds
     public static readonly Guid StatusWorked = Guid.Parse("cccccccc-0000-0000-0000-000000000004");
     public static readonly Guid StatusQcd = Guid.Parse("cccccccc-0000-0000-0000-000000000005");
     public static readonly Guid StatusCancelled = Guid.Parse("cccccccc-0000-0000-0000-000000000006");
+    public static readonly Guid StatusNeedsReview = Guid.Parse("cccccccc-0000-0000-0000-000000000007");
 
     public static readonly Guid Admin = Guid.Parse("dddddddd-0000-0000-0000-000000000001");
     public static readonly Guid EditorDemo = Guid.Parse("dddddddd-0000-0000-0000-000000000002");
