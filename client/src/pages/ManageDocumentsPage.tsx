@@ -22,7 +22,8 @@ import { WorkPresenceMarks } from '../components/PresencePeople'
 import { WorkItemCards } from '../components/WorkItemCards'
 import { useAuth } from '../auth'
 import { useIsMobile } from '../layout/useIsMobile'
-import { isNeededByOverdue, neededByLabel } from '../neededBy'
+import { isNeededByOverdue } from '../neededBy'
+import { neededByBadgeText } from '../workItemDates'
 import { statusSelectOptions } from '../statusSelectOptions'
 import { reviewLabel, statusLabel } from '../statusLabels'
 import { manageDocumentsRowClassName, manageDocumentsTableTheme } from '../theme/bisManageDocuments'
@@ -312,7 +313,7 @@ export function ManageDocumentsPage() {
         sorter: true,
         ellipsis: true,
         render: (name: string, row) => {
-          const due = neededByLabel(row.priorityNeededBy)
+          const due = neededByBadgeText({ neededBy: row.priorityNeededBy, workedOn: row.workedOn })
           const overdue = isNeededByOverdue(row.isPriority, row.priorityNeededBy)
           return (
             <Space size={6} wrap>
