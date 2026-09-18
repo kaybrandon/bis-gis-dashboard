@@ -18,3 +18,15 @@ export function roleRequiresOrganizationAssignment(role?: string | null) {
 export function roleHasAllOrganizations(role?: string | null) {
   return role === 'GlobalAdministrator' || role === 'Administrator' || role === 'Editor'
 }
+
+/** QC08 — Dashboard Assignee filter is staff-only. Viewer and Uploader never see it. */
+export function roleCanSeeDashboardAssignee(role?: string | null) {
+  return role === 'GlobalAdministrator' || role === 'Administrator' || role === 'Editor'
+}
+
+export function canSeeDashboardAssignee(user?: { canSeeDashboardAssignee?: boolean; role?: string } | null) {
+  if (user?.canSeeDashboardAssignee != null) {
+    return user.canSeeDashboardAssignee
+  }
+  return roleCanSeeDashboardAssignee(user?.role)
+}

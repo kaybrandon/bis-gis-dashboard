@@ -35,7 +35,7 @@ public sealed class Qc04UploaderTests : IClassFixture<ApiFactory>
         Roles.CanManageDirectory(Roles.Uploader).Should().BeFalse();
         Roles.CanManageAssignedTechs(Roles.Uploader).Should().BeFalse();
         Roles.CanSeeDashboardAssignee(Roles.Uploader).Should().BeFalse();
-        Roles.CanSeeDashboardAssignee(Roles.Viewer).Should().BeTrue();
+        Roles.CanSeeDashboardAssignee(Roles.Viewer).Should().BeFalse();
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public sealed class Qc04UploaderTests : IClassFixture<ApiFactory>
         viewerMe.GetProperty("role").GetString().Should().Be("Viewer");
         viewerMe.GetProperty("canUpload").GetBoolean().Should().BeFalse();
         viewerMe.GetProperty("canPostComments").GetBoolean().Should().BeFalse();
-        viewerMe.GetProperty("canSeeDashboardAssignee").GetBoolean().Should().BeTrue();
+        viewerMe.GetProperty("canSeeDashboardAssignee").GetBoolean().Should().BeFalse();
 
         var uploader = await _factory.LoginAsync("uploader@bisconsultants.local");
         var uploaderMe = await (await uploader.GetAsync("/api/auth/me")).ReadJsonAsync();
