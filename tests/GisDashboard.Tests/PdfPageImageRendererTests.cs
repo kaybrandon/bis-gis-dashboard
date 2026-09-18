@@ -34,6 +34,9 @@ public sealed class PdfPageImageRendererTests
     [InlineData("", false)]
     [InlineData("   ", false)]
     [InlineData("x", false)]
+    [InlineData("!!!!", false)]
+    [InlineData("N-14", false)]
+    [InlineData("Demo Client Plat N-14-042", true)]
     [InlineData("N-14-042 Final Plat of the Northridge Addition, Block 4, Lot 12.", true)]
     public void Usable_text_keeps_the_fast_path(string? text, bool usable)
     {

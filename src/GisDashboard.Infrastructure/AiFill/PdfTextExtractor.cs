@@ -61,18 +61,8 @@ public static class PdfTextExtractor
             return false;
         }
 
-        var trimmed = text.Trim();
-        if (trimmed.Length < 40)
-        {
-            return false;
-        }
-
-        var letters = trimmed.Count(char.IsLetter);
-        if (letters < 24)
-        {
-            return false;
-        }
-
-        return letters / (double)trimmed.Length >= 0.35;
+        // Real text-layer titles can be short ("Demo Client Plat N-14-042").
+        // Only empty / punctuation-only / tiny OCR junk should fall through to vision.
+        return text.Count(char.IsLetter) >= 8;
     }
 }
