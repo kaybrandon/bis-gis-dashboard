@@ -13,8 +13,7 @@ export function ResetPasswordPage() {
 
   return (
     <div className="login-wrap">
-      <Card className="login-card compact-card">
-        <Typography.Title level={3} style={{ marginBottom: 4 }}>Choose a new password</Typography.Title>
+      <Card className="login-card compact-card bis-theme-panel" title="Choose a new password">
         <Typography.Paragraph type="secondary" className="page-lead">
           The link from your email works once and expires in 30 minutes.
         </Typography.Paragraph>

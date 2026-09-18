@@ -103,7 +103,7 @@ export function UploadDocumentsPage() {
 
   if (!user?.canUpload) {
     return (
-      <Card>
+      <Card className="bis-theme-panel">
         <Typography.Title level={3} className="page-title">Upload Documents</Typography.Title>
         <Typography.Paragraph>Your role cannot upload documents.</Typography.Paragraph>
       </Card>
@@ -123,7 +123,7 @@ export function UploadDocumentsPage() {
           </TitleWithHelp>
         </Typography.Title>
       </div>
-      <Card className="form-panel compact-card">
+      <Card className="form-panel compact-card bis-theme-panel" title="Files">
         <Form
           form={form}
           layout="vertical"

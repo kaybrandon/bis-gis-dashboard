@@ -155,6 +155,7 @@ export function TimeLogPanel({ item }: { item: WorkItemDetail }) {
   return (
     <Card
       size="small"
+      className="bis-theme-panel"
       title={(
         <TitleWithHelp help="Time logged on this work item. Viewers can read; Editors log their own; Administrators can manage all entries in scope.">
           Time log
@@ -180,6 +181,7 @@ export function TimeLogPanel({ item }: { item: WorkItemDetail }) {
       {error && <Typography.Text type="danger">{error}</Typography.Text>}
       <Table
         rowKey="id"
+        className="bis-theme-grid"
         size="small"
         loading={loading}
         columns={columns}

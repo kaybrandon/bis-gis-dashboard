@@ -47,6 +47,7 @@ export function InternalNotesPanel({
   return (
     <Card
       size="small"
+      className="bis-theme-panel"
       title={(
         <TitleWithHelp help="Staff-only notes. Global Administrators, Administrators, and Editors can read and edit. Viewers and Uploaders cannot see this field.">
           Internal Notes — staff only

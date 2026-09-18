@@ -292,7 +292,7 @@ export function ViewDocumentPage() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="bis-theme-panel">
         <Typography.Title level={4}>Document not available</Typography.Title>
         <LoadError message={error} onRetry={() => { setError(null); setReloadNonce((n) => n + 1) }} />
         <div style={{ marginTop: 12 }}>
@@ -459,7 +459,7 @@ export function ViewDocumentPage() {
         {showForm && (
         <div className="detail-pane">
           <Card
-            className="detail-form-card"
+            className="detail-form-card bis-theme-panel"
             title="Work item"
             size="small"
             extra={(
@@ -638,7 +638,7 @@ export function ViewDocumentPage() {
 
         {showViewer && (
         <Card
-          className="viewer-pane"
+          className="viewer-pane bis-theme-panel"
           title="Viewer"
           size="small"
           extra={!showForm ? (

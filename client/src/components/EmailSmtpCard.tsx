@@ -50,7 +50,7 @@ export function EmailSmtpCard() {
 
   return (
     <Card
-      className="compact-card form-panel"
+      className="compact-card form-panel bis-theme-panel"
       style={{ maxWidth: 720 }}
       loading={loading && !settings}
       title={(

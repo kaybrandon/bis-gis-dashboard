@@ -79,7 +79,7 @@ export function WhoIsOnlineCard({ enabled, compact = false }: { enabled: boolean
 
   return (
     <Card
-      className="compact-card"
+      className="compact-card bis-theme-panel"
       loading={loading && items.length === 0}
       title={(
         <TitleWithHelp help="Staff who have a recent heartbeat. Online is the last 90 seconds; Away is up to about three minutes. The page or work item is what they last reported. Clocked in means the staff attendance clock is running. A yellow hand means they tapped Need help?">

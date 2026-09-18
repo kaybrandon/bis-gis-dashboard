@@ -12,8 +12,7 @@ export function LoginPage() {
 
   return (
     <div className="login-wrap">
-      <Card className="login-card compact-card">
-        <Typography.Title level={3} style={{ marginBottom: 4 }}>GIS Dashboard</Typography.Title>
+      <Card className="login-card compact-card bis-theme-panel" title="GIS Dashboard">
         <Typography.Paragraph type="secondary" className="page-lead">
           Sign in with your username or email. Global Administrators see every client; other users stay inside their assigned organization.
         </Typography.Paragraph>

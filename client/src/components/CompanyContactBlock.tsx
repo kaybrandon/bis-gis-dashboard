@@ -27,7 +27,7 @@ export function CompanyContactBlock({ className }: { className?: string }) {
 
   return (
     <Card
-      className={`compact-card company-contact ${className ?? ''}`.trim()}
+      className={`compact-card company-contact bis-theme-panel ${className ?? ''}`.trim()}
       title={contact.name || 'BIS Consultants'}
     >
       <div className="company-contact-lines">

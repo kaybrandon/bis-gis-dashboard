@@ -34,7 +34,7 @@ export function SettingsPage() {
 
       {isGlobal && <EmailSmtpCard />}
 
-      <Card className="compact-card form-panel" style={{ maxWidth: 720 }} title="Account & uploads">
+      <Card className="compact-card form-panel bis-theme-panel" style={{ maxWidth: 720 }} title="Account & uploads">
         {error && (
           <LoadError
             message={error}

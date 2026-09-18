@@ -41,12 +41,10 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
           key={item.id}
           size="small"
           hoverable
-          className="work-item-card"
+          className="work-item-card bis-theme-panel"
+          title={<Typography.Text strong ellipsis style={{ color: 'inherit', maxWidth: '100%' }}>{item.fileName}</Typography.Text>}
           onClick={() => onOpen(item.id)}
         >
-          <Typography.Text strong ellipsis style={{ display: 'block' }}>
-            {item.fileName}
-          </Typography.Text>
           <div className="work-item-card-meta">
             <span>{item.organizationName}</span>
             <Tag color={item.statusColor} style={{ marginInlineEnd: 0 }}>{statusLabel(item.statusName)}</Tag>

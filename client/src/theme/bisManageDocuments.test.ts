@@ -5,6 +5,8 @@ import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import {
   BIS_MANAGE_DOCUMENTS,
+  BIS_THEME_GRID_CLASS,
+  BIS_THEME_PANEL_CLASS,
   FORBIDDEN_SELECTION_LIME,
   manageDocumentsRowClassName,
   manageDocumentsTableTheme,
@@ -43,18 +45,21 @@ describe('QC07 Manage Documents BIS colors', () => {
     }
   })
 
-  it('scopes CSS to the Manage Documents grid wrapper', () => {
+  it('keeps the Manage Documents grid wrapper and exports shared panel/grid tokens', () => {
     assert.match(css, /\.manage-documents-grid\s*\{/)
     assert.match(css, /--bis-navy:\s*#142642/)
     assert.match(css, /--bis-row-green:\s*#E8F8F3/)
     assert.match(css, /--bis-row-gray:\s*#F3F4F6/)
     assert.match(css, /--bis-select:\s*#FDE68A/)
-    assert.doesNotMatch(css, /:root\s*\{[\s\S]*--bis-navy/)
     assert.match(page, /manage-documents-grid/)
     assert.match(page, /bisManageDocuments\.css/)
+    assert.equal(BIS_THEME_PANEL_CLASS, 'bis-theme-panel')
+    assert.equal(BIS_THEME_GRID_CLASS, 'bis-theme-grid')
+    assert.match(css, /\.bis-theme-panel/)
+    assert.match(css, /\.bis-theme-grid/)
   })
 
-  it('does not retheme the rest of GIS chrome', () => {
+  it('does not retheme GIS chrome tokens in App.tsx', () => {
     assert.match(app, /colorPrimary: '#1890ff'/)
     assert.doesNotMatch(app, /#142642/)
     assert.doesNotMatch(app, /#FDE68A/)
