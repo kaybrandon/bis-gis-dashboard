@@ -1,10 +1,13 @@
+using GisDashboard.Application.WorkItems;
+
 namespace GisDashboard.Application.AiFill;
 
 public sealed record AiFillResponse(
     double OverallConfidence,
     string Deployment,
     string? Warning,
-    AiFillFields Fields);
+    AiFillFields Fields,
+    DocumentDifficulty Difficulty);
 
 public sealed record AiFillFields(
     AiFillStringField Title,

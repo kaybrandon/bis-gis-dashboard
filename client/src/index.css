@@ -1020,6 +1020,29 @@ body,
   gap: 8px;
 }
 
+.document-difficulty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.document-difficulty-panel {
+  margin: 8px 0 12px;
+}
+
+.document-difficulty-why,
+.document-difficulty-reasons {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--mask-text-secondary);
+}
+
+.document-difficulty-reasons {
+  list-style: disc;
+}
+
 .detail-readonly {
   display: flex;
   flex-direction: column;

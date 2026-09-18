@@ -96,8 +96,11 @@ public sealed class WorkItemsController : ControllerBase
         _workItems.UpdateAsync(id, request, cancellationToken);
 
     [HttpPost("{id:guid}/ai-fill")]
-    public Task<AiFillResponse> AiFill(Guid id, CancellationToken cancellationToken) =>
-        _aiFill.FillFromPdfAsync(id, cancellationToken);
+    public Task<AiFillResponse> AiFill(
+        Guid id,
+        [FromQuery] bool rescore,
+        CancellationToken cancellationToken) =>
+        _aiFill.FillFromPdfAsync(id, rescore, cancellationToken);
 
     private string? FormValue(string key)
     {

@@ -3,7 +3,7 @@ import { Button, Card, Checkbox, Col, DatePicker, Dropdown, Input, InputNumber, 
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import type { AiFillResponse, AssignableUser, LookupItem, StatusActions, WorkItemDetail, WorkItemQuery } from '../api'
+import type { AiFillResponse, AssignableUser, DocumentDifficultyBand, LookupItem, StatusActions, WorkItemDetail, WorkItemQuery } from '../api'
 import { api, authorizedBlob } from '../api'
 import { CommentsPanel } from '../components/CommentsPanel'
 import { LoadError } from '../components/LoadError'
@@ -15,6 +15,8 @@ import { ASSIGNED_TO_HELP, ASSIGNED_TO_LABEL, UNASSIGNED_LABEL } from '../assign
 import { isNeededByOverdue } from '../neededBy'
 import { statusSelectOptions } from '../statusSelectOptions'
 import { statusLabel } from '../statusLabels'
+import { DocumentDifficultyChip } from '../components/DocumentDifficultyChip'
+import { DIFFICULTY_BANDS, difficultyReasons, isDifficultyBand } from '../documentDifficulty'
 import {
   NEEDED_BY_LABEL,
   WORKED_LABEL,
@@ -256,20 +258,24 @@ export function ViewDocumentPage() {
     })
   }
 
-  const runAiFill = async () => {
+  const runAiFill = async (rescore = false) => {
     if (!item || !draft) return
     setFilling(true)
     try {
-      const result = await api.aiFillFromPdf(item.id)
+      const result = await api.aiFillFromPdf(item.id, { rescore })
       const applied = applyAiFill(draft, result)
       setAiHints(applied.hints)
       setAiOverall(result.overallConfidence)
+      setItem((current) => (current ? { ...current, difficulty: result.difficulty } : current))
+      if (result.difficulty.keptOverride) {
+        message.info('Staff difficulty override kept. Confirm re-score or clear the override to use the new AI band.')
+      }
       if (Object.keys(applied.hints).length === 0) {
         message.warning(result.warning || 'No fields could be filled from this PDF.')
         return
       }
       setDraft(applied.next)
-      message.success('AI fill applied to the form. Review amber fields, then Save. AI fill does not persist on its own.')
+      message.success('AI fill applied to the form. Review amber fields, then Save. Difficulty is saved from this pass; field fill still needs Save.')
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'AI fill failed.')
     } finally {
@@ -277,17 +283,54 @@ export function ViewDocumentPage() {
     }
   }
 
+  const startAiFill = () => {
+    if (item?.difficulty?.overridden) {
+      Modal.confirm({
+        title: 'Replace staff difficulty override?',
+        content: 'This document has a staff Easy / Medium / Hard override. Re-score only if you confirm. Keep override still fills fields from the PDF.',
+        okText: 'Fill and re-score',
+        cancelText: 'Fill, keep override',
+        onOk: () => runAiFill(true),
+        onCancel: () => { void runAiFill(false) },
+      })
+      return
+    }
+    void runAiFill(false)
+  }
+
   const requestAiFill = () => {
     if (dirty) {
       Modal.confirm({
         title: 'Replace unsaved edits?',
-        content: 'AI fill from PDF will overwrite Title, Type, Property IDs, counts, and Worked date when the PDF has them. Status, assignee, and flags stay as they are. Save is still required.',
+        content: 'AI fill from PDF will overwrite Title, Type, Property IDs, counts, and Worked date when the PDF has them. Status, assignee, and flags stay as they are. Save is still required for those fields. A staff difficulty override is not wiped unless you confirm re-score.',
         okText: 'Fill from PDF',
-        onOk: () => runAiFill(),
+        onOk: () => startAiFill(),
       })
       return
     }
-    void runAiFill()
+    startAiFill()
+  }
+
+  const overrideDifficulty = async (band: DocumentDifficultyBand) => {
+    if (!item) return
+    try {
+      const updated = await api.updateWorkItem(item.id, { difficultyBand: band })
+      setItem(updated)
+      message.success(`Difficulty set to ${band}.`)
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Could not override difficulty.')
+    }
+  }
+
+  const clearDifficultyOverride = async () => {
+    if (!item) return
+    try {
+      const updated = await api.updateWorkItem(item.id, { clearDifficultyOverride: true })
+      setItem(updated)
+      message.success('Staff override cleared. Showing the last AI score.')
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Could not clear difficulty override.')
+    }
   }
 
   if (error) {
@@ -394,7 +437,7 @@ export function ViewDocumentPage() {
   }
 
   const aiButton = item.canMutate ? (
-    <Tooltip title="Fills Title, Type, Property IDs, counts, and Worked date from the PDF text. Status, assignee, and flags are not changed. Save is still required.">
+    <Tooltip title="Fills Title, Type, Property IDs, counts, and Worked date from the PDF text, and scores Easy / Medium / Hard on the same pass. Status, assignee, and flags are not changed. Field fill still needs Save. A staff difficulty override sticks unless you confirm re-score.">
       <Button
         size="small"
         icon={<ThunderboltOutlined />}
@@ -414,6 +457,7 @@ export function ViewDocumentPage() {
             <Button size="small" onClick={() => navigate(`/documents?${params.toString()}`)}>Back to grid</Button>
           )}
           <Tag color={item.statusColor} style={{ marginInlineEnd: 0 }}>{statusLabel(item.statusName)}</Tag>
+          <DocumentDifficultyChip difficulty={item.difficulty} />
           <Typography.Text strong className="detail-toolbar-title" ellipsis={{ tooltip: draft.title || item.title }}>
             {draft.title || item.title}
           </Typography.Text>
@@ -472,6 +516,44 @@ export function ViewDocumentPage() {
             )}
           >
             {priorityStrip}
+            <div className="document-difficulty-panel">
+              <div className="detail-field-label">Difficulty</div>
+              {item.difficulty?.band ? (
+                <>
+                  <Space wrap size={8} align="start">
+                    <DocumentDifficultyChip difficulty={item.difficulty} />
+                    {item.canMutate && (
+                      <Select
+                        size="small"
+                        aria-label="Override difficulty"
+                        style={{ width: 140 }}
+                        value={item.difficulty.band}
+                        options={DIFFICULTY_BANDS.map((band) => ({ value: band, label: band }))}
+                        onChange={(band) => {
+                          if (isDifficultyBand(band)) void overrideDifficulty(band)
+                        }}
+                      />
+                    )}
+                    {item.canMutate && item.difficulty.overridden && (
+                      <Button size="small" type="link" style={{ paddingInline: 0 }} onClick={() => void clearDifficultyOverride()}>
+                        Use AI score
+                      </Button>
+                    )}
+                  </Space>
+                  <ul className="document-difficulty-reasons">
+                    {difficultyReasons(item.difficulty).map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <Typography.Text type="secondary">
+                  {item.canMutate
+                    ? 'Run AI fill from PDF to score Easy / Medium / Hard from this extract.'
+                    : 'Not scored yet.'}
+                </Typography.Text>
+              )}
+            </div>
 
             {item.canMutate ? (
               <div className="detail-fields">

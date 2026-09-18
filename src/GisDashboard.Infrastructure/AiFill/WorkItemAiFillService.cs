@@ -4,6 +4,7 @@ using GisDashboard.Application.Abstractions;
 using GisDashboard.Application.AiFill;
 using GisDashboard.Application.Exceptions;
 using GisDashboard.Application.WorkItems;
+using GisDashboard.Domain;
 using GisDashboard.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -40,7 +41,10 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         _logger = logger;
     }
 
-    public async Task<AiFillResponse> FillFromPdfAsync(Guid workItemId, CancellationToken cancellationToken = default)
+    public async Task<AiFillResponse> FillFromPdfAsync(
+        Guid workItemId,
+        bool rescore = false,
+        CancellationToken cancellationToken = default)
     {
         var item = await _workItems.GetAsync(workItemId, cancellationToken);
         if (!_currentUser.CanMutateWorkItems)
@@ -93,7 +97,10 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         AiFillResponse response;
         try
         {
-            response = MapResponse(raw, types.ToDictionary(x => x.Name, x => x.Id, StringComparer.OrdinalIgnoreCase));
+            response = MapResponse(
+                raw,
+                types.ToDictionary(x => x.Name, x => x.Id, StringComparer.OrdinalIgnoreCase),
+                extracted);
         }
         catch (ValidationException)
         {
@@ -105,6 +112,7 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
             throw new ValidationException("AI fill could not read the model response. Try again, or type the fields.");
         }
 
+        response = await PersistDifficultyAsync(workItemId, extracted, response, rescore, cancellationToken);
         await TryWriteAuditAsync(workItemId, extracted, raw, response, cancellationToken);
         return response;
     }
@@ -132,7 +140,10 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
             "Counts are non-negative integers.\n" +
             "workedOn is YYYY-MM-DD only when a work, recording, or file date is obvious.\n" +
             "Each field is { \"present\": bool, \"value\": ..., \"confidence\": number from 0 to 1 }.\n" +
-            "Also include overallConfidence from 0 to 1.";
+            "Also include overallConfidence from 0 to 1.\n" +
+            "On the same pass, score document difficulty from what this extract already sees — no extra OCR.\n" +
+            "Signals: scan readability; legal type/length (lot-block vs metes-and-bounds); parcel count; parties; easements/exceptions; extract gaps/conflicts.\n" +
+            "difficulty is { \"band\": \"Easy\"|\"Medium\"|\"Hard\", \"why\": string or 1-3 short bullets, \"reasons\": optional string array }.";
     }
 
     private static string UserPrompt(WorkItemDetail item, string extracted) =>
@@ -145,7 +156,7 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         {extracted}
         """;
 
-    private AiFillResponse MapResponse(string raw, IReadOnlyDictionary<string, Guid> types)
+    private AiFillResponse MapResponse(string raw, IReadOnlyDictionary<string, Guid> types, string extracted)
     {
         var json = UnwrapJson(raw);
         using var doc = JsonDocument.Parse(json);
@@ -182,11 +193,14 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
             warning = "No fields could be filled from this PDF.";
         }
 
+        var fields = new AiFillFields(title, type, propertyIds, annex, corr, deeds, plats, worked);
+        var scored = ReadDifficulty(root, extracted, fields, Clamp(overall.Value));
         return new AiFillResponse(
             Clamp(overall.Value),
             _completions.Deployment,
             warning,
-            new AiFillFields(title, type, propertyIds, annex, corr, deeds, plats, worked));
+            fields,
+            ToDto(scored, overridden: false, keptOverride: false, aiBand: scored.Band));
     }
 
     private static void AddIfPresent(List<double> scores, bool present, double confidence)
@@ -385,6 +399,102 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
 
     private static double Clamp(double value) => Math.Clamp(value, 0, 1);
 
+    private static DocumentDifficultyScore ReadDifficulty(
+        JsonElement root,
+        string extracted,
+        AiFillFields fields,
+        double overallConfidence)
+    {
+        string? band = null;
+        string? why = null;
+        List<string>? reasons = null;
+        if (root.TryGetProperty("difficulty", out var difficulty) && difficulty.ValueKind == JsonValueKind.Object)
+        {
+            band = ReadOptionalString(difficulty, "band") ?? ReadOptionalString(difficulty, "value");
+            why = ReadOptionalString(difficulty, "why") ?? ReadOptionalString(difficulty, "reason");
+            if (difficulty.TryGetProperty("reasons", out var rawReasons) && rawReasons.ValueKind == JsonValueKind.Array)
+            {
+                reasons = [];
+                foreach (var item in rawReasons.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.String)
+                    {
+                        var text = item.GetString();
+                        if (!string.IsNullOrWhiteSpace(text))
+                        {
+                            reasons.Add(text.Trim());
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            band = ReadOptionalString(root, "difficultyBand") ?? ReadOptionalString(root, "difficulty");
+            why = ReadOptionalString(root, "difficultyWhy");
+        }
+
+        return DocumentDifficultyScorer.Score(extracted, fields, overallConfidence, band, why, reasons);
+    }
+
+    private async Task<AiFillResponse> PersistDifficultyAsync(
+        Guid workItemId,
+        string extracted,
+        AiFillResponse response,
+        bool rescore,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _db.WorkItems.FirstOrDefaultAsync(x => x.Id == workItemId, cancellationToken);
+        if (entity is null)
+        {
+            return response;
+        }
+
+        var scored = DocumentDifficultyScorer.Score(
+            extracted,
+            response.Fields,
+            response.OverallConfidence,
+            response.Difficulty.Band,
+            response.Difficulty.Why,
+            response.Difficulty.Reasons);
+
+        var hadOverride = entity.DifficultyOverridden;
+        var keepOverride = hadOverride && !rescore;
+        entity.ApplyAiDifficulty(scored.Band, scored.Why, replaceOverride: rescore);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return response with
+        {
+            Difficulty = ToDto(
+                scored,
+                overridden: entity.DifficultyOverridden,
+                keptOverride: keepOverride,
+                aiBand: entity.AiDifficultyBand,
+                effectiveBand: entity.DifficultyBand,
+                effectiveWhy: entity.DifficultyWhy)
+        };
+    }
+
+    private static DocumentDifficulty ToDto(
+        DocumentDifficultyScore scored,
+        bool overridden,
+        bool keptOverride,
+        string? aiBand,
+        string? effectiveBand = null,
+        string? effectiveWhy = null)
+    {
+        var band = effectiveBand ?? scored.Band;
+        var why = effectiveWhy ?? scored.Why;
+        var reasons = DocumentDifficulty.SplitReasons(why);
+        if (reasons.Count == 0)
+        {
+            reasons = scored.Reasons;
+            why = scored.Why;
+        }
+
+        return new DocumentDifficulty(band, why, reasons, overridden, aiBand, keptOverride);
+    }
+
     private static string UnwrapJson(string raw)
     {
         var text = raw.Trim();
@@ -419,7 +529,8 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
                 extractedChars = extracted.Length,
                 extractedPreview = extracted.Length <= 2000 ? extracted : extracted[..2000],
                 modelJson,
-                overallConfidence = response.OverallConfidence
+                overallConfidence = response.OverallConfidence,
+                difficulty = response.Difficulty
             }, JsonOptions);
 
             await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(payload));

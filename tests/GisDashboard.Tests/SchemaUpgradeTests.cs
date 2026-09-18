@@ -26,6 +26,12 @@ public sealed class SchemaUpgradeTests
         phase31.Should().BeGreaterThan(-1, "Phase31 must still run");
         phase53.Should().BeLessThan(phase31, "Phase53 ALTERs Organizations before Phase31 SELECTs orgs");
         source.Split("await Phase53Schema.ApplyAsync", StringSplitOptions.None).Length.Should().Be(2);
+        var phase54 = source.IndexOf("await Phase54Schema.ApplyAsync", StringComparison.Ordinal);
+        var phase52 = source.IndexOf("await Phase52Schema.ApplyAsync", StringComparison.Ordinal);
+        phase54.Should().BeGreaterThan(-1, "Phase54 must still run");
+        phase52.Should().BeGreaterThan(-1, "Phase52 must still run");
+        phase54.Should().BeGreaterThan(phase52, "Phase54 ALTERs WorkItems after prior phases");
+        source.Split("await Phase54Schema.ApplyAsync", StringSplitOptions.None).Length.Should().Be(2);
     }
 
     [Fact]
@@ -144,6 +150,52 @@ public sealed class SchemaUpgradeTests
             var orgs = await db.Organizations.AsNoTracking().ToListAsync();
             orgs.Should().Contain(x => x.Id == SeedIds.DemoClient && !x.IsArchived);
             ColumnNames(db, "Organizations").Should().Contain(["IsArchived", "ArchivedAt"]);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SchemaUpgrade_adds_missing_difficulty_columns()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"gis-schema-diff-{Guid.NewGuid():N}.db");
+        try
+        {
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite($"Data Source={path}")
+                .Options;
+
+            await using var db = new AppDbContext(options);
+            await db.Database.EnsureCreatedAsync();
+            db.ChangeTracker.Clear();
+
+            await db.Database.ExecuteSqlRawAsync("""
+                DROP INDEX IF EXISTS "IX_WorkItems_DifficultyBand";
+                ALTER TABLE "WorkItems" DROP COLUMN "DifficultyBand";
+                ALTER TABLE "WorkItems" DROP COLUMN "DifficultyWhy";
+                ALTER TABLE "WorkItems" DROP COLUMN "DifficultyOverridden";
+                ALTER TABLE "WorkItems" DROP COLUMN "AiDifficultyBand";
+                ALTER TABLE "WorkItems" DROP COLUMN "AiDifficultyWhy";
+                ALTER TABLE "WorkItems" DROP COLUMN "DifficultyOverriddenAt";
+                ALTER TABLE "WorkItems" DROP COLUMN "DifficultyOverriddenByUserId";
+                """);
+
+            await SchemaUpgrade.ApplyAsync(db);
+
+            ColumnNames(db, "WorkItems").Should().Contain([
+                "DifficultyBand",
+                "DifficultyWhy",
+                "DifficultyOverridden",
+                "AiDifficultyBand",
+                "AiDifficultyWhy",
+                "DifficultyOverriddenAt",
+                "DifficultyOverriddenByUserId"
+            ]);
         }
         finally
         {
