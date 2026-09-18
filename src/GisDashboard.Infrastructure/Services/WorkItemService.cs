@@ -619,19 +619,32 @@ public sealed class WorkItemService : IWorkItemService
         // (not the uploaded-or-worked KPI window) so they reconcile with Manage Documents.
         var uploadedWindow = items.Where(x => x.UploadedAtSort >= fromSort && x.UploadedAtSort <= toSort);
 
-        var assigneeRows = await uploadedWindow
+        var assigneeRows = (await uploadedWindow
             .Where(x => x.AssignedToUserId != null)
-            .GroupBy(x => new
+            .Select(x => new
             {
                 x.AssignedToUserId,
-                Name = x.AssignedToUser!.FullName != null && x.AssignedToUser.FullName != ""
-                    ? x.AssignedToUser.FullName
-                    : x.AssignedToUser.DisplayName,
+                x.AssignedToUser!.FullName,
+                x.AssignedToUser.DisplayName,
+                x.AssignedToUser.UserName,
+                x.AssignedToUser.Email,
                 IsArchived = x.AssignedToUser.IsArchived
             })
-            .Select(g => new { g.Key.AssignedToUserId, g.Key.Name, g.Key.IsArchived, Count = g.Count() })
+            .ToListAsync(cancellationToken))
+            .GroupBy(x => x.AssignedToUserId)
+            .Select(g =>
+            {
+                var first = g.First();
+                return new
+                {
+                    first.AssignedToUserId,
+                    Name = UserIdentity.ReportName(first.FullName, first.DisplayName, first.UserName, first.Email),
+                    first.IsArchived,
+                    Count = g.Count()
+                };
+            })
             .OrderByDescending(x => x.Count)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var unassignedCount = await uploadedWindow.CountAsync(x => x.AssignedToUserId == null, cancellationToken);
 
@@ -668,18 +681,18 @@ public sealed class WorkItemService : IWorkItemService
                 x.StatusId,
                 StatusName = x.Status.Name,
                 StatusColor = x.Status.Color,
-                AssignedToName = x.AssignedToUser != null
-                    ? (x.AssignedToUser.FullName != null && x.AssignedToUser.FullName != ""
-                        ? x.AssignedToUser.FullName
-                        : x.AssignedToUser.DisplayName)
-                    : null,
+                AssignedToFullName = x.AssignedToUser != null ? x.AssignedToUser.FullName : null,
+                AssignedToDisplayName = x.AssignedToUser != null ? x.AssignedToUser.DisplayName : null,
+                AssignedToUserName = x.AssignedToUser != null ? x.AssignedToUser.UserName : null,
+                AssignedToEmail = x.AssignedToUser != null ? x.AssignedToUser.Email : null,
                 AssignedToIsArchived = x.AssignedToUser != null && x.AssignedToUser.IsArchived,
                 x.AssignedToUserId,
                 x.PriorityNeededBy,
                 x.UploadedAt,
-                UploadedByName = x.UploadedByUser.FullName != null && x.UploadedByUser.FullName != ""
-                    ? x.UploadedByUser.FullName
-                    : x.UploadedByUser.DisplayName,
+                UploadedByFullName = x.UploadedByUser.FullName,
+                UploadedByDisplayName = x.UploadedByUser.DisplayName,
+                UploadedByUserName = x.UploadedByUser.UserName,
+                UploadedByEmail = x.UploadedByUser.Email,
                 UploadedByIsArchived = x.UploadedByUser.IsArchived,
                 x.UpdatedAt,
                 x.WorkedOn,
@@ -709,8 +722,18 @@ public sealed class WorkItemService : IWorkItemService
             orgCounts.Select(x => new NamedCount(x.OrganizationId, x.Name, null, x.Count)).ToList(),
             recentRows.Select(x => new WorkItemListItem(
                 x.Id, x.FileName, x.Title, x.OrganizationId, x.OrganizationName, x.DocumentTypeId, x.DocumentTypeName,
-                x.StatusId, StatusDisplay.Label(x.StatusName), x.StatusColor, UserIdentity.WithArchivedSuffix(x.AssignedToName, x.AssignedToIsArchived), x.AssignedToUserId, x.PriorityNeededBy,
-                x.UploadedAt, UserIdentity.WithArchivedSuffix(x.UploadedByName, x.UploadedByIsArchived), x.UpdatedAt,
+                x.StatusId, StatusDisplay.Label(x.StatusName), x.StatusColor,
+                x.AssignedToUserId is null
+                    ? null
+                    : UserIdentity.WithArchivedSuffix(
+                        UserIdentity.ReportName(x.AssignedToFullName, x.AssignedToDisplayName, x.AssignedToUserName, x.AssignedToEmail),
+                        x.AssignedToIsArchived),
+                x.AssignedToUserId, x.PriorityNeededBy,
+                x.UploadedAt,
+                UserIdentity.WithArchivedSuffix(
+                    UserIdentity.ReportName(x.UploadedByFullName, x.UploadedByDisplayName, x.UploadedByUserName, x.UploadedByEmail),
+                    x.UploadedByIsArchived),
+                x.UpdatedAt,
                 x.WorkedOn, TimeDurations.ToHours(x.Minutes), TimeDurations.Format(x.Minutes), x.FirstDeadline, x.FinalDeadline,
                 x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed)).ToList(),
             await BuildVolumeOverTimeAsync(items, range, cancellationToken),
@@ -849,18 +872,18 @@ public sealed class WorkItemService : IWorkItemService
                 x.StatusId,
                 StatusName = x.Status.Name,
                 StatusColor = x.Status.Color,
-                AssignedToName = x.AssignedToUser != null
-                    ? (x.AssignedToUser.FullName != null && x.AssignedToUser.FullName != ""
-                        ? x.AssignedToUser.FullName
-                        : x.AssignedToUser.DisplayName)
-                    : null,
+                AssignedToFullName = x.AssignedToUser != null ? x.AssignedToUser.FullName : null,
+                AssignedToDisplayName = x.AssignedToUser != null ? x.AssignedToUser.DisplayName : null,
+                AssignedToUserName = x.AssignedToUser != null ? x.AssignedToUser.UserName : null,
+                AssignedToEmail = x.AssignedToUser != null ? x.AssignedToUser.Email : null,
                 AssignedToIsArchived = x.AssignedToUser != null && x.AssignedToUser.IsArchived,
                 x.AssignedToUserId,
                 x.PriorityNeededBy,
                 x.UploadedAt,
-                UploadedByName = x.UploadedByUser.FullName != null && x.UploadedByUser.FullName != ""
-                    ? x.UploadedByUser.FullName
-                    : x.UploadedByUser.DisplayName,
+                UploadedByFullName = x.UploadedByUser.FullName,
+                UploadedByDisplayName = x.UploadedByUser.DisplayName,
+                UploadedByUserName = x.UploadedByUser.UserName,
+                UploadedByEmail = x.UploadedByUser.Email,
                 UploadedByIsArchived = x.UploadedByUser.IsArchived,
                 x.UpdatedAt,
                 x.WorkedOn,
@@ -877,8 +900,18 @@ public sealed class WorkItemService : IWorkItemService
 
         var items = rows.Select(x => new WorkItemListItem(
             x.Id, x.FileName, x.Title, x.OrganizationId, x.OrganizationName, x.DocumentTypeId, x.DocumentTypeName,
-            x.StatusId, StatusDisplay.Label(x.StatusName), x.StatusColor, UserIdentity.WithArchivedSuffix(x.AssignedToName, x.AssignedToIsArchived), x.AssignedToUserId, x.PriorityNeededBy,
-            x.UploadedAt, UserIdentity.WithArchivedSuffix(x.UploadedByName, x.UploadedByIsArchived), x.UpdatedAt,
+            x.StatusId, StatusDisplay.Label(x.StatusName), x.StatusColor,
+            x.AssignedToUserId is null
+                ? null
+                : UserIdentity.WithArchivedSuffix(
+                    UserIdentity.ReportName(x.AssignedToFullName, x.AssignedToDisplayName, x.AssignedToUserName, x.AssignedToEmail),
+                    x.AssignedToIsArchived),
+            x.AssignedToUserId, x.PriorityNeededBy,
+            x.UploadedAt,
+            UserIdentity.WithArchivedSuffix(
+                UserIdentity.ReportName(x.UploadedByFullName, x.UploadedByDisplayName, x.UploadedByUserName, x.UploadedByEmail),
+                x.UploadedByIsArchived),
+            x.UpdatedAt,
             x.WorkedOn, TimeDurations.ToHours(x.Minutes), TimeDurations.Format(x.Minutes), x.FirstDeadline, x.FinalDeadline,
             x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed)).ToList();
         return WorkItemCsvExport.Build(items);
@@ -933,21 +966,30 @@ public sealed class WorkItemService : IWorkItemService
         long toSort,
         CancellationToken cancellationToken)
     {
-        var rows = await items
+        var rows = (await items
             .Select(x => new
             {
                 Id = x.AssignedToUserId ?? Guid.Empty,
-                Name = x.AssignedToUser != null
-                    ? (x.AssignedToUser.FullName != null && x.AssignedToUser.FullName != ""
-                        ? x.AssignedToUser.FullName
-                        : x.AssignedToUser.DisplayName)
-                    : "Unassigned",
+                FullName = x.AssignedToUser != null ? x.AssignedToUser.FullName : null,
+                DisplayName = x.AssignedToUser != null ? x.AssignedToUser.DisplayName : null,
+                UserName = x.AssignedToUser != null ? x.AssignedToUser.UserName : null,
+                Email = x.AssignedToUser != null ? x.AssignedToUser.Email : null,
                 IsArchived = x.AssignedToUser != null && x.AssignedToUser.IsArchived,
                 Minutes = x.TimeEntries
                     .Where(t => t.WorkedOnSort >= fromSort && t.WorkedOnSort <= toSort)
                     .Sum(t => t.Minutes)
             })
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .Select(x => new
+            {
+                x.Id,
+                Name = x.Id == Guid.Empty
+                    ? "Unassigned"
+                    : UserIdentity.ReportName(x.FullName, x.DisplayName, x.UserName, x.Email),
+                x.IsArchived,
+                x.Minutes
+            })
+            .ToList();
 
         return rows
             .GroupBy(x => new { x.Id, Name = UserIdentity.WithArchivedSuffix(x.Name, x.IsArchived) })

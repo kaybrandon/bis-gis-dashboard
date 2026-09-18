@@ -103,7 +103,7 @@ export type DashboardResponse = {
   rangeLabel: string
 }
 
-export type DashboardRecipient = { id: string; displayName: string; email: string }
+export type DashboardRecipient = { id: string; displayName: string; email: string; fullName?: string | null }
 export type DashboardEmailResult = { delivered: boolean; mode: string; recipients: string; note?: string | null }
 
 export type UploadLink = {
@@ -388,7 +388,7 @@ export type ReportDetail = ReportListItem & {
   emails: ReportEmailLog[]
 }
 
-export type ReportRecipient = { id: string; displayName: string; email: string }
+export type ReportRecipient = { id: string; displayName: string; email: string; fullName?: string | null }
 
 export type EmailReportResult = {
   delivered: boolean

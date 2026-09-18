@@ -200,6 +200,7 @@ export function ReportsPage() {
               <div>
                 <Typography.Text type="secondary">
                   Generated {dayjs(row.generatedAt).format('YYYY-MM-DD HH:mm')}
+                  {row.generatedByName ? ` · ${row.generatedByName}` : ''}
                 </Typography.Text>
               </div>
               {row.emailed

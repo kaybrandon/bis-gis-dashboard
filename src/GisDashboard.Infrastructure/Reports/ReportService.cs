@@ -182,12 +182,20 @@ public sealed class ReportService : IReportService
         EnsureCanMutate();
         await _orgScope.EnsureCanAccessOrganizationAsync(organizationId, cancellationToken);
 
-        return await _db.Users
+        var rows = await _db.Users
             .AsNoTracking()
             .Where(u => u.IsActive && !u.IsArchived && u.Organizations.Any(m => m.OrganizationId == organizationId))
-            .OrderBy(u => u.DisplayName)
-            .Select(u => new ReportRecipient(u.Id, u.DisplayName, u.Email!))
+            .Select(u => new { u.Id, u.FullName, u.DisplayName, u.UserName, u.Email })
             .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(u => new ReportRecipient(
+                u.Id,
+                ReportPersonNames.FromFields(u.FullName, u.DisplayName, u.UserName, u.Email),
+                u.Email ?? string.Empty,
+                ReportPersonNames.FullNameOrNull(u.FullName)))
+            .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     public async Task<EmailReportResult> EmailAsync(Guid reportId, EmailReportRequest request, CancellationToken cancellationToken = default)
@@ -230,7 +238,7 @@ public sealed class ReportService : IReportService
         {
             if (!selected.Organizations.Any(m => m.OrganizationId == report.OrganizationId))
             {
-                throw new ForbiddenException($"{selected.DisplayName} is not in {report.Organization.Name} and cannot be emailed this report.");
+                throw new ForbiddenException($"{ReportPersonNames.FromUser(selected)} is not in {report.Organization.Name} and cannot be emailed this report.");
             }
         }
 
@@ -251,9 +259,10 @@ public sealed class ReportService : IReportService
         var detail = MapDetail(report);
         var pdf = MaintenanceReportPdf.Build(detail);
         var link = BuildReportLink(report.Id);
+        var sentBy = await ReportPersonNames.ForCurrentUserAsync(_db, _currentUser, cancellationToken);
         var subject = $"{report.Organization.Name} — {report.MonthLabel} GIS Maintenance Report";
-        var html = BuildEmailHtml(report, snapshot, link);
-        var text = BuildEmailText(report, snapshot, link);
+        var html = BuildEmailHtml(report, snapshot, link, sentBy);
+        var text = BuildEmailText(report, snapshot, link, sentBy);
         var attachment = new EmailAttachment(MaintenanceReportPdf.FileName(snapshot), "application/pdf", pdf);
 
         var result = await _email.SendAsync(
@@ -465,7 +474,7 @@ public sealed class ReportService : IReportService
             report.Version,
             report.MonthLabel,
             report.GeneratedAt,
-            report.GeneratedByUser.DisplayName,
+            ReportPersonNames.FromUser(report.GeneratedByUser),
             report.LastEmailedAt,
             report.LastEmailedTo,
             report.EmailCount,
@@ -495,7 +504,7 @@ public sealed class ReportService : IReportService
         return $"{raw}/reports/{reportId}";
     }
 
-    private string BuildEmailHtml(MonthlyReport report, ReportSnapshot snapshot, string link)
+    private string BuildEmailHtml(MonthlyReport report, ReportSnapshot snapshot, string link, string sentBy)
     {
         var types = snapshot.MaintenanceByType.Count == 0
             ? $"<p>No completed maintenance items {Encode(snapshot.PeriodPhrase)}.</p>"
@@ -511,12 +520,12 @@ public sealed class ReportService : IReportService
             {types}
             <p><a href="{Encode(link)}">Open this report in GIS Dashboard</a> (sign in required).</p>
             <p style="color:#8c8c8c;font-size:12px;">{Encode(snapshot.Contact.Department)} · {Encode(snapshot.Contact.Company)}</p>
-            <p style="color:#8c8c8c;font-size:12px;">Sent by {Encode(_currentUser.DisplayName)}. Version {report.Version}, generated {report.GeneratedAt:yyyy-MM-dd HH:mm} UTC.</p>
+            <p style="color:#8c8c8c;font-size:12px;">Sent by {Encode(sentBy)}. Version {report.Version}, generated {report.GeneratedAt:yyyy-MM-dd HH:mm} UTC.</p>
             </body></html>
             """;
     }
 
-    private string BuildEmailText(MonthlyReport report, ReportSnapshot snapshot, string link)
+    private string BuildEmailText(MonthlyReport report, ReportSnapshot snapshot, string link, string sentBy)
     {
         var types = snapshot.MaintenanceByType.Count == 0
             ? $"No completed maintenance items {snapshot.PeriodPhrase}."
@@ -537,7 +546,7 @@ public sealed class ReportService : IReportService
             {snapshot.Contact.Department} · {snapshot.Contact.Company}
             {snapshot.Contact.Phone} · {snapshot.Contact.Email}
 
-            Sent by {_currentUser.DisplayName}. Version {report.Version}.
+            Sent by {sentBy}. Version {report.Version}.
             """;
     }
 

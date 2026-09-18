@@ -6,6 +6,15 @@ namespace GisDashboard.Tests;
 public sealed class IdentityCleanupTests
 {
     [Fact]
+    public void Report_name_uses_full_name_when_on_file()
+    {
+        UserIdentity.ReportName("Alex Rivera", "arivera").Should().Be("Alex Rivera");
+        UserIdentity.ReportName("  Jordan Hale  ", "jhale").Should().Be("Jordan Hale");
+        UserIdentity.ReportName("   ", "admin", "admin", "admin@bisconsultants.local").Should().Be("admin");
+        UserIdentity.ReportName(null, "arivera").Should().Be("arivera");
+    }
+
+    [Fact]
     public void Person_name_becomes_title_case_and_initial_last_username()
     {
         UserIdentity.LooksLikePersonName("Alex Rivera").Should().BeTrue();

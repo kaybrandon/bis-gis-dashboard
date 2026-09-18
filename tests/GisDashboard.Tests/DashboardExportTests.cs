@@ -114,6 +114,10 @@ public sealed class DashboardEmailConfiguredTests : IClassFixture<DashboardEmail
         CapturingEmailSender.Last!.Attachments.Should().ContainSingle();
         CapturingEmailSender.Last.Attachments[0].ContentType.Should().Be("application/pdf");
         CapturingEmailSender.Last.Subject.Should().Contain("GIS Dashboard");
+        var pdfText = GisDashboard.Infrastructure.AiFill.PdfTextExtractor.Extract(
+            new MemoryStream(CapturingEmailSender.Last.Attachments[0].Content));
+        pdfText.Should().Contain("Alex Rivera", "Fail if: emailed dashboard PDF lists people by username only.");
+        pdfText.Should().NotContain("arivera");
     }
 }
 

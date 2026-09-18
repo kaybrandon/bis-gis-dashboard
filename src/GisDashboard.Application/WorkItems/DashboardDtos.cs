@@ -46,7 +46,7 @@ public sealed record DashboardEmailResult(
     string Recipients,
     string? Note);
 
-public sealed record DashboardRecipient(Guid Id, string DisplayName, string Email);
+public sealed record DashboardRecipient(Guid Id, string DisplayName, string Email, string? FullName = null);
 
 public sealed record AssignedTechnicianDisplay(string Name, bool IsPrimary);
 
