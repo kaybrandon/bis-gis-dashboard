@@ -1,4 +1,4 @@
-import { neededByLabel } from './neededBy'
+import { neededByLabel } from './neededBy.ts'
 
 /** CR02 — exact BA-locked strings. Persistent labels, not placeholders. */
 export const WORKED_LABEL = 'Worked'
