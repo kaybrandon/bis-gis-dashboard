@@ -14,19 +14,50 @@ export function isStaffQueueRole(user?: { canSeeDashboardAssignee?: boolean; rol
   return canSeeDashboardAssignee(user)
 }
 
+export function isGlobalAdministratorRole(user?: { role?: string } | null) {
+  return user?.role === 'GlobalAdministrator'
+}
+
 /**
- * CR05 — staff Manage Documents / Dashboard default to the signed-in assignee.
+ * CR05 hotfix — empty my-queue default.
+ * Global Admin, or staff whose personal queue is 0, land on Assignee = All.
+ * Editors/staff with assigned work keep Assigned to me.
+ */
+export function shouldDefaultAssigneeToAll(
+  user?: { canSeeDashboardAssignee?: boolean; role?: string } | null,
+  myQueueCount?: number,
+) {
+  if (!canSeeDashboardAssignee(user)) return false
+  return isGlobalAdministratorRole(user) || myQueueCount === 0
+}
+
+/** Probe my-queue only when staff would otherwise default to Assigned to me. */
+export function shouldProbeMyQueue(
+  raw: string | null | undefined,
+  user?: { id?: string; canSeeDashboardAssignee?: boolean; role?: string } | null,
+) {
+  if (!canSeeDashboardAssignee(user) || !user?.id) return false
+  if (raw) return false
+  if (isGlobalAdministratorRole(user)) return false
+  return true
+}
+
+/**
+ * CR05 — staff Manage Documents / Dashboard default to the signed-in assignee
+ * when they have assigned work. Global Admin and a 0 my-queue default to All.
  * Viewer/Uploader never get an assignee scope (QC08).
- * `all` means the staff member cleared the filter.
+ * `all` means the staff member chose all assignees.
  */
 export function resolveAssigneeFilter(
   raw: string | null | undefined,
   user?: { id?: string; canSeeDashboardAssignee?: boolean; role?: string } | null,
+  myQueueCount?: number,
 ): string | undefined {
   if (!canSeeDashboardAssignee(user)) return undefined
   if (raw === ALL_ASSIGNEES) return undefined
   if (raw === UNASSIGNED) return UNASSIGNED
   if (raw) return raw
+  if (shouldDefaultAssigneeToAll(user, myQueueCount)) return undefined
   return user?.id
 }
 
@@ -52,6 +83,17 @@ export function assigneeHrefValue(
   if (!canSeeDashboardAssignee(user)) return undefined
   if (assignedTo === UNASSIGNED) return UNASSIGNED
   return assignedTo ?? ALL_ASSIGNEES
+}
+
+/** Saved Assigned-to-me must not trap GA / zero-queue on an empty mine bucket. */
+export function queuePresetForAssigneeDefault(
+  savedPreset: string,
+  rawAssignee: string | null | undefined,
+  assignedTo: string | undefined,
+  user?: { canSeeDashboardAssignee?: boolean; role?: string } | null,
+) {
+  const defaultedToAll = !rawAssignee && assignedTo === undefined && canSeeDashboardAssignee(user)
+  return defaultedToAll && savedPreset === 'mine' ? '' : savedPreset
 }
 
 export function defaultDocumentsBucket(
