@@ -13,6 +13,8 @@ public sealed class UploadFileTypesTests
     [InlineData("plat.pdf", "application/pdf", "application/pdf")]
     [InlineData("scan.png", "image/png", "image/png")]
     [InlineData("photo.jpg", "image/jpg", "image/jpeg")]
+    [InlineData("plat.tif", "application/octet-stream", "image/tiff")]
+    [InlineData("scan.tiff", "image/tiff", "image/tiff")]
     public void Resolve_uses_extension_first_for_supported_types(string fileName, string contentType, string expected)
     {
         UploadFileTypes.TryResolve(fileName, contentType, out var resolved).Should().BeTrue();

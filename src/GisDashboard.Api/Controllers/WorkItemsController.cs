@@ -45,6 +45,23 @@ public sealed class WorkItemsController : ControllerBase
         return File(download.Content, download.ContentType, download.FileName, enableRangeProcessing: true);
     }
 
+    [HttpGet("{id:guid}/preview")]
+    public async Task<IActionResult> Preview(Guid id, CancellationToken cancellationToken)
+    {
+        var preview = await _workItems.OpenPreviewAsync(id, cancellationToken);
+        Response.Headers["X-Preview-Page"] = "1";
+        Response.Headers["X-Preview-Page-Count"] = preview.PageCount.ToString();
+        Response.Headers["X-Preview-Kind"] = preview.Kind;
+        if (preview.MorePages)
+        {
+            Response.Headers["X-Preview-More-Pages"] = "true";
+        }
+
+        // No fileDownloadName — Content-Disposition stays inline so the viewer
+        // can render JPEG/PNG/TIFF-preview without forcing a download.
+        return File(preview.Content, preview.ContentType, enableRangeProcessing: true);
+    }
+
     [HttpPost]
     [RequestSizeLimit(UploadOptions.HttpRequestCeilingBytes)]
     [Consumes("multipart/form-data")]

@@ -157,4 +157,12 @@ public sealed class UploadWorkItemRequest
 
 public sealed record FileDownload(Stream Content, string ContentType, string FileName);
 
+public sealed record FilePreview(
+    Stream Content,
+    string ContentType,
+    string FileName,
+    int PageCount,
+    bool MorePages,
+    string Kind);
+
 public sealed record ExcelExport(byte[] Content, string FileName, string ContentType);

@@ -1,6 +1,13 @@
 import { Alert, Button, Space, Spin, Typography } from 'antd'
 import { useEffect, useRef, useState } from 'react'
-import { authorizedBlob } from '../api'
+import { authorizedFile } from '../api'
+import {
+  PREVIEW_UNAVAILABLE_MESSAGE,
+  tiffMorePagesNote,
+  unavailablePreviewMessage,
+  viewerFilePath,
+  viewerKind,
+} from '../documentPreview'
 
 type Props = {
   workItemId: string
@@ -14,25 +21,32 @@ export function DocumentViewer({ workItemId, contentType, fileName }: Props) {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
+  const [tiffPages, setTiffPages] = useState(1)
   const [scale, setScale] = useState(1.15)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const highlightRef = useRef<HTMLCanvasElement | null>(null)
   const drag = useRef<{ x: number; y: number } | null>(null)
   const objectUrl = useRef<string | null>(null)
+  const kind = viewerKind(contentType, fileName)
+  const filePath = viewerFilePath(workItemId, contentType, fileName)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
-    authorizedBlob(`/api/work-items/${workItemId}/file`)
-      .then((blob) => {
+    setTiffPages(1)
+    authorizedFile(filePath)
+      .then((result) => {
         if (cancelled) return
         if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
-        objectUrl.current = URL.createObjectURL(blob)
+        objectUrl.current = URL.createObjectURL(result.blob)
         setUrl(objectUrl.current)
+        if (kind === 'tiff') {
+          setTiffPages(result.pageCount)
+        }
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Viewer failed.')
+        if (!cancelled) setError(err instanceof Error ? err.message : PREVIEW_UNAVAILABLE_MESSAGE)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -41,10 +55,10 @@ export function DocumentViewer({ workItemId, contentType, fileName }: Props) {
       cancelled = true
       if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
     }
-  }, [workItemId])
+  }, [workItemId, filePath, kind])
 
-  const isPdf = (contentType ?? '').includes('pdf') || fileName.toLowerCase().endsWith('.pdf')
-  const isImage = (contentType ?? '').startsWith('image/')
+  const isPdf = kind === 'pdf'
+  const isImage = kind === 'image' || kind === 'tiff'
 
   useEffect(() => {
     if (!url || !isPdf) return
@@ -105,15 +119,25 @@ export function DocumentViewer({ workItemId, contentType, fileName }: Props) {
   if (!url) return <Alert type="warning" showIcon message="No file is attached to this work item." />
 
   if (isImage) {
+    const morePages = kind === 'tiff' ? tiffMorePagesNote(tiffPages) : null
     return (
-      <div className="doc-viewer">
-        <img src={url} alt={fileName} />
+      <div className="doc-viewer-stack">
+        {morePages && (
+          <Alert type="info" showIcon message={morePages} style={{ marginBottom: 8 }} />
+        )}
+        <div className="doc-viewer">
+          <img
+            src={url}
+            alt={fileName}
+            onError={() => setError(PREVIEW_UNAVAILABLE_MESSAGE)}
+          />
+        </div>
       </div>
     )
   }
 
   if (!isPdf) {
-    return <Alert type="info" showIcon message={`${fileName} can be downloaded. Preview is for PDFs and images only.`} />
+    return <Alert type="info" showIcon message={unavailablePreviewMessage(fileName)} />
   }
 
   return (

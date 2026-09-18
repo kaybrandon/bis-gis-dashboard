@@ -6,6 +6,7 @@ using GisDashboard.Application.WorkItems;
 using GisDashboard.Domain;
 using GisDashboard.Infrastructure.Export;
 using GisDashboard.Infrastructure.Persistence;
+using GisDashboard.Infrastructure.Preview;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -516,6 +517,44 @@ public sealed class WorkItemService : IWorkItemService
 
         var stream = await _storage.OpenReadAsync(item.BlobPath, cancellationToken);
         return new FileDownload(stream, item.ContentType ?? "application/octet-stream", item.FileName);
+    }
+
+    public async Task<FilePreview> OpenPreviewAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var item = await LoadScopedAsync(id, cancellationToken);
+        if (string.IsNullOrWhiteSpace(item.BlobPath))
+        {
+            throw new NotFoundException("File was not found.");
+        }
+
+        var stream = await _storage.OpenReadAsync(item.BlobPath, cancellationToken);
+        var contentType = item.ContentType ?? "application/octet-stream";
+
+        if (DocumentPreview.IsTiff(item.FileName, contentType))
+        {
+            try
+            {
+                return await TiffFirstPagePreview.RasterizeAsync(stream, cancellationToken);
+            }
+            finally
+            {
+                await stream.DisposeAsync();
+            }
+        }
+
+        if (DocumentPreview.IsBrowserImage(item.FileName, contentType))
+        {
+            return new FilePreview(
+                stream,
+                contentType,
+                item.FileName,
+                1,
+                false,
+                DocumentPreview.BrowserImageKind);
+        }
+
+        await stream.DisposeAsync();
+        throw new ValidationException(DocumentPreview.UnavailableMessage);
     }
 
     public async Task<DashboardResponse> GetDashboardAsync(DashboardQuery query, CancellationToken cancellationToken = default)
