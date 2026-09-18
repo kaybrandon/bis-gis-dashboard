@@ -1,3 +1,11 @@
+import {
+  DEFAULT_ACCEPTED_EXTENSIONS,
+  DEFAULT_SUPPORTED_TYPES_LABEL,
+  DEFAULT_UPLOAD_ACCEPT,
+  isAllowedUploadFile,
+  unsupportedTypeMessage,
+} from './uploadFileTypes'
+
 export type QueueStatus = 'pending' | 'uploading' | 'done' | 'failed' | 'skipped'
 
 export type UploadQueueItem = {
@@ -12,6 +20,9 @@ export type UploadLimits = {
   maxFileBytes: number
   maxFileMegabytes: number
   concurrency: number
+  acceptedExtensions: string[]
+  supportedTypesLabel: string
+  accept: string
 }
 
 /** Default 50 MB per file; queue runs 3 at a time. Override via App Setting Uploads__MaxFileMegabytes. */
@@ -19,6 +30,9 @@ export const DEFAULT_UPLOAD_LIMITS: UploadLimits = {
   maxFileBytes: 52_428_800,
   maxFileMegabytes: 50,
   concurrency: 3,
+  acceptedExtensions: [...DEFAULT_ACCEPTED_EXTENSIONS],
+  supportedTypesLabel: DEFAULT_SUPPORTED_TYPES_LABEL,
+  accept: DEFAULT_UPLOAD_ACCEPT,
 }
 
 export function parseUploadLimits(settings: Record<string, unknown> | null | undefined): UploadLimits {
@@ -35,7 +49,23 @@ export function parseUploadLimits(settings: Record<string, unknown> | null | und
     typeof u.concurrency === 'number' && u.concurrency >= 1 && u.concurrency <= 8
       ? Math.floor(u.concurrency)
       : DEFAULT_UPLOAD_LIMITS.concurrency
-  return { maxFileBytes, maxFileMegabytes, concurrency }
+  const acceptedExtensions = Array.isArray(u.acceptedExtensions)
+    ? u.acceptedExtensions.filter((value): value is string => typeof value === 'string' && value.startsWith('.'))
+    : DEFAULT_UPLOAD_LIMITS.acceptedExtensions
+  const supportedTypesLabel =
+    typeof u.supportedTypesLabel === 'string' && u.supportedTypesLabel.trim()
+      ? u.supportedTypesLabel
+      : DEFAULT_UPLOAD_LIMITS.supportedTypesLabel
+  const accept =
+    typeof u.accept === 'string' && u.accept.trim() ? u.accept : DEFAULT_UPLOAD_LIMITS.accept
+  return {
+    maxFileBytes,
+    maxFileMegabytes,
+    concurrency,
+    acceptedExtensions: acceptedExtensions.length > 0 ? acceptedExtensions : DEFAULT_UPLOAD_LIMITS.acceptedExtensions,
+    supportedTypesLabel,
+    accept,
+  }
 }
 
 export function formatFileSize(bytes: number): string {
@@ -53,12 +83,22 @@ export async function runUploadQueue(
   options: {
     maxFileBytes: number
     concurrency: number
+    acceptedExtensions?: readonly string[]
+    supportedTypesLabel?: string
     upload: (file: File) => Promise<{ id: string }>
     onUpdate: (items: UploadQueueItem[]) => void
   },
 ): Promise<UploadQueueItem[]> {
   const items: UploadQueueItem[] = files.map((file, index) => {
     const key = `${index}-${file.name}-${file.size}`
+    if (!isAllowedUploadFile(file, options.acceptedExtensions ?? DEFAULT_ACCEPTED_EXTENSIONS)) {
+      return {
+        key,
+        file,
+        status: 'skipped',
+        error: unsupportedTypeMessage(file.name, options.supportedTypesLabel ?? DEFAULT_SUPPORTED_TYPES_LABEL),
+      }
+    }
     if (file.size > options.maxFileBytes) {
       return { key, file, status: 'skipped', error: oversizedMessage(file, options.maxFileBytes) }
     }

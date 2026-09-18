@@ -10,10 +10,12 @@ import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
 import { PoweredByFooter } from '../components/PoweredByFooter'
 import { UploadBatchProgress } from '../components/UploadBatchProgress'
+import { DEFAULT_REQUIRED_FILE_MESSAGE, dropzoneHint, dropzoneText } from '../uploadFileTypes'
 import {
   DEFAULT_UPLOAD_LIMITS,
   MAX_UPLOAD_BATCH,
   formatFileSize,
+  parseUploadLimits,
   queueProgress,
   runUploadQueue,
   type UploadLimits,
@@ -61,11 +63,16 @@ export function PublicUploadPage() {
         setOrgName(info.organizationName)
         setTechs(info.assignedTechnicians ?? [])
         setTypes(info.documentTypes)
-        setLimits({
-          maxFileBytes: info.maxFileBytes || DEFAULT_UPLOAD_LIMITS.maxFileBytes,
-          maxFileMegabytes: info.maxFileMegabytes || DEFAULT_UPLOAD_LIMITS.maxFileMegabytes,
-          concurrency: info.concurrency || DEFAULT_UPLOAD_LIMITS.concurrency,
-        })
+        setLimits(parseUploadLimits({
+          uploads: {
+            maxFileBytes: info.maxFileBytes || DEFAULT_UPLOAD_LIMITS.maxFileBytes,
+            maxFileMegabytes: info.maxFileMegabytes || DEFAULT_UPLOAD_LIMITS.maxFileMegabytes,
+            concurrency: info.concurrency || DEFAULT_UPLOAD_LIMITS.concurrency,
+            acceptedExtensions: info.acceptedExtensions,
+            supportedTypesLabel: info.supportedTypesLabel,
+            accept: info.accept,
+          },
+        }))
         form.setFieldsValue({
           clientName: info.organizationName,
           documentTypeId: info.documentTypes[0]?.id,
@@ -83,7 +90,7 @@ export function PublicUploadPage() {
     <div className="login-wrap">
       <Card className="login-card compact-card is-upload">
         <Typography.Title level={3} style={{ marginBottom: 8 }}>
-          <TitleWithHelp help="Send one or many PDFs with this link. You do not need an account.">
+          <TitleWithHelp help="Send one or many PDF, Word, Excel, or image files with this link. You do not need an account.">
             Upload files
           </TitleWithHelp>
         </Typography.Title>
@@ -109,7 +116,7 @@ export function PublicUploadPage() {
             }) => {
               const files = filesFromList(values.file)
               if (files.length === 0 || !token) {
-                message.error('At least one file is required.')
+                message.error(DEFAULT_REQUIRED_FILE_MESSAGE)
                 return
               }
               setSaving(true)
@@ -120,6 +127,8 @@ export function PublicUploadPage() {
                 const items = await runUploadQueue(files, {
                   maxFileBytes: limits.maxFileBytes,
                   concurrency: limits.concurrency,
+                  acceptedExtensions: limits.acceptedExtensions,
+                  supportedTypesLabel: limits.supportedTypesLabel,
                   onUpdate: setQueue,
                   upload: async (file) => {
                     const body = new FormData()
@@ -186,13 +195,13 @@ export function PublicUploadPage() {
               label="Files"
               valuePropName="fileList"
               getValueFromEvent={(e) => e?.fileList}
-              rules={[{ required: true, message: 'At least one file is required.' }]}
-              tooltip={`Each file is its own work item. Max ${formatFileSize(limits.maxFileBytes)} per file · up to ${MAX_UPLOAD_BATCH} files.`}
+              rules={[{ required: true, message: DEFAULT_REQUIRED_FILE_MESSAGE }]}
+              tooltip={`Each file is its own work item. ${limits.supportedTypesLabel}. Max ${formatFileSize(limits.maxFileBytes)} per file · up to ${MAX_UPLOAD_BATCH} files.`}
             >
-              <Upload.Dragger className="upload-dropzone" multiple maxCount={MAX_UPLOAD_BATCH} beforeUpload={() => false} accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff" disabled={saving}>
+              <Upload.Dragger className="upload-dropzone" multiple maxCount={MAX_UPLOAD_BATCH} beforeUpload={() => false} accept={limits.accept} disabled={saving}>
                 <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-                <p className="ant-upload-text">Drop PDFs or images, or click to browse</p>
-                <p className="ant-upload-hint">Up to {MAX_UPLOAD_BATCH} files. Oversized files are skipped; the rest still go through.</p>
+                <p className="ant-upload-text">{dropzoneText()}</p>
+                <p className="ant-upload-hint">{dropzoneHint(MAX_UPLOAD_BATCH)}</p>
               </Upload.Dragger>
             </Form.Item>
             <div className="priority-row">

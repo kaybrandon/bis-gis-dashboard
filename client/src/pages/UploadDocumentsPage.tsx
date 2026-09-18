@@ -9,6 +9,7 @@ import { AssignedTechnicianField, type AssignedTechnician } from '../components/
 import { CompanyContactBlock } from '../components/CompanyContactBlock'
 import { TitleWithHelp } from '../components/HelpTip'
 import { UploadBatchProgress } from '../components/UploadBatchProgress'
+import { DEFAULT_REQUIRED_FILE_MESSAGE, dropzoneHint, dropzoneText } from '../uploadFileTypes'
 import {
   DEFAULT_UPLOAD_LIMITS,
   MAX_UPLOAD_BATCH,
@@ -129,7 +130,7 @@ export function UploadDocumentsPage() {
           onFinish={async (values) => {
             const files = filesFromList(values.file)
             if (files.length === 0) {
-              message.error('At least one PDF or image is required.')
+              message.error(DEFAULT_REQUIRED_FILE_MESSAGE)
               return
             }
             const nextOrgId = formId(values.organizationId)
@@ -147,6 +148,8 @@ export function UploadDocumentsPage() {
               const items = await runUploadQueue(files, {
                 maxFileBytes: limits.maxFileBytes,
                 concurrency: limits.concurrency,
+                acceptedExtensions: limits.acceptedExtensions,
+                supportedTypesLabel: limits.supportedTypesLabel,
                 onUpdate: setQueue,
                 upload: async (file) => {
                   const body = new FormData()
@@ -253,15 +256,15 @@ export function UploadDocumentsPage() {
             label="Files"
             valuePropName="fileList"
             getValueFromEvent={(e) => e?.fileList}
-            rules={[{ required: true, message: 'Attach at least one PDF or image.' }]}
-            tooltip={`Each file is its own work item. Max ${formatFileSize(limits.maxFileBytes)} per file · ${limits.concurrency} at a time · up to ${MAX_UPLOAD_BATCH} files.`}
+            rules={[{ required: true, message: DEFAULT_REQUIRED_FILE_MESSAGE }]}
+            tooltip={`Each file is its own work item. ${limits.supportedTypesLabel}. Max ${formatFileSize(limits.maxFileBytes)} per file · ${limits.concurrency} at a time · up to ${MAX_UPLOAD_BATCH} files.`}
           >
-            <Upload.Dragger className="upload-dropzone" beforeUpload={() => false} multiple maxCount={MAX_UPLOAD_BATCH} accept=".pdf,image/*" disabled={saving}>
+            <Upload.Dragger className="upload-dropzone" beforeUpload={() => false} multiple maxCount={MAX_UPLOAD_BATCH} accept={limits.accept} disabled={saving}>
               <p className="ant-upload-drag-icon">
                 <InboxOutlined />
               </p>
-              <p className="ant-upload-text">Drop PDFs or images, or click to browse</p>
-              <p className="ant-upload-hint">Up to {MAX_UPLOAD_BATCH} files. Oversized files are skipped; the rest still upload.</p>
+              <p className="ant-upload-text">{dropzoneText()}</p>
+              <p className="ant-upload-hint">{dropzoneHint(MAX_UPLOAD_BATCH)}</p>
             </Upload.Dragger>
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={saving}>

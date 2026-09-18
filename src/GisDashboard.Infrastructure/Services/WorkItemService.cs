@@ -13,17 +13,6 @@ namespace GisDashboard.Infrastructure.Services;
 
 public sealed class WorkItemService : IWorkItemService
 {
-    private static readonly HashSet<string> AllowedContentTypes =
-    [
-        "application/pdf",
-        "image/png",
-        "image/jpeg",
-        "image/jpg",
-        "image/gif",
-        "image/webp",
-        "image/tiff"
-    ];
-
     private readonly AppDbContext _db;
     private readonly ICurrentUser _currentUser;
     private readonly IOrgScope _orgScope;
@@ -199,10 +188,9 @@ public sealed class WorkItemService : IWorkItemService
 
         EnsureWithinSizeLimit(request);
 
-        var contentType = InferContentType(request.ContentType, request.FileName);
-        if (!AllowedContentTypes.Contains(contentType.ToLowerInvariant()))
+        if (!UploadFileTypes.TryResolve(request.FileName, request.ContentType, out var contentType))
         {
-            throw new ValidationException("Only PDF and image files can be uploaded in Phase 1.");
+            throw new ValidationException(UploadFileTypes.UnsupportedFileMessage(request.FileName));
         }
 
         Guid? assignee = null;
@@ -665,7 +653,10 @@ public sealed class WorkItemService : IWorkItemService
             _uploads.EffectiveMaxFileBytes,
             _uploads.EffectiveMaxFileMegabytes,
             _uploads.EffectiveConcurrency,
-            await AssignedTechnicianDisplayAsync(org.Id, cancellationToken));
+            await AssignedTechnicianDisplayAsync(org.Id, cancellationToken),
+            UploadFileTypes.Extensions,
+            UploadFileTypes.SupportedTypesLabel,
+            UploadFileTypes.AcceptAttribute);
     }
 
     public async Task<PublicUploadResult> UploadByTokenAsync(string token, UploadWorkItemRequest request, CancellationToken cancellationToken = default)
@@ -679,10 +670,9 @@ public sealed class WorkItemService : IWorkItemService
 
         EnsureWithinSizeLimit(request);
 
-        var contentType = InferContentType(request.ContentType, request.FileName);
-        if (!AllowedContentTypes.Contains(contentType.ToLowerInvariant()))
+        if (!UploadFileTypes.TryResolve(request.FileName, request.ContentType, out var contentType))
         {
-            throw new ValidationException("Only PDF and image files can be uploaded.");
+            throw new ValidationException(UploadFileTypes.UnsupportedFileMessage(request.FileName));
         }
 
         if (!await _db.Users.AnyAsync(x => x.Id == SeedIds.TokenUploadUser, cancellationToken))
@@ -1317,24 +1307,4 @@ public sealed class WorkItemService : IWorkItemService
         }
     }
 
-    private static string InferContentType(string? contentType, string fileName)
-    {
-        if (!string.IsNullOrWhiteSpace(contentType)
-            && !string.Equals(contentType, "application/octet-stream", StringComparison.OrdinalIgnoreCase))
-        {
-            return contentType;
-        }
-
-        var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
-        return ext switch
-        {
-            ".pdf" => "application/pdf",
-            ".png" => "image/png",
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".gif" => "image/gif",
-            ".webp" => "image/webp",
-            ".tif" or ".tiff" => "image/tiff",
-            _ => string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType
-        };
-    }
 }

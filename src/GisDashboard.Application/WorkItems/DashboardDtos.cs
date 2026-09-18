@@ -52,7 +52,10 @@ public sealed record PublicUploadInfo(
     long MaxFileBytes,
     int MaxFileMegabytes,
     int Concurrency,
-    IReadOnlyList<AssignedTechnicianDisplay> AssignedTechnicians);
+    IReadOnlyList<AssignedTechnicianDisplay> AssignedTechnicians,
+    IReadOnlyList<string> AcceptedExtensions,
+    string SupportedTypesLabel,
+    string Accept);
 
 public sealed record PublicUploadResult(
     Guid Id,

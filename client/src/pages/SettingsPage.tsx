@@ -20,6 +20,7 @@ export function SettingsPage() {
     maxFileBytes?: number
     maxFileMegabytes?: number
     concurrency?: number
+    supportedTypesLabel?: string
   }
   const isGlobal = user?.canManageGlobalDirectory
 
@@ -51,6 +52,9 @@ export function SettingsPage() {
           </Descriptions.Item>
           <Descriptions.Item label="Upload size limit">
             {uploads.maxFileMegabytes ?? 50} MB per file
+          </Descriptions.Item>
+          <Descriptions.Item label="Supported files">
+            {uploads.supportedTypesLabel ?? 'PDF, Word (.doc, .docx), Excel (.xls, .xlsx), or images'}
           </Descriptions.Item>
           <Descriptions.Item label="Upload queue">
             {uploads.concurrency ?? 3} files at a time. Large batches show a sticky progress bar (done / failed / skipped / remaining). Keep the window open until the queue finishes.

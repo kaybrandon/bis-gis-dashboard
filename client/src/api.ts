@@ -118,6 +118,9 @@ export type PublicUploadInfo = {
   maxFileMegabytes: number
   concurrency: number
   assignedTechnicians?: AssignedTechnician[]
+  acceptedExtensions?: string[]
+  supportedTypesLabel?: string
+  accept?: string
 }
 
 export type PublicUploadResult = {

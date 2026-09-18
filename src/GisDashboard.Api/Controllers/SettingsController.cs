@@ -39,7 +39,10 @@ public sealed class SettingsController : ControllerBase
                 maxFileBytes = _uploads.EffectiveMaxFileBytes,
                 maxFileMegabytes = _uploads.EffectiveMaxFileMegabytes,
                 concurrency = _uploads.EffectiveConcurrency,
-                note = "Per-file limit (default 50 MB). Change on the App Service with Uploads__MaxFileMegabytes (25–50 typical) or Uploads__MaxFileBytes. The browser queues 3 files at a time."
+                acceptedExtensions = UploadFileTypes.Extensions,
+                supportedTypesLabel = UploadFileTypes.SupportedTypesLabel,
+                accept = UploadFileTypes.AcceptAttribute,
+                note = "Per-file limit (default 50 MB). PDF, Word (.doc, .docx), Excel (.xls, .xlsx), or images. Change on the App Service with Uploads__MaxFileMegabytes (25–50 typical) or Uploads__MaxFileBytes. The browser queues 3 files at a time."
             },
             company,
             features = new
@@ -64,8 +67,8 @@ public sealed class SettingsController : ControllerBase
                 timeReportCards = new { enabled = true, note = "Hours on GIS work items by person, period, and client. BIS staff always see their own (Global Administrator sees the team). Clients see cards only when a Global Administrator turns that organization on." },
                 priorityWork = new { enabled = true, note = "Priority on a work item or upload notifies organization assigned tech(s), the work-item Assigned To when set, and every Global Administrator. A Global Admin who flags the item still sees it in the bell. Needed-by date is included when set. No email ingest." },
                 retention = new { enabled = false, note = "Later v1 phase" },
-                tokenizedUpload = new { enabled = true, note = "Per-organization no-login upload URL — upload one or many PDFs (queued, same per-file size limit as signed-in upload)" },
-                massUpload = new { enabled = true, note = "Upload Documents and the public upload link accept multiple PDFs. Each file becomes its own work item. The queue runs 3 at a time. Oversized files are skipped; the rest of the batch continues." },
+                tokenizedUpload = new { enabled = true, note = "Per-organization no-login upload URL — upload one or many PDF, Word, Excel, or image files (queued, same per-file size limit as signed-in upload)" },
+                massUpload = new { enabled = true, note = "Upload Documents and the public upload link accept multiple PDF, Word (.doc, .docx), Excel (.xls, .xlsx), or image files. Each file becomes its own work item. The queue runs 3 at a time. Oversized files are skipped; the rest of the batch continues." },
                 uploadDocuments = new { enabled = true, note = "Left-nav Upload Documents page. Manage Documents + Upload redirects there. Viewers upload to their organization; staff pick the client and later set type and priority." },
                 viewerUpload = new { enabled = true, note = "Viewer can upload documents for their assigned organization. They cannot change status, assignment, type, or priority." },
                 staffAllOrganizations = new { enabled = true, note = "Global Administrator, Administrator, and Editor see and work documents from every organization. Viewer stays org-scoped." },
