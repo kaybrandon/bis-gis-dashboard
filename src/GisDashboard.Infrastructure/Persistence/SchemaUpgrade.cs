@@ -111,6 +111,9 @@ public static class SchemaUpgrade
         await Phase36Schema.ApplyAsync(db, cancellationToken);
         await Phase37Schema.ApplyAsync(db, cancellationToken);
         await Phase38Schema.ApplyAsync(db, cancellationToken);
+        // Phase42 loads ApplicationUser via EF (SELECT JobTitle/IsArchived/ArchivedAt/LastLoginAt).
+        // Those columns must exist on existing Azure SQL before that query, or startup is 500.30.
+        await Phase51Schema.ApplyAsync(db, cancellationToken);
         await Phase39Schema.ApplyAsync(db, cancellationToken);
         await Phase40Schema.ApplyAsync(db, cancellationToken);
         await Phase41Schema.ApplyAsync(db, cancellationToken);
@@ -123,6 +126,5 @@ public static class SchemaUpgrade
         await Phase48Schema.ApplyAsync(db, cancellationToken);
         await Phase49Schema.ApplyAsync(db, cancellationToken);
         await Phase50Schema.ApplyAsync(db, cancellationToken);
-        await Phase51Schema.ApplyAsync(db, cancellationToken);
     }
 }
