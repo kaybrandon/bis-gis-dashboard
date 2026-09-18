@@ -1,29 +1,47 @@
-import { Button, Card, Col, Form, Input, Modal, Row, Select, Switch, Table, Tag, message } from 'antd'
-import { useEffect, useState } from 'react'
+import { Button, Card, Col, Form, Input, Modal, Row, Select, Space, Switch, Table, Tag, Tooltip, message } from 'antd'
+import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { api } from '../api'
 import { useAuth } from '../auth'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
+import { compareLastActivity, compareTitle, formatLastActivity } from '../lastActivity'
+import { usePresence } from '../presence'
 import { roleHasAllOrganizations, roleLabel, roleRequiresOrganizationAssignment } from '../roles'
+import { isLiveOnline } from '../usersPresence'
 
 type UserRow = {
   id: string
   email: string
   displayName: string
   fullName?: string | null
+  title?: string | null
   workPhone?: string | null
   role: string
   isActive: boolean
+  isArchived?: boolean
+  lastLoginAt?: string | null
   organizations: Array<{ organizationId: string; organizationName: string }>
+}
+
+const ARCHIVE_CONFIRM = 'Archive this user? They can’t sign in or be newly assigned. Document history stays.'
+
+function personName(row: UserRow) {
+  return row.fullName?.trim() || row.displayName
+}
+
+function stopRowClick(event: MouseEvent) {
+  event.stopPropagation()
 }
 
 export function UsersPage() {
   const { user } = useAuth()
+  const { items: presenceItems } = usePresence()
   const [rows, setRows] = useState<UserRow[]>([])
   const [orgs, setOrgs] = useState<Array<{ id: string; name: string }>>([])
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<UserRow | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const [addForm] = Form.useForm()
   const [editForm] = Form.useForm()
   const addRole = Form.useWatch('role', addForm)
@@ -37,8 +55,8 @@ export function UsersPage() {
     { value: 'Viewer', label: 'Viewer' },
   ]
 
-  const load = () => {
-    Promise.all([api.adminUsers(), api.adminOrgs()])
+  const load = (includeArchived = showArchived) => {
+    Promise.all([api.adminUsers(includeArchived), api.adminOrgs()])
       .then(([users, organizations]) => {
         setRows(users as UserRow[])
         setOrgs(organizations as Array<{ id: string; name: string }>)
@@ -47,16 +65,78 @@ export function UsersPage() {
       .catch((err) => setError(err.message))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(showArchived) }, [showArchived])
+
+  const presenceById = useMemo(
+    () => new Map(presenceItems.map((row) => [row.userId, row.presenceStatus])),
+    [presenceItems],
+  )
+
+  const openEdit = (row: UserRow) => {
+    setEditing(row)
+    editForm.setFieldsValue({
+      displayName: row.displayName,
+      fullName: row.fullName ?? '',
+      title: row.title ?? '',
+      workPhone: row.workPhone ?? '',
+      email: row.email,
+      role: row.role,
+      isActive: row.isActive,
+      organizationIds: row.organizations.map((o) => o.organizationId),
+      password: undefined,
+    })
+  }
+
+  const confirmArchive = (row: UserRow) => {
+    Modal.confirm({
+      title: 'Archive this user?',
+      content: ARCHIVE_CONFIRM,
+      okText: 'Archive',
+      okButtonProps: { danger: true },
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          await api.archiveUser(row.id)
+          message.success('User archived.')
+          load()
+        } catch (err) {
+          message.error(err instanceof Error ? err.message : 'Archive failed.')
+          throw err
+        }
+      },
+    })
+  }
+
+  const restoreUser = async (row: UserRow) => {
+    try {
+      await api.restoreUser(row.id)
+      message.success('User restored.')
+      load()
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Restore failed.')
+    }
+  }
 
   return (
     <Card
       title={(
-        <TitleWithHelp help="Global Administrator, Administrator, and Editor see and work documents from every organization. Uploader is Viewer visibility plus uploads and client-visible Comments on assigned orgs. Viewer stays read-only for upload and comments. There is no Client role — a client is an organization.">
+        <TitleWithHelp help="Global Administrator, Administrator, and Editor see and work documents from every organization. Uploader is Viewer visibility plus uploads and client-visible Comments on assigned orgs. Viewer stays read-only for upload and comments. There is no Client role — a client is an organization. Archive soft-deletes a user: they cannot sign in or be newly assigned, and document history still shows their name.">
           Users & organization assignments
         </TitleWithHelp>
       )}
-      extra={<Button type="primary" onClick={() => setOpen(true)}>Add User</Button>}
+      extra={(
+        <Space wrap size={8}>
+          <label className="users-show-archived">
+            <Switch
+              size="small"
+              checked={showArchived}
+              onChange={(checked) => setShowArchived(checked)}
+            />
+            <span>Show archived</span>
+          </label>
+          <Button type="primary" onClick={() => setOpen(true)}>Add User</Button>
+        </Space>
+      )}
       styles={{ header: { flexWrap: 'wrap', gap: 8 } }}
     >
       {error && <LoadError message={error} onRetry={() => load()} />}
@@ -65,11 +145,47 @@ export function UsersPage() {
         dataSource={rows}
         pagination={false}
         scroll={{ x: 'max-content' }}
+        rowClassName={(row) => [
+          'users-row-clickable',
+          row.isArchived ? 'users-row-archived' : '',
+        ].filter(Boolean).join(' ')}
+        onRow={(row) => ({
+          onClick: () => openEdit(row),
+        })}
         columns={[
+          {
+            title: 'Name',
+            key: 'name',
+            sorter: (a, b) => compareTitle(personName(a), personName(b)),
+            render: (_, row) => {
+              const live = isLiveOnline(presenceById.get(row.id), row.isArchived)
+              return (
+                <span className="users-name-cell">
+                  {live && <span className="presence-dot is-online" aria-label="Online" title="Online" />}
+                  <span>
+                    {personName(row)}
+                    {row.isArchived ? ' (archived)' : ''}
+                  </span>
+                </span>
+              )
+            },
+          },
           { title: 'Username', dataIndex: 'displayName' },
-          { title: 'Full name', dataIndex: 'fullName', render: (value?: string | null) => value || '—' },
+          {
+            title: 'Title',
+            dataIndex: 'title',
+            key: 'title',
+            sorter: (a, b) => compareTitle(a.title, b.title),
+            render: (value?: string | null) => value?.trim() || '—',
+          },
           { title: 'Email', dataIndex: 'email' },
-          { title: 'Role', dataIndex: 'role', render: (value: string) => <Tag>{roleLabel(value)}</Tag> },
+          {
+            title: 'Role',
+            dataIndex: 'role',
+            key: 'role',
+            sorter: (a, b) => roleLabel(a.role).localeCompare(roleLabel(b.role)),
+            render: (value: string) => <Tag>{roleLabel(value)}</Tag>,
+          },
           {
             title: 'Organizations',
             render: (_, row) => roleHasAllOrganizations(row.role)
@@ -77,32 +193,51 @@ export function UsersPage() {
               : row.organizations.map((o) => o.organizationName).join(', ') || '—',
           },
           {
+            title: 'Last activity',
+            key: 'lastActivity',
+            dataIndex: 'lastLoginAt',
+            sorter: (a, b) => compareLastActivity(a.lastLoginAt, b.lastLoginAt),
+            render: (value?: string | null) => {
+              const display = formatLastActivity(value)
+              const label = <span>{display.label}</span>
+              return display.tooltip
+                ? <Tooltip title={display.tooltip}>{label}</Tooltip>
+                : label
+            },
+          },
+          {
             title: 'Active',
             dataIndex: 'isActive',
-            render: (value: boolean) => <Tag color={value ? 'green' : 'default'}>{value ? 'Active' : 'Inactive'}</Tag>,
+            render: (_value: boolean, row) => row.isArchived
+              ? <Tag>Archived</Tag>
+              : <Tag color={row.isActive ? 'green' : 'default'}>{row.isActive ? 'Active' : 'Inactive'}</Tag>,
           },
           {
             title: '',
             key: 'actions',
             render: (_, row) => (
-              <Button
-                size="small"
-                onClick={() => {
-                  setEditing(row)
-                  editForm.setFieldsValue({
-                    displayName: row.displayName,
-                    fullName: row.fullName ?? '',
-                    workPhone: row.workPhone ?? '',
-                    email: row.email,
-                    role: row.role,
-                    isActive: row.isActive,
-                    organizationIds: row.organizations.map((o) => o.organizationId),
-                    password: undefined,
-                  })
-                }}
-              >
-                Edit
-              </Button>
+              <div onClick={stopRowClick} onMouseDown={stopRowClick}>
+                <Space size={4}>
+                  <Button
+                    size="small"
+                    onClick={() => openEdit(row)}
+                  >
+                    Edit
+                  </Button>
+                  {row.isArchived ? (
+                    <Button size="small" onClick={() => restoreUser(row)}>Restore</Button>
+                  ) : (
+                    <Button
+                      size="small"
+                      danger
+                      disabled={row.id === user?.id}
+                      onClick={() => confirmArchive(row)}
+                    >
+                      Archive
+                    </Button>
+                  )}
+                </Space>
+              </div>
             ),
           },
         ]}
@@ -140,6 +275,9 @@ export function UsersPage() {
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="fullName" label="Full name"><Input placeholder="Optional" /></Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="title" label="Title"><Input placeholder="Optional job title" /></Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}><Input /></Form.Item>
@@ -191,6 +329,7 @@ export function UsersPage() {
               await api.updateUser(editing.id, {
                 displayName: values.displayName,
                 fullName: values.fullName || null,
+                title: values.title ?? '',
                 workPhone: values.workPhone || null,
                 email: values.email,
                 role: values.role,
@@ -212,6 +351,9 @@ export function UsersPage() {
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="fullName" label="Full name"><Input placeholder="Optional" /></Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="title" label="Title"><Input placeholder="Optional job title" /></Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}><Input /></Form.Item>

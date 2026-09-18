@@ -87,7 +87,7 @@ public sealed class NotificationService : INotificationService
         }
 
         var users = await _db.Users.AsNoTracking()
-            .Where(x => x.IsActive && x.Id != SeedIds.TokenUploadUser)
+            .Where(x => x.IsActive && !x.IsArchived && x.Id != SeedIds.TokenUploadUser)
             .Select(x => new { x.Id, x.UserName, x.DisplayName, x.FullName })
             .ToListAsync(cancellationToken);
 
@@ -259,7 +259,7 @@ public sealed class NotificationService : INotificationService
             : await (
                 from user in _db.Users.AsNoTracking()
                 join ur in _db.UserRoles on user.Id equals ur.UserId
-                where user.IsActive && ur.RoleId == globalRoleId
+                where user.IsActive && !user.IsArchived && ur.RoleId == globalRoleId
                 select user.Id
             ).ToListAsync(cancellationToken);
         foreach (var id in globals)

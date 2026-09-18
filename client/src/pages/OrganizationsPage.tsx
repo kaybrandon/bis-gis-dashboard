@@ -16,6 +16,7 @@ type UserRow = {
   displayName: string
   role?: string
   isActive?: boolean
+  isArchived?: boolean
   organizations?: Array<{ organizationId: string }>
 }
 
@@ -35,6 +36,7 @@ type OrgRow = {
 
 function canAssignAsTech(user: UserRow) {
   if (user.isActive === false) return false
+  if (user.isArchived) return false
   if (!user.role) return true
   return user.role === 'GlobalAdministrator' || user.role === 'Editor' || user.role === 'Administrator'
 }

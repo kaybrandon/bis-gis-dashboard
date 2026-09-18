@@ -151,7 +151,12 @@ public sealed class TimeEntryService : ITimeEntryService
             entry.WorkedOn,
             entry.Note,
             entry.LoggedByUserId,
-            entry.LoggedByUser.PublicName,
+            UserIdentity.HistoricalName(
+                entry.LoggedByUser.FullName,
+                entry.LoggedByUser.DisplayName,
+                entry.LoggedByUser.IsArchived,
+                entry.LoggedByUser.UserName,
+                entry.LoggedByUser.Email),
             entry.CreatedAt,
             entry.UpdatedAt,
             _currentUser.IsAdmin || (_currentUser.CanLogTime && entry.LoggedByUserId == _currentUser.UserId));

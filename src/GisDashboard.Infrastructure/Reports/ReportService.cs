@@ -184,7 +184,7 @@ public sealed class ReportService : IReportService
 
         return await _db.Users
             .AsNoTracking()
-            .Where(u => u.IsActive && u.Organizations.Any(m => m.OrganizationId == organizationId))
+            .Where(u => u.IsActive && !u.IsArchived && u.Organizations.Any(m => m.OrganizationId == organizationId))
             .OrderBy(u => u.DisplayName)
             .Select(u => new ReportRecipient(u.Id, u.DisplayName, u.Email!))
             .ToListAsync(cancellationToken);

@@ -8,10 +8,12 @@ public interface IDirectoryService
     Task<IReadOnlyList<OrganizationDto>> ListOrganizationsAsync(CancellationToken cancellationToken = default);
     Task<OrganizationDto> CreateOrganizationAsync(CreateOrganizationRequest request, CancellationToken cancellationToken = default);
     Task<OrganizationDto> UpdateOrganizationAsync(Guid id, UpdateOrganizationRequest request, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<UserListItem>> ListUsersAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UserListItem>> ListUsersAsync(bool includeArchived = false, CancellationToken cancellationToken = default);
     Task<UserListItem> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default);
     Task<UserListItem> UpdateUserAsync(Guid userId, UpdateUserRequest request, CancellationToken cancellationToken = default);
     Task<UserListItem> UpdateUserOrganizationsAsync(Guid userId, UpdateUserOrgsRequest request, CancellationToken cancellationToken = default);
+    Task<UserListItem> ArchiveUserAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<UserListItem> RestoreUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<UploadLinkDto> GetUploadLinkAsync(Guid organizationId, CancellationToken cancellationToken = default);
     Task<UploadLinkDto> RegenerateUploadLinkAsync(Guid organizationId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<LookupItem>> ListDocumentTypesAsync(CancellationToken cancellationToken = default);

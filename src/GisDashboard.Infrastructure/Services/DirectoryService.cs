@@ -133,7 +133,7 @@ public sealed class DirectoryService : IDirectoryService
         return MapOrg(await LoadOrganizationGraphAsync(org.Id, cancellationToken));
     }
 
-    public async Task<IReadOnlyList<UserListItem>> ListUsersAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<UserListItem>> ListUsersAsync(bool includeArchived = false, CancellationToken cancellationToken = default)
     {
         EnsureDirectoryManager();
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
@@ -146,6 +146,11 @@ public sealed class DirectoryService : IDirectoryService
         var result = new List<UserListItem>();
         foreach (var user in users)
         {
+            if (!includeArchived && user.IsArchived)
+            {
+                continue;
+            }
+
             var roles = await _users.GetRolesAsync(user);
             var role = roles.FirstOrDefault() ?? string.Empty;
             if (!_currentUser.IsGlobalAdmin)
@@ -197,6 +202,7 @@ public sealed class DirectoryService : IDirectoryService
             DisplayName = username,
             FullName = fullName,
             WorkPhone = string.IsNullOrWhiteSpace(request.WorkPhone) ? null : request.WorkPhone.Trim(),
+            JobTitle = string.IsNullOrWhiteSpace(request.Title) ? null : request.Title.Trim(),
             IsActive = true,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -256,6 +262,11 @@ public sealed class DirectoryService : IDirectoryService
         user.DisplayName = username;
         user.FullName = string.IsNullOrWhiteSpace(fullName) ? null : fullName;
         user.WorkPhone = string.IsNullOrWhiteSpace(request.WorkPhone) ? null : request.WorkPhone.Trim();
+        if (request.Title is not null)
+        {
+            user.JobTitle = string.IsNullOrWhiteSpace(request.Title) ? null : request.Title.Trim();
+        }
+
         user.IsActive = request.IsActive;
         var emailResult = await _users.SetEmailAsync(user, email);
         if (!emailResult.Succeeded)
@@ -331,6 +342,45 @@ public sealed class DirectoryService : IDirectoryService
         return MapUser(user, role);
     }
 
+    public async Task<UserListItem> ArchiveUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        EnsureDirectoryManager();
+        if (userId == _currentUser.UserId)
+        {
+            throw new ValidationException("You cannot archive your own account.");
+        }
+
+        var user = await LoadScopedUserAsync(userId, cancellationToken);
+        if (!user.IsArchived)
+        {
+            user.IsArchived = true;
+            user.ArchivedAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        var role = (await _users.GetRolesAsync(user)).FirstOrDefault() ?? string.Empty;
+        user = await _db.Users.Include(x => x.Organizations).ThenInclude(x => x.Organization)
+            .FirstAsync(x => x.Id == userId, cancellationToken);
+        return MapUser(user, role);
+    }
+
+    public async Task<UserListItem> RestoreUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        EnsureDirectoryManager();
+        var user = await LoadScopedUserAsync(userId, cancellationToken);
+        if (user.IsArchived)
+        {
+            user.IsArchived = false;
+            user.ArchivedAt = null;
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        var role = (await _users.GetRolesAsync(user)).FirstOrDefault() ?? string.Empty;
+        user = await _db.Users.Include(x => x.Organizations).ThenInclude(x => x.Organization)
+            .FirstAsync(x => x.Id == userId, cancellationToken);
+        return MapUser(user, role);
+    }
+
     public async Task<IReadOnlyList<LookupItem>> ListDocumentTypesAsync(CancellationToken cancellationToken = default) =>
         await _db.DocumentTypes.AsNoTracking()
             .OrderBy(x => x.SortOrder)
@@ -366,7 +416,7 @@ public sealed class DirectoryService : IDirectoryService
         var editorRoleId = await _db.Roles.Where(x => x.Name == Roles.Editor).Select(x => x.Id).FirstAsync(cancellationToken);
 
         return await _db.Users.AsNoTracking()
-            .Where(u => u.IsActive && _db.UserRoles.Any(ur =>
+            .Where(u => u.IsActive && !u.IsArchived && _db.UserRoles.Any(ur =>
                 ur.UserId == u.Id &&
                 (ur.RoleId == globalRoleId || ur.RoleId == adminRoleId || ur.RoleId == editorRoleId)))
             .OrderBy(u => u.FullName ?? u.DisplayName)
@@ -390,11 +440,12 @@ public sealed class DirectoryService : IDirectoryService
                 x.User.DisplayName,
                 x.User.UserName,
                 x.User.Email,
+                x.User.IsArchived,
                 x.IsPrimary
             })
             .ToListAsync(cancellationToken);
         return AssignedTechnicianNames.FromUsers(
-            rows.Select(x => (x.FullName, x.DisplayName, x.UserName, (string?)x.Email, x.IsPrimary)));
+            rows.Select(x => (x.FullName, x.DisplayName, x.UserName, (string?)x.Email, x.IsPrimary, x.IsArchived)));
     }
 
     public async Task<IReadOnlyList<AssignableUser>> ListScopedAssigneesAsync(CancellationToken cancellationToken = default)
@@ -410,7 +461,7 @@ public sealed class DirectoryService : IDirectoryService
         var editorRoleId = await _db.Roles.Where(x => x.Name == Roles.Editor).Select(x => x.Id).FirstAsync(cancellationToken);
 
         return await _db.Users.AsNoTracking()
-            .Where(u => u.IsActive &&
+            .Where(u => u.IsActive && !u.IsArchived &&
                 _db.UserRoles.Any(ur =>
                     ur.UserId == u.Id &&
                     (ur.RoleId == globalRoleId || ur.RoleId == adminRoleId || ur.RoleId == editorRoleId)) &&
@@ -609,7 +660,7 @@ public sealed class DirectoryService : IDirectoryService
 
     private async Task EnsureAssignableAsync(Guid userId, Guid organizationId, CancellationToken cancellationToken)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId && x.IsActive, cancellationToken)
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId && x.IsActive && !x.IsArchived, cancellationToken)
             ?? throw new ValidationException("Assigned tech was not found.");
         var roles = await _users.GetRolesAsync(user);
         var role = roles.FirstOrDefault() ?? string.Empty;
@@ -729,7 +780,7 @@ public sealed class DirectoryService : IDirectoryService
             org.ParcelWithOwnership,
             org.TimeReportCardsVisible,
             Techs(org.AssignedTechs),
-            People(org.Members?.Select(x => (x.UserId, x.User?.PublicName))));
+            People(org.Members?.Select(x => (x.UserId, HistoricalOrgName(x.User)))));
 
     private async Task<string> UniqueUsernameAsync(
         Guid userId,
@@ -774,9 +825,14 @@ public sealed class DirectoryService : IDirectoryService
             .OrderBy(x => x.DisplayName)
             .ToList();
 
+    private static string HistoricalOrgName(ApplicationUser? user) =>
+        user is null
+            ? ""
+            : UserIdentity.HistoricalName(user.FullName, user.DisplayName, user.IsArchived, user.UserName, user.Email);
+
     private static IReadOnlyList<AssignedTechDto> Techs(IEnumerable<OrganizationTech>? rows) =>
         (rows ?? [])
-            .Select(x => new AssignedTechDto(x.UserId, x.User?.PublicName ?? "", x.IsPrimary))
+            .Select(x => new AssignedTechDto(x.UserId, HistoricalOrgName(x.User), x.IsPrimary))
             .OrderByDescending(x => x.IsPrimary)
             .ThenBy(x => x.DisplayName)
             .ToList();
@@ -794,5 +850,10 @@ public sealed class DirectoryService : IDirectoryService
             user.Organizations.Select(x => new OrgMember(x.OrganizationId, x.Organization.Name)).ToList(),
             user.FullName,
             user.WorkPhone,
-            !string.IsNullOrWhiteSpace(user.AvatarBlobPath));
+            !string.IsNullOrWhiteSpace(user.AvatarBlobPath),
+            user.LastLoginAt,
+            user.IsArchived,
+            user.ArchivedAt,
+            user.JobTitle);
 }
+

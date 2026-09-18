@@ -45,7 +45,7 @@ public sealed class AuthService : IAuthService
         }
 
         var user = await FindByUsernameOrEmailAsync(identifier);
-        if (user is null || !user.IsActive)
+        if (user is null || !UserIdentity.CanSignIn(user.IsActive, user.IsArchived))
         {
             throw new ForbiddenException("Invalid username or password.");
         }
@@ -54,6 +54,9 @@ public sealed class AuthService : IAuthService
         {
             throw new ForbiddenException("Invalid username or password.");
         }
+
+        user.LastLoginAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
 
         var role = await GetSingleRoleAsync(user);
         var (token, expires) = _tokens.Create(user, role);
@@ -69,6 +72,11 @@ public sealed class AuthService : IAuthService
 
         var user = await _users.FindByIdAsync(_currentUser.UserId.ToString())
             ?? throw new NotFoundException("User was not found.");
+        if (user.IsArchived)
+        {
+            throw new ForbiddenException("This account has been archived.");
+        }
+
         var role = await GetSingleRoleAsync(user);
         return await MapUserAsync(user, role, cancellationToken);
     }

@@ -695,7 +695,8 @@ export const api = {
   companyContact: () => request<CompanyContact>('/api/settings/company'),
   saveCompanyContact: (body: { phone?: string | null; email?: string | null; address?: string | null; website?: string | null }) =>
     request<CompanyContact>('/api/settings/company', { method: 'PUT', body: JSON.stringify(body) }),
-  adminUsers: () => request<Array<Record<string, unknown>>>('/api/admin/users'),
+  adminUsers: (includeArchived = false) =>
+    request<Array<Record<string, unknown>>>(`/api/admin/users${includeArchived ? '?includeArchived=true' : ''}`),
   adminOrgs: () => request<Array<Record<string, unknown>>>('/api/admin/organizations'),
   createOrg: (name: string, code: string) =>
     request('/api/admin/organizations', {
@@ -720,6 +721,10 @@ export const api = {
     request('/api/admin/users', { method: 'POST', body: JSON.stringify(body) }),
   updateUser: (id: string, body: Record<string, unknown>) =>
     request(`/api/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  archiveUser: (id: string) =>
+    request(`/api/admin/users/${id}/archive`, { method: 'POST' }),
+  restoreUser: (id: string) =>
+    request(`/api/admin/users/${id}/restore`, { method: 'POST' }),
   updateUserOrgs: (id: string, organizationIds: string[]) =>
     request(`/api/admin/users/${id}/organizations`, {
       method: 'PUT',

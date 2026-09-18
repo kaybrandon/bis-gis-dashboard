@@ -11,9 +11,13 @@ public sealed class ApplicationUser : IdentityUser<Guid>
     [NotMapped]
     public string PublicName => UserIdentity.PublicName(FullName, DisplayName, UserName, Email);
     public string? WorkPhone { get; set; }
+    public string? JobTitle { get; set; }
     public string? AvatarBlobPath { get; set; }
     public string? AvatarContentType { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsArchived { get; set; }
+    public DateTimeOffset? ArchivedAt { get; set; }
+    public DateTimeOffset? LastLoginAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 
     public ICollection<UserOrganization> Organizations { get; set; } = new List<UserOrganization>();
