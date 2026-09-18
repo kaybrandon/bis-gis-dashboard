@@ -22,7 +22,9 @@ public sealed record HoursSlice(Guid Id, string Name, decimal Hours);
 public sealed record DashboardResponse(
     IReadOnlyList<DashboardKpi> Kpis,
     IReadOnlyList<NamedCount> StatusCounts,
+    /// <summary>CR10 — document counts by technician (Assigned to), including Unassigned.</summary>
     IReadOnlyList<NamedCount> AssigneeCounts,
+    /// <summary>CR10 — document counts by CAD. v1 CAD is Organization (client) name.</summary>
     IReadOnlyList<NamedCount> OrganizationCounts,
     IReadOnlyList<WorkItemListItem> RecentCompleted,
     IReadOnlyList<DayVolume> VolumeOverTime,

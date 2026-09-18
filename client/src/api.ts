@@ -90,7 +90,9 @@ export type DashboardQuery = Pick<WorkItemQuery, 'organizationId' | 'statusId' |
 export type DashboardResponse = {
   kpis: DashboardKpi[]
   statusCounts: NamedCount[]
+  /** CR10 — document counts by technician (Assigned to), including Unassigned. */
   assigneeCounts: NamedCount[]
+  /** CR10 — document counts by CAD. v1 CAD is Organization (client) name. */
   organizationCounts: NamedCount[]
   recentCompleted: WorkItemListItem[]
   volumeOverTime: Array<{ date: string; uploaded: number; completed: number }>

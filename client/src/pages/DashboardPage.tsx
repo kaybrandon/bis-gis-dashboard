@@ -15,7 +15,7 @@ import { WorkItemCards } from '../components/WorkItemCards'
 import { documentsHref, type DocumentsHrefQuery } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
 import { canSeeDashboardAssignee } from '../roles'
-import { UNASSIGNED, activeDocumentsQuery, resolveAssigneeFilter } from '../staffQueue'
+import { UNASSIGNED, activeDocumentsQuery, assigneeHrefValue, resolveAssigneeFilter } from '../staffQueue'
 
 const kpiIcon: Record<string, ReactNode> = {
   active: <ThunderboltOutlined />,
@@ -103,7 +103,7 @@ export function DashboardPage() {
   const filters = {
     organizationId: orgId,
     statusId,
-    assignedToUserId: showAssignee ? assignedTo : undefined,
+    assignedToUserId: showAssignee ? assigneeHrefValue(assignedTo, user) : undefined,
     from: range[0].startOf('day').toISOString(),
     to: range[1].endOf('day').toISOString(),
   }
@@ -200,7 +200,7 @@ export function DashboardPage() {
     <Space direction="vertical" size={8} style={{ width: '100%' }}>
       <div>
         <Typography.Title level={3} className="page-title" style={{ margin: 0 }}>
-          <TitleWithHelp help={`Active, pending, completed, and priority volume for ${user?.displayName ?? 'your account'}. Staff default to items Assigned to you; switch Assigned to — all, Unassigned, or another person. Assigned to is the work-item assignee (queues/reports), not the organization’s Assigned technician. The Active tile is the full matching Active total (not one page) and opens that same queue. The date range filters pending/completed/priority charts (default last 30 days), not the Active count. Viewer and Uploader do not see Assigned to and stay in assigned organizations.`}>
+          <TitleWithHelp help={`Active, pending, completed, and priority volume for ${user?.displayName ?? 'your account'}. Staff default to items Assigned to you; switch Assigned to — all, Unassigned, or another person. Assigned to is the work-item assignee (queues/reports), not the organization’s Assigned technician. Document counts by CAD (v1 = Organization name) and by technician (Assigned to, including Unassigned) use created/uploaded dates in the selected range and match the filtered Manage Documents list. The Active tile is the full matching Active total (not one page) and opens that same queue. The date range filters pending/completed/priority and volume charts (default last 30 days), not the Active count. Viewer and Uploader do not see Assigned to and stay in assigned organizations.`}>
             Dashboard
           </TitleWithHelp>
         </Typography.Title>

@@ -575,7 +575,11 @@ public sealed class WorkItemService : IWorkItemService
             .OrderBy(x => x.SortOrder)
             .ToListAsync(cancellationToken);
 
-        var assigneeRows = await window
+        // CR10 — CAD and technician document counts use created/uploaded in range
+        // (not the uploaded-or-worked KPI window) so they reconcile with Manage Documents.
+        var uploadedWindow = items.Where(x => x.UploadedAtSort >= fromSort && x.UploadedAtSort <= toSort);
+
+        var assigneeRows = await uploadedWindow
             .Where(x => x.AssignedToUserId != null)
             .GroupBy(x => new
             {
@@ -589,11 +593,21 @@ public sealed class WorkItemService : IWorkItemService
             .OrderByDescending(x => x.Count)
             .ToListAsync(cancellationToken);
 
-        var orgCounts = await window
+        var unassignedCount = await uploadedWindow.CountAsync(x => x.AssignedToUserId == null, cancellationToken);
+
+        var orgCounts = await uploadedWindow
             .GroupBy(x => new { x.OrganizationId, x.Organization.Name })
             .Select(g => new { g.Key.OrganizationId, g.Key.Name, Count = g.Count() })
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
+
+        var technicianCounts = assigneeRows
+            .Select(x => new NamedCount(x.AssignedToUserId!.Value, UserIdentity.WithArchivedSuffix(x.Name, x.IsArchived), null, x.Count))
+            .ToList();
+        if (assigneeRows.Count > 0 || unassignedCount > 0)
+        {
+            technicianCounts.Add(new NamedCount(DocumentVolume.UnassignedId, DocumentVolume.UnassignedName, null, unassignedCount));
+        }
 
         var recentRows = await items
             .Where(x =>
@@ -648,7 +662,7 @@ public sealed class WorkItemService : IWorkItemService
                 new DashboardKpi("priority", "Priority", priority, "#f5222d")
             ],
             statusCounts.Select(x => new NamedCount(x.StatusId, x.Name, x.Color, x.Count)).ToList(),
-            assigneeRows.Select(x => new NamedCount(x.AssignedToUserId!.Value, UserIdentity.WithArchivedSuffix(x.Name, x.IsArchived), null, x.Count)).ToList(),
+            technicianCounts,
             orgCounts.Select(x => new NamedCount(x.OrganizationId, x.Name, null, x.Count)).ToList(),
             recentRows.Select(x => new WorkItemListItem(
                 x.Id, x.FileName, x.Title, x.OrganizationId, x.OrganizationName, x.DocumentTypeId, x.DocumentTypeName,
