@@ -223,17 +223,17 @@ public sealed class AuthService : IAuthService
         if (Roles.CanSeeAllOrganizations(role))
         {
             orgs = await _db.Organizations.AsNoTracking()
-                .Where(x => x.IsActive)
+                .Where(x => x.IsActive && !x.IsArchived)
                 .OrderBy(x => x.Name)
-                .Select(x => new OrgOption(x.Id, x.Name, x.Code))
+                .Select(x => new OrgOption(x.Id, x.Name, x.Code, x.IsArchived))
                 .ToListAsync(cancellationToken);
         }
         else
         {
             orgs = await _db.UserOrganizations.AsNoTracking()
-                .Where(x => x.UserId == user.Id)
+                .Where(x => x.UserId == user.Id && !x.Organization.IsArchived)
                 .OrderBy(x => x.Organization.Name)
-                .Select(x => new OrgOption(x.Organization.Id, x.Organization.Name, x.Organization.Code))
+                .Select(x => new OrgOption(x.Organization.Id, x.Organization.Name, x.Organization.Code, x.Organization.IsArchived))
                 .ToListAsync(cancellationToken);
         }
 

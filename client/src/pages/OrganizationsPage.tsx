@@ -14,6 +14,8 @@ import {
 } from '../assignmentLabels'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
+import { ShowArchivedSwitch } from '../components/ShowArchivedSwitch'
+import { orgDisplayName } from '../orgArchive'
 
 type AssignedTech = { id: string; displayName: string; isPrimary?: boolean }
 
@@ -31,6 +33,8 @@ type OrgRow = {
   name: string
   code: string
   isActive: boolean
+  isArchived?: boolean
+  archivedAt?: string | null
   createdAt: string
   hasUploadToken?: boolean
   parcelTotalRealAccounts?: number | null
@@ -39,6 +43,8 @@ type OrgRow = {
   assignedTechs?: AssignedTech[]
   members?: AssignedTech[]
 }
+
+const ARCHIVE_CONFIRM = 'Archive this organization? It leaves active lists. Documents, assignments, and reports keep the name.'
 
 function canAssignAsTech(user: UserRow) {
   if (user.isActive === false) return false
@@ -74,6 +80,7 @@ export function OrganizationsPage() {
   const [linkLoading, setLinkLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
+  const [showArchived, setShowArchived] = useState(false)
   const [addForm] = Form.useForm()
   const [editForm] = Form.useForm()
   const assignedTechIds = Form.useWatch('assignedTechIds', editForm) as string[] | undefined
@@ -81,9 +88,9 @@ export function OrganizationsPage() {
   const canDirectory = !!user?.canManageDirectory
   const canAssignTechs = !!(user?.canManageAssignedTechs ?? user?.canManageDirectory)
 
-  const load = () => {
+  const load = (includeArchived = showArchived) => {
     const jobs: Promise<unknown>[] = [
-      api.adminOrgs().then((data) => setRows(data as OrgRow[])),
+      api.adminOrgs(includeArchived).then((data) => setRows(data as OrgRow[])),
     ]
     if (canDirectory) {
       jobs.push(api.adminUsers().then((data) => setUsers(data as UserRow[])))
@@ -99,7 +106,39 @@ export function OrganizationsPage() {
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load organizations.'))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(showArchived) }, [showArchived])
+
+  const confirmArchive = (row: OrgRow) => {
+    Modal.confirm({
+      title: 'Archive this organization?',
+      content: ARCHIVE_CONFIRM,
+      okText: 'Archive',
+      okButtonProps: { danger: true },
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          await api.archiveOrg(row.id)
+          message.success('Organization archived.')
+          setEditing((current) => current?.id === row.id ? null : current)
+          setViewing((current) => current?.id === row.id ? null : current)
+          load()
+        } catch (err) {
+          message.error(err instanceof Error ? err.message : 'Archive failed.')
+          throw err
+        }
+      },
+    })
+  }
+
+  const restoreOrg = async (row: OrgRow) => {
+    try {
+      await api.restoreOrg(row.id)
+      message.success('Organization restored.')
+      load()
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Restore failed.')
+    }
+  }
 
   const openView = (row: OrgRow) => setViewing(row)
 
@@ -139,13 +178,18 @@ export function OrganizationsPage() {
   return (
     <Card
       title={(
-        <TitleWithHelp help="Client organizations. Runtime isolation is per organization — this app does not call BIS Admin, FTP, or COLO. Each client has a no-login URL that only accepts file uploads. Click a name to view details, or open that client's GIS Maintenance Reports.">
+        <TitleWithHelp help="Client organizations. Runtime isolation is per organization — this app does not call BIS Admin, FTP, or COLO. Each client has a no-login URL that only accepts file uploads. Click a name to view details, or open that client's GIS Maintenance Reports. Archive soft-deletes a client: it leaves active Dashboard and Upload pickers, and document history still shows the organization name.">
           Organizations
         </TitleWithHelp>
       )}
-      extra={canGlobal ? (
-        <Button type="primary" onClick={() => setAddOpen(true)}>Add organization</Button>
-      ) : null}
+      extra={(
+        <Space wrap size={8}>
+          <ShowArchivedSwitch checked={showArchived} onChange={setShowArchived} />
+          {canGlobal ? (
+            <Button type="primary" onClick={() => setAddOpen(true)}>Add organization</Button>
+          ) : null}
+        </Space>
+      )}
       className="bis-theme-panel"
       styles={{ header: { flexWrap: 'wrap', gap: 8 } }}
     >
@@ -156,6 +200,7 @@ export function OrganizationsPage() {
         dataSource={rows}
         pagination={false}
         scroll={{ x: 'max-content' }}
+        rowClassName={(row) => row.isArchived ? 'orgs-row-archived' : ''}
         onRow={(row) => ({
           onClick: () => openView(row),
           style: { cursor: 'pointer' },
@@ -166,7 +211,7 @@ export function OrganizationsPage() {
             dataIndex: 'name',
             render: (name: string, row: OrgRow) => (
               <Button type="link" style={{ padding: 0, height: 'auto' }} onClick={(event) => { stopRowClick(event); openView(row) }}>
-                {name}
+                {orgDisplayName(name, row.isArchived)}
               </Button>
             ),
           },
@@ -174,7 +219,9 @@ export function OrganizationsPage() {
           {
             title: 'Active',
             dataIndex: 'isActive',
-            render: (value: boolean) => <Tag color={value ? 'green' : 'default'}>{value ? 'Active' : 'Inactive'}</Tag>,
+            render: (_value: boolean, row: OrgRow) => row.isArchived
+              ? <Tag>Archived</Tag>
+              : <Tag color={row.isActive ? 'green' : 'default'}>{row.isActive ? 'Active' : 'Inactive'}</Tag>,
           },
           { title: 'Created', dataIndex: 'createdAt', render: (value: string) => dayjs(value).format('YYYY-MM-DD') },
           {
@@ -194,6 +241,13 @@ export function OrganizationsPage() {
                   <Button size="small" onClick={() => openEdit(row)}>
                     Edit
                   </Button>
+                  {canDirectory ? (
+                    row.isArchived ? (
+                      <Button size="small" onClick={() => void restoreOrg(row)}>Restore</Button>
+                    ) : (
+                      <Button size="small" danger onClick={() => confirmArchive(row)}>Archive</Button>
+                    )
+                  ) : null}
                   {canDirectory ? (
                     <Button size="small" icon={<LinkOutlined />} onClick={() => void openLink(row)}>
                       Upload link
@@ -242,7 +296,7 @@ export function OrganizationsPage() {
       </Modal>
 
       <Modal
-        title={viewing ? viewing.name : 'Client'}
+        title={viewing ? orgDisplayName(viewing.name, viewing.isArchived) : 'Client'}
         open={!!viewing}
         onCancel={() => setViewing(null)}
         footer={viewing ? (
@@ -254,6 +308,13 @@ export function OrganizationsPage() {
                 Upload link
               </Button>
             ) : null}
+            {canDirectory ? (
+              viewing.isArchived ? (
+                <Button onClick={() => void restoreOrg(viewing)}>Restore</Button>
+              ) : (
+                <Button danger onClick={() => confirmArchive(viewing)}>Archive</Button>
+              )
+            ) : null}
             <Button type="primary" onClick={() => openEdit(viewing)}>Edit</Button>
           </Space>
         ) : null}
@@ -262,10 +323,12 @@ export function OrganizationsPage() {
       >
         {viewing && (
           <Descriptions bordered size="small" column={1}>
-            <Descriptions.Item label="Client">{viewing.name}</Descriptions.Item>
+            <Descriptions.Item label="Client">{orgDisplayName(viewing.name, viewing.isArchived)}</Descriptions.Item>
             <Descriptions.Item label="Code">{viewing.code}</Descriptions.Item>
             <Descriptions.Item label="Active">
-              <Tag color={viewing.isActive ? 'green' : 'default'}>{viewing.isActive ? 'Active' : 'Inactive'}</Tag>
+              {viewing.isArchived
+                ? <Tag>Archived</Tag>
+                : <Tag color={viewing.isActive ? 'green' : 'default'}>{viewing.isActive ? 'Active' : 'Inactive'}</Tag>}
             </Descriptions.Item>
             <Descriptions.Item label="Created">{dayjs(viewing.createdAt).format('YYYY-MM-DD')}</Descriptions.Item>
             <Descriptions.Item label="Time report cards">
@@ -287,7 +350,26 @@ export function OrganizationsPage() {
         )}
       </Modal>
 
-      <Modal title="Edit organization" open={!!editing} onCancel={() => setEditing(null)} onOk={() => editForm.submit()} destroyOnHidden width="min(560px, calc(100vw - 24px))">
+      <Modal
+        title="Edit organization"
+        open={!!editing}
+        onCancel={() => setEditing(null)}
+        footer={editing ? (
+          <Space wrap style={{ width: '100%', justifyContent: 'flex-end' }}>
+            {canDirectory ? (
+              editing.isArchived ? (
+                <Button onClick={() => void restoreOrg(editing)}>Restore</Button>
+              ) : (
+                <Button danger onClick={() => confirmArchive(editing)}>Archive</Button>
+              )
+            ) : null}
+            <Button onClick={() => setEditing(null)}>Cancel</Button>
+            <Button type="primary" onClick={() => editForm.submit()}>OK</Button>
+          </Space>
+        ) : undefined}
+        destroyOnHidden
+        width="min(560px, calc(100vw - 24px))"
+      >
         <Form
           form={editForm}
           layout="vertical"

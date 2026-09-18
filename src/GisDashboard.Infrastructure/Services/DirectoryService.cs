@@ -30,7 +30,7 @@ public sealed class DirectoryService : IDirectoryService
         _orgScope = orgScope;
     }
 
-    public async Task<IReadOnlyList<OrganizationDto>> ListOrganizationsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<OrganizationDto>> ListOrganizationsAsync(bool includeArchived = false, CancellationToken cancellationToken = default)
     {
         EnsureAssignedTechManager();
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
@@ -39,7 +39,7 @@ public sealed class DirectoryService : IDirectoryService
             .ThenInclude(x => x.User)
             .Include(x => x.Members)
             .ThenInclude(x => x.User)
-            .Where(x => allowed.Contains(x.Id))
+            .Where(x => allowed.Contains(x.Id) && (includeArchived || !x.IsArchived))
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
         return orgs.Select(MapOrg).ToList();
@@ -130,6 +130,34 @@ public sealed class DirectoryService : IDirectoryService
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+        return MapOrg(await LoadOrganizationGraphAsync(org.Id, cancellationToken));
+    }
+
+    public async Task<OrganizationDto> ArchiveOrganizationAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        EnsureDirectoryManager();
+        var org = await LoadScopedOrganizationAsync(id, cancellationToken);
+        if (!org.IsArchived)
+        {
+            org.IsArchived = true;
+            org.ArchivedAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        return MapOrg(await LoadOrganizationGraphAsync(org.Id, cancellationToken));
+    }
+
+    public async Task<OrganizationDto> RestoreOrganizationAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        EnsureDirectoryManager();
+        var org = await LoadScopedOrganizationAsync(id, cancellationToken);
+        if (org.IsArchived)
+        {
+            org.IsArchived = false;
+            org.ArchivedAt = null;
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
         return MapOrg(await LoadOrganizationGraphAsync(org.Id, cancellationToken));
     }
 
@@ -397,13 +425,13 @@ public sealed class DirectoryService : IDirectoryService
             .ToList();
     }
 
-    public async Task<IReadOnlyList<OrgOption>> ListAccessibleOrganizationsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<OrgOption>> ListAccessibleOrganizationsAsync(bool includeArchived = false, CancellationToken cancellationToken = default)
     {
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
         return await _db.Organizations.AsNoTracking()
-            .Where(x => allowed.Contains(x.Id))
+            .Where(x => allowed.Contains(x.Id) && (includeArchived || !x.IsArchived))
             .OrderBy(x => x.Name)
-            .Select(x => new OrgOption(x.Id, x.Name, x.Code))
+            .Select(x => new OrgOption(x.Id, x.Name, x.Code, x.IsArchived))
             .ToListAsync(cancellationToken);
     }
 
@@ -537,10 +565,18 @@ public sealed class DirectoryService : IDirectoryService
             throw new ValidationException("Uploader and Viewer accounts must be assigned to at least one organization.");
         }
 
-        var existing = await _db.Organizations.CountAsync(x => distinct.Contains(x.Id), cancellationToken);
-        if (existing != distinct.Count)
+        var existing = await _db.Organizations
+            .Where(x => distinct.Contains(x.Id))
+            .Select(x => new { x.Id, x.IsArchived })
+            .ToListAsync(cancellationToken);
+        if (existing.Count != distinct.Count)
         {
             throw new ValidationException("One or more organizations were not found.");
+        }
+
+        if (existing.Any(x => x.IsArchived))
+        {
+            throw new ValidationException("Archived organizations cannot be newly assigned.");
         }
 
         if (!_currentUser.IsGlobalAdmin)
@@ -691,15 +727,23 @@ public sealed class DirectoryService : IDirectoryService
         IReadOnlyList<Guid> orgIds,
         CancellationToken cancellationToken)
     {
-        var existing = await _db.UserOrganizations.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+        var existing = await _db.UserOrganizations
+            .Include(x => x.Organization)
+            .Where(x => x.UserId == userId)
+            .ToListAsync(cancellationToken);
+        var keepArchived = existing
+            .Where(x => x.Organization.IsArchived)
+            .Select(x => x.OrganizationId)
+            .ToHashSet();
+        var next = orgIds.Concat(keepArchived).Distinct().ToList();
         _db.UserOrganizations.RemoveRange(existing);
-        foreach (var orgId in orgIds)
+        foreach (var orgId in next)
         {
             _db.UserOrganizations.Add(new UserOrganization { UserId = userId, OrganizationId = orgId });
         }
 
-        await SyncAssignedTechsForUserAsync(userId, role, orgIds, cancellationToken);
-        foreach (var orgId in orgIds.Concat(existing.Select(x => x.OrganizationId)).Distinct())
+        await SyncAssignedTechsForUserAsync(userId, role, next, cancellationToken);
+        foreach (var orgId in next.Concat(existing.Select(x => x.OrganizationId)).Distinct())
         {
             await EnsureOrgHasPrimaryAsync(orgId, cancellationToken);
         }
@@ -784,7 +828,9 @@ public sealed class DirectoryService : IDirectoryService
             org.ParcelWithOwnership,
             org.TimeReportCardsVisible,
             Techs(org.AssignedTechs),
-            People(org.Members?.Select(x => (x.UserId, HistoricalOrgName(x.User)))));
+            People(org.Members?.Select(x => (x.UserId, HistoricalOrgName(x.User)))),
+            org.IsArchived,
+            org.ArchivedAt);
 
     private async Task<string> UniqueUsernameAsync(
         Guid userId,
@@ -851,7 +897,9 @@ public sealed class DirectoryService : IDirectoryService
             user.DisplayName,
             role,
             user.IsActive,
-            user.Organizations.Select(x => new OrgMember(x.OrganizationId, x.Organization.Name)).ToList(),
+            user.Organizations.Select(x => new OrgMember(
+                x.OrganizationId,
+                OrganizationIdentity.HistoricalName(x.Organization.Name, x.Organization.IsArchived))).ToList(),
             user.FullName,
             user.WorkPhone,
             !string.IsNullOrWhiteSpace(user.AvatarBlobPath),

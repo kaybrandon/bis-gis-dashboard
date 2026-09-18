@@ -7,6 +7,8 @@ import type { OrgOption, ReportCadence, ReportListItem } from '../api'
 import { api } from '../api'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
+import { ShowArchivedSwitch } from '../components/ShowArchivedSwitch'
+import { orgPickerOption } from '../orgArchive'
 import { useAuth } from '../auth'
 import { useIsMobile } from '../layout/useIsMobile'
 
@@ -16,6 +18,7 @@ export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const isMobile = useIsMobile()
   const [orgs, setOrgs] = useState<OrgOption[]>([])
+  const [showArchived, setShowArchived] = useState(false)
   const [orgId, setOrgId] = useState<string | undefined>(() => searchParams.get('organizationId') ?? undefined)
   const [cadence, setCadence] = useState<ReportCadence>('Monthly')
   const [month, setMonth] = useState<Dayjs>(dayjs('2026-09-01'))
@@ -28,16 +31,25 @@ export function ReportsPage() {
 
   const loadOrgs = useCallback(async () => {
     try {
-      const list = await api.organizations()
+      const requested = searchParams.get('organizationId')
+      let list = await api.organizations(showArchived)
+      if (requested && !list.some((org) => org.id === requested)) {
+        const archived = await api.organizations(true)
+        if (archived.some((org) => org.id === requested)) {
+          list = archived
+          setShowArchived(true)
+        }
+      }
       setOrgs(list)
       setOrgId((current) => {
         if (current && list.some((org) => org.id === current)) return current
+        if (requested && list.some((org) => org.id === requested)) return requested
         return list[0]?.id
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load organizations.')
     }
-  }, [])
+  }, [searchParams, showArchived])
 
   const selectOrg = (id: string) => {
     setOrgId(id)
@@ -140,8 +152,9 @@ export function ReportsPage() {
             className="filter-field"
             value={orgId}
             onChange={selectOrg}
-            options={orgs.map((o) => ({ value: o.id, label: o.name }))}
+            options={orgs.map(orgPickerOption)}
           />
+          <ShowArchivedSwitch checked={showArchived} onChange={setShowArchived} />
           {canGenerate && (
             <>
               <Select

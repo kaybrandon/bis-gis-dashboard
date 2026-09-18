@@ -11,7 +11,9 @@ public sealed record OrganizationDto(
     int? ParcelWithOwnership,
     bool TimeReportCardsVisible,
     IReadOnlyList<AssignedTechDto> AssignedTechs,
-    IReadOnlyList<AssignedTechDto> Members);
+    IReadOnlyList<AssignedTechDto> Members,
+    bool IsArchived = false,
+    DateTimeOffset? ArchivedAt = null);
 
 public sealed record AssignedTechDto(Guid Id, string DisplayName, bool IsPrimary = false);
 

@@ -75,6 +75,7 @@ public sealed class WorkItemService : IWorkItemService
                 x.Title,
                 x.OrganizationId,
                 OrganizationName = x.Organization.Name,
+                OrganizationIsArchived = x.Organization.IsArchived,
                 x.DocumentTypeId,
                 DocumentTypeName = x.DocumentType.Name,
                 x.StatusId,
@@ -111,7 +112,7 @@ public sealed class WorkItemService : IWorkItemService
             x.FileName,
             x.Title,
             x.OrganizationId,
-            x.OrganizationName,
+            OrganizationIdentity.HistoricalName(x.OrganizationName, x.OrganizationIsArchived),
             x.DocumentTypeId,
             x.DocumentTypeName,
             x.StatusId,
@@ -654,8 +655,8 @@ public sealed class WorkItemService : IWorkItemService
         var unassignedCount = await uploadedWindow.CountAsync(x => x.AssignedToUserId == null, cancellationToken);
 
         var orgCounts = await uploadedWindow
-            .GroupBy(x => new { x.OrganizationId, x.Organization.Name })
-            .Select(g => new { g.Key.OrganizationId, g.Key.Name, Count = g.Count() })
+            .GroupBy(x => new { x.OrganizationId, x.Organization.Name, x.Organization.IsArchived })
+            .Select(g => new { g.Key.OrganizationId, g.Key.Name, g.Key.IsArchived, Count = g.Count() })
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
 
@@ -681,6 +682,7 @@ public sealed class WorkItemService : IWorkItemService
                 x.Title,
                 x.OrganizationId,
                 OrganizationName = x.Organization.Name,
+                OrganizationIsArchived = x.Organization.IsArchived,
                 x.DocumentTypeId,
                 DocumentTypeName = x.DocumentType.Name,
                 x.StatusId,
@@ -727,9 +729,9 @@ public sealed class WorkItemService : IWorkItemService
                 .Select(x => new NamedCount(x.StatusId, StatusDisplay.Label(x.Name), x.Color, x.Count))
                 .ToList(),
             technicianCounts,
-            orgCounts.Select(x => new NamedCount(x.OrganizationId, x.Name, null, x.Count)).ToList(),
+            orgCounts.Select(x => new NamedCount(x.OrganizationId, OrganizationIdentity.HistoricalName(x.Name, x.IsArchived), null, x.Count)).ToList(),
             recentRows.Select(x => new WorkItemListItem(
-                x.Id, x.FileName, x.Title, x.OrganizationId, x.OrganizationName, x.DocumentTypeId, x.DocumentTypeName,
+                x.Id, x.FileName, x.Title, x.OrganizationId, OrganizationIdentity.HistoricalName(x.OrganizationName, x.OrganizationIsArchived), x.DocumentTypeId, x.DocumentTypeName,
                 x.StatusId, StatusDisplay.Label(x.StatusName), x.StatusColor,
                 x.AssignedToUserId is null
                     ? null
@@ -875,6 +877,7 @@ public sealed class WorkItemService : IWorkItemService
                 x.Title,
                 x.OrganizationId,
                 OrganizationName = x.Organization.Name,
+                OrganizationIsArchived = x.Organization.IsArchived,
                 x.DocumentTypeId,
                 DocumentTypeName = x.DocumentType.Name,
                 x.StatusId,
@@ -907,7 +910,7 @@ public sealed class WorkItemService : IWorkItemService
             .ToListAsync(cancellationToken);
 
         var items = rows.Select(x => new WorkItemListItem(
-            x.Id, x.FileName, x.Title, x.OrganizationId, x.OrganizationName, x.DocumentTypeId, x.DocumentTypeName,
+            x.Id, x.FileName, x.Title, x.OrganizationId, OrganizationIdentity.HistoricalName(x.OrganizationName, x.OrganizationIsArchived), x.DocumentTypeId, x.DocumentTypeName,
             x.StatusId, StatusDisplay.Label(x.StatusName), x.StatusColor,
             x.AssignedToUserId is null
                 ? null
@@ -934,7 +937,7 @@ public sealed class WorkItemService : IWorkItemService
 
         var value = token.Trim();
         var org = await _db.Organizations.FirstOrDefaultAsync(x => x.UploadToken == value, cancellationToken);
-        if (org is null || !org.IsActive)
+        if (org is null || !org.IsActive || org.IsArchived)
         {
             throw new NotFoundException("Upload link was not found.");
         }
@@ -1019,6 +1022,7 @@ public sealed class WorkItemService : IWorkItemService
             {
                 x.OrganizationId,
                 Name = x.Organization.Name,
+                IsArchived = x.Organization.IsArchived,
                 Minutes = x.TimeEntries
                     .Where(t => t.WorkedOnSort >= fromSort && t.WorkedOnSort <= toSort)
                     .Sum(t => t.Minutes)
@@ -1026,8 +1030,8 @@ public sealed class WorkItemService : IWorkItemService
             .ToListAsync(cancellationToken);
 
         return rows
-            .GroupBy(x => new { x.OrganizationId, x.Name })
-            .Select(g => new HoursSlice(g.Key.OrganizationId, g.Key.Name, TimeDurations.ToHours(g.Sum(x => x.Minutes))))
+            .GroupBy(x => new { x.OrganizationId, x.Name, x.IsArchived })
+            .Select(g => new HoursSlice(g.Key.OrganizationId, OrganizationIdentity.HistoricalName(g.Key.Name, g.Key.IsArchived), TimeDurations.ToHours(g.Sum(x => x.Minutes))))
             .Where(x => x.Hours > 0)
             .OrderByDescending(x => x.Hours)
             .Take(8)
@@ -1391,7 +1395,7 @@ public sealed class WorkItemService : IWorkItemService
             item.FileName,
             item.Title,
             item.OrganizationId,
-            item.Organization.Name,
+            OrganizationIdentity.HistoricalName(item.Organization.Name, item.Organization.IsArchived),
             item.DocumentTypeId,
             item.DocumentType.Name,
             item.StatusId,

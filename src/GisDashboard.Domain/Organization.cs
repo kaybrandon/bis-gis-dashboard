@@ -6,6 +6,8 @@ public sealed class Organization
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public bool IsArchived { get; set; }
+    public DateTimeOffset? ArchivedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public string? UploadToken { get; set; }
     public DateTimeOffset? UploadTokenCreatedAt { get; set; }

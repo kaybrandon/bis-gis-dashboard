@@ -1,4 +1,4 @@
-export type OrgOption = { id: string; name: string; code: string }
+export type OrgOption = { id: string; name: string; code: string; isArchived?: boolean }
 export type AuthUser = {
   id: string
   email: string
@@ -667,7 +667,8 @@ export const api = {
   fileUrl: (id: string) => `/api/work-items/${id}/file`,
   documentTypes: () => request<LookupItem[]>('/api/lookups/document-types'),
   statuses: () => request<LookupItem[]>('/api/lookups/statuses'),
-  organizations: () => request<OrgOption[]>('/api/lookups/organizations'),
+  organizations: (includeArchived = false) =>
+    request<OrgOption[]>(`/api/lookups/organizations${includeArchived ? '?includeArchived=true' : ''}`),
   assignableUsers: (organizationId: string) =>
     request<AssignableUser[]>(`/api/lookups/assignable-users?organizationId=${organizationId}`),
   assignedTechnicians: (organizationId: string) =>
@@ -706,7 +707,8 @@ export const api = {
     request<CompanyContact>('/api/settings/company', { method: 'PUT', body: JSON.stringify(body) }),
   adminUsers: (includeArchived = false) =>
     request<Array<Record<string, unknown>>>(`/api/admin/users${includeArchived ? '?includeArchived=true' : ''}`),
-  adminOrgs: () => request<Array<Record<string, unknown>>>('/api/admin/organizations'),
+  adminOrgs: (includeArchived = false) =>
+    request<Array<Record<string, unknown>>>(`/api/admin/organizations${includeArchived ? '?includeArchived=true' : ''}`),
   createOrg: (name: string, code: string) =>
     request('/api/admin/organizations', {
       method: 'POST',
@@ -723,6 +725,10 @@ export const api = {
     primaryAssignedTechId?: string | null
   }) =>
     request(`/api/admin/organizations/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  archiveOrg: (id: string) =>
+    request(`/api/admin/organizations/${id}/archive`, { method: 'POST' }),
+  restoreOrg: (id: string) =>
+    request(`/api/admin/organizations/${id}/restore`, { method: 'POST' }),
   orgUploadLink: (id: string) => request<UploadLink>(`/api/admin/organizations/${id}/upload-link`),
   regenerateOrgUploadLink: (id: string) =>
     request<UploadLink>(`/api/admin/organizations/${id}/upload-link/regenerate`, { method: 'POST' }),

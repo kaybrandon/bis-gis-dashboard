@@ -9,6 +9,8 @@ import { ASSIGNED_TO_LABEL, ASSIGNED_TO_UPLOAD_HELP } from '../assignmentLabels'
 import { AssignedTechnicianField, type AssignedTechnician } from '../components/AssignedTechnicianField'
 import { CompanyContactBlock } from '../components/CompanyContactBlock'
 import { TitleWithHelp } from '../components/HelpTip'
+import { ShowArchivedSwitch } from '../components/ShowArchivedSwitch'
+import { orgDisplayName, orgPickerOption } from '../orgArchive'
 import { UploadBatchProgress } from '../components/UploadBatchProgress'
 import { DEFAULT_REQUIRED_FILE_MESSAGE, dropzoneHint, dropzoneText } from '../uploadFileTypes'
 import {
@@ -58,6 +60,7 @@ export function UploadDocumentsPage() {
   const [queue, setQueue] = useState<UploadQueueItem[]>([])
   const [hideCompleted, setHideCompleted] = useState(false)
   const [completeDismissed, setCompleteDismissed] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const organizationId = Form.useWatch('organizationId', form)
   const isStaff = !!user?.canMutateWorkItems
   const showOrgSelector = isStaff || (user?.organizations.length ?? 0) > 1
@@ -67,10 +70,10 @@ export function UploadDocumentsPage() {
   useEffect(() => {
     if (!user?.canUpload) return
     setQueue([])
-    Promise.all([api.organizations(), api.documentTypes(), api.settings()])
+    Promise.all([api.organizations(showArchived), api.documentTypes(), api.settings()])
       .then(([lookupOrgs, t, settings]) => {
         const map = new Map<string, OrgOption>()
-        for (const org of [...lookupOrgs, ...(user?.organizations ?? [])]) {
+        for (const org of [...lookupOrgs, ...((showArchived ? [] : user?.organizations) ?? [])]) {
           if (org?.id) map.set(org.id, org)
         }
         const merged = [...map.values()]
@@ -78,13 +81,17 @@ export function UploadDocumentsPage() {
         setTypes(t)
         setLimits(parseUploadLimits(settings))
         const locked = !isStaff && user?.organizations.length === 1 ? user.organizations[0].id : undefined
+        const current = form.getFieldValue('organizationId') as string | undefined
+        const nextOrg = locked
+          ?? (current && merged.some((org) => org.id === current) ? current : undefined)
+          ?? (merged.length === 1 ? merged[0].id : undefined)
         form.setFieldsValue({
-          organizationId: locked ?? (merged.length === 1 ? merged[0].id : form.getFieldValue('organizationId')),
+          organizationId: nextOrg,
           documentTypeId: isStaff ? (t[0]?.id ?? form.getFieldValue('documentTypeId')) : undefined,
         })
       })
       .catch((err) => message.error(err instanceof Error ? err.message : 'Lookups failed to load.'))
-  }, [form, isStaff, user])
+  }, [form, isStaff, showArchived, user])
 
   useEffect(() => {
     const id = formId(organizationId)
@@ -184,11 +191,20 @@ export function UploadDocumentsPage() {
           <Row gutter={[12, 0]}>
             <Col xs={24} sm={12}>
               {showOrgSelector ? (
-                <Form.Item name="organizationId" label="Client" rules={[{ required: true, message: 'Select a client organization.' }]}>
+                <Form.Item
+                  name="organizationId"
+                  label={(
+                    <Space size={8}>
+                      <span>Client</span>
+                      <ShowArchivedSwitch checked={showArchived} onChange={setShowArchived} />
+                    </Space>
+                  )}
+                  rules={[{ required: true, message: 'Select a client organization.' }]}
+                >
                   <Select
                     showSearch
                     optionFilterProp="label"
-                    options={orgs.map((o) => ({ value: o.id, label: o.name }))}
+                    options={orgs.map(orgPickerOption)}
                     disabled={saving}
                   />
                 </Form.Item>
@@ -197,8 +213,15 @@ export function UploadDocumentsPage() {
                   <Form.Item name="organizationId" hidden>
                     <Input />
                   </Form.Item>
-                  <Form.Item label="Client">
-                    <Input value={user.organizations[0]?.name ?? ''} disabled />
+                  <Form.Item
+                    label={(
+                      <Space size={8}>
+                        <span>Client</span>
+                        <ShowArchivedSwitch checked={showArchived} onChange={setShowArchived} />
+                      </Space>
+                    )}
+                  >
+                    <Input value={orgDisplayName(user.organizations[0]?.name ?? '', user.organizations[0]?.isArchived) || orgs[0]?.name || ''} disabled />
                   </Form.Item>
                 </>
               )}

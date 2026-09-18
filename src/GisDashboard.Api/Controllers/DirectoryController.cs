@@ -26,8 +26,10 @@ public sealed class DirectoryController : ControllerBase
         _directory.ListStatusesAsync(cancellationToken);
 
     [HttpGet("lookups/organizations")]
-    public Task<IReadOnlyList<OrgOption>> AccessibleOrganizations(CancellationToken cancellationToken) =>
-        _directory.ListAccessibleOrganizationsAsync(cancellationToken);
+    public Task<IReadOnlyList<OrgOption>> AccessibleOrganizations(
+        [FromQuery] bool includeArchived = false,
+        CancellationToken cancellationToken = default) =>
+        _directory.ListAccessibleOrganizationsAsync(includeArchived, cancellationToken);
 
     [HttpGet("lookups/assignable-users")]
     public Task<IReadOnlyList<AssignableUser>> AssignableUsers([FromQuery] Guid organizationId, CancellationToken cancellationToken) =>
@@ -49,8 +51,10 @@ public sealed class DirectoryController : ControllerBase
 
     [Authorize(Roles = Domain.Roles.AssignedTechManagers)]
     [HttpGet("admin/organizations")]
-    public Task<IReadOnlyList<OrganizationDto>> AdminOrganizations(CancellationToken cancellationToken) =>
-        _directory.ListOrganizationsAsync(cancellationToken);
+    public Task<IReadOnlyList<OrganizationDto>> AdminOrganizations(
+        [FromQuery] bool includeArchived = false,
+        CancellationToken cancellationToken = default) =>
+        _directory.ListOrganizationsAsync(includeArchived, cancellationToken);
 
     [Authorize(Roles = Domain.Roles.GlobalAdministrator)]
     [HttpPost("admin/organizations")]
@@ -61,6 +65,16 @@ public sealed class DirectoryController : ControllerBase
     [HttpPut("admin/organizations/{id:guid}")]
     public Task<OrganizationDto> UpdateOrganization(Guid id, [FromBody] UpdateOrganizationRequest request, CancellationToken cancellationToken) =>
         _directory.UpdateOrganizationAsync(id, request, cancellationToken);
+
+    [Authorize(Roles = Domain.Roles.DirectoryManagers)]
+    [HttpPost("admin/organizations/{id:guid}/archive")]
+    public Task<OrganizationDto> ArchiveOrganization(Guid id, CancellationToken cancellationToken) =>
+        _directory.ArchiveOrganizationAsync(id, cancellationToken);
+
+    [Authorize(Roles = Domain.Roles.DirectoryManagers)]
+    [HttpPost("admin/organizations/{id:guid}/restore")]
+    public Task<OrganizationDto> RestoreOrganization(Guid id, CancellationToken cancellationToken) =>
+        _directory.RestoreOrganizationAsync(id, cancellationToken);
 
     [Authorize(Roles = Domain.Roles.DirectoryManagers)]
     [HttpGet("admin/organizations/{id:guid}/upload-link")]
