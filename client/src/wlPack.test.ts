@@ -109,9 +109,12 @@ describe('WL pack UI Musts', () => {
     assert.equal(viewerKind('image/png', 'scan.png'), 'image')
   })
 
-  it('WL13 — staff Manage Documents defaults to the signed-in Assigned to', () => {
+  it('WL13 — staff Manage Documents defaults to the signed-in Assigned to when they have work', () => {
     const editor = { id: 'editor-1', role: 'Editor' as const, canSeeDashboardAssignee: true }
     assert.equal(resolveAssigneeFilter(undefined, editor), 'editor-1')
-    assert.match(manage, /resolveAssigneeFilter\(params.get\('assignedToUserId'\), user\)/)
+    assert.equal(resolveAssigneeFilter(undefined, editor, 3), 'editor-1')
+    assert.match(manage, /resolveAssigneeFilter\(/)
+    assert.match(manage, /shouldProbeMyQueue/)
+    assert.match(manage, /if \(!queueScopeReady\) return/)
   })
 })

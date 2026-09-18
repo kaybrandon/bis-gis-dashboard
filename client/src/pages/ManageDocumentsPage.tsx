@@ -39,7 +39,9 @@ import {
   QUEUE_SORT_DIR,
   UNASSIGNED,
   defaultDocumentsBucket,
+  queuePresetForAssigneeDefault,
   resolveAssigneeFilter,
+  shouldProbeMyQueue,
 } from '../staffQueue'
 import { manageDocumentsRowClassName, manageDocumentsTableTheme } from '../theme/bisManageDocuments'
 import '../theme/bisManageDocuments.css'
@@ -148,6 +150,8 @@ export function ManageDocumentsPage() {
   const [assignedTo, setAssignedTo] = useState<string | undefined>(() =>
     resolveAssigneeFilter(params.get('assignedToUserId'), user),
   )
+  const [myQueueCount, setMyQueueCount] = useState<number | undefined>()
+  const [queueScopeReady, setQueueScopeReady] = useState(false)
   const [docTypeId, setDocTypeId] = useState<string | undefined>(() => params.get('documentTypeId') ?? undefined)
   const [uploaded, setUploaded] = useState<[Dayjs | null, Dayjs | null] | null>(() => {
     const from = parseDay(params.get('uploadedFrom'))
@@ -235,35 +239,65 @@ export function ManageDocumentsPage() {
   }, [message, query])
 
   useEffect(() => {
+    let cancelled = false
+    const rawAssignee = params.get('assignedToUserId')
     const hasFilter = !!(
       params.get('statusId') ||
       params.get('organizationId') ||
-      params.get('assignedToUserId') ||
+      rawAssignee ||
       params.get('uploadedFrom') ||
       params.get('workedFrom')
     )
     const nextBucket = params.get('bucket')
-    const resolvedBucket = nextBucket && bucketKeys.includes(nextBucket as Bucket)
-      ? nextBucket
-      : defaultDocumentsBucket(null, readQueuePreset(), user, hasFilter)
-    if (nextBucket && bucketKeys.includes(nextBucket as Bucket)) {
-      setBucket(nextBucket as Bucket)
-      setQueuePreset(nextBucket === 'mine' || nextBucket === 'unassigned' || nextBucket === 'priority' || nextBucket === 'duethisweek' ? nextBucket : '')
-    } else {
-      setBucket(resolvedBucket as Bucket)
+
+    const applyScope = (nextAssigned: string | undefined, count?: number) => {
+      const savedPreset = queuePresetForAssigneeDefault(readQueuePreset(), rawAssignee, nextAssigned, user)
+      const resolvedBucket = nextBucket && bucketKeys.includes(nextBucket as Bucket)
+        ? nextBucket
+        : defaultDocumentsBucket(null, savedPreset, user, hasFilter)
+      if (nextBucket && bucketKeys.includes(nextBucket as Bucket)) {
+        setBucket(nextBucket as Bucket)
+        setQueuePreset(nextBucket === 'mine' || nextBucket === 'unassigned' || nextBucket === 'priority' || nextBucket === 'duethisweek' ? nextBucket : '')
+      } else {
+        setBucket(resolvedBucket as Bucket)
+        if (savedPreset !== readQueuePreset()) setQueuePreset('')
+      }
+      setOrgId(params.get('organizationId') ?? undefined)
+      setStatusId(params.get('statusId') ?? undefined)
+      setAssignedTo(resolvedBucket === 'unassigned' && !rawAssignee ? UNASSIGNED : nextAssigned)
+      if (count !== undefined) setMyQueueCount(count)
+      setDocTypeId(params.get('documentTypeId') ?? undefined)
+      const uploadedFrom = parseDay(params.get('uploadedFrom'))
+      const uploadedTo = parseDay(params.get('uploadedTo'))
+      setUploaded(uploadedFrom || uploadedTo ? [uploadedFrom, uploadedTo] : null)
+      const workedFrom = parseDay(params.get('workedFrom'))
+      const workedTo = parseDay(params.get('workedTo'))
+      setWorked(workedFrom || workedTo ? [workedFrom, workedTo] : null)
+      setPage(1)
     }
-    setOrgId(params.get('organizationId') ?? undefined)
-    setStatusId(params.get('statusId') ?? undefined)
-    const nextAssigned = resolveAssigneeFilter(params.get('assignedToUserId'), user)
-    setAssignedTo(resolvedBucket === 'unassigned' && !params.get('assignedToUserId') ? UNASSIGNED : nextAssigned)
-    setDocTypeId(params.get('documentTypeId') ?? undefined)
-    const uploadedFrom = parseDay(params.get('uploadedFrom'))
-    const uploadedTo = parseDay(params.get('uploadedTo'))
-    setUploaded(uploadedFrom || uploadedTo ? [uploadedFrom, uploadedTo] : null)
-    const workedFrom = parseDay(params.get('workedFrom'))
-    const workedTo = parseDay(params.get('workedTo'))
-    setWorked(workedFrom || workedTo ? [workedFrom, workedTo] : null)
-    setPage(1)
+
+    const finish = (nextAssigned: string | undefined, count?: number) => {
+      if (cancelled) return
+      applyScope(nextAssigned, count)
+      setQueueScopeReady(true)
+    }
+
+    if (!user) return
+
+    if (shouldProbeMyQueue(rawAssignee, user)) {
+      setQueueScopeReady(false)
+      void api.workItems({ assignedToUserId: user.id, page: 1, pageSize: 1 })
+        .then((result) => finish(resolveAssigneeFilter(rawAssignee, user, result.total), result.total))
+        .catch(() => finish(resolveAssigneeFilter(rawAssignee, user)))
+      return () => {
+        cancelled = true
+      }
+    }
+
+    finish(resolveAssigneeFilter(rawAssignee, user))
+    return () => {
+      cancelled = true
+    }
   }, [params, user])
 
   useEffect(() => {
@@ -271,8 +305,9 @@ export function ManageDocumentsPage() {
   }, [loadLookups])
 
   useEffect(() => {
+    if (!queueScopeReady) return
     void load()
-  }, [load])
+  }, [load, queueScopeReady])
 
   const applyBucket = (next: Bucket) => {
     setPage(1)
@@ -302,8 +337,8 @@ export function ManageDocumentsPage() {
       setBucket(preset)
       return
     }
-    if (showAssignee && user?.id) {
-      setAssignedTo(user.id)
+    if (showAssignee) {
+      setAssignedTo(resolveAssigneeFilter(undefined, user, myQueueCount))
       setBucket('all')
       setSortBy(QUEUE_SORT_BY)
       setSortDir(QUEUE_SORT_DIR)
@@ -611,7 +646,7 @@ export function ManageDocumentsPage() {
       <Flex justify="space-between" align="flex-start" wrap="wrap" gap={8}>
         <div>
           <Typography.Title level={3} className="page-title" style={{ margin: 0 }}>
-            <TitleWithHelp help="Staff land on items Assigned to you, Pending first then oldest upload. Switch Assigned to — all, Unassigned, or another person. Assigned to is the work-item assignee (queues/reports). Assigned technician is the org default used only to auto-assign new uploads. Viewer and Uploader do not see Assigned to and stay in assigned organizations. Editors can change status and Assigned to in the grid. My queue presets stay in this browser.">
+            <TitleWithHelp help="Staff with assigned work land on items Assigned to you, Pending first then oldest upload. Global Admin and an empty personal queue land on Assigned to — all / All items so counts match that scope. Switch Assigned to — all, Unassigned, or another person. Assigned to is the work-item assignee (queues/reports). Assigned technician is the org default used only to auto-assign new uploads. Viewer and Uploader do not see Assigned to and stay in assigned organizations. Editors can change status and Assigned to in the grid. My queue presets stay in this browser.">
               Manage Documents
             </TitleWithHelp>
           </Typography.Title>

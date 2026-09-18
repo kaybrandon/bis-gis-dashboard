@@ -207,6 +207,8 @@ public sealed class Cr03Cr05Tests : IClassFixture<ApiFactory>
         queue.Should().Contain("CR05");
         queue.Should().Contain("Pending");
         queue.Should().Contain("QC08");
+        queue.Should().Contain("Global Admin");
+        queue.Should().Contain("All items");
 
         var assignee = settings.GetProperty("features").GetProperty("dashboardAssignee").GetProperty("note").GetString();
         assignee.Should().Contain("CR05");
