@@ -532,14 +532,20 @@ public sealed class WorkItemService : IWorkItemService
             items = items.Where(x => x.OrganizationId == orgId);
         }
 
-        if (query.StatusId is { } statusId)
-        {
-            items = items.Where(x => x.StatusId == statusId);
-        }
-
         if (query.AssignedToUserId is { } assigned)
         {
             items = items.Where(x => x.AssignedToUserId == assigned);
+        }
+
+        // CR03: Active is the current-state queue for this org + assignee scope —
+        // the same filters as Manage Documents status=Active. Do not apply the
+        // dashboard status dropdown or date window; those made the tile disagree
+        // with the destination list (older Active items and pagination totals).
+        var active = await items.CountAsync(x => x.StatusId == SeedIds.StatusInProgress, cancellationToken);
+
+        if (query.StatusId is { } statusId)
+        {
+            items = items.Where(x => x.StatusId == statusId);
         }
 
         var range = DashboardRange.Resolve(query.From, query.To);
@@ -549,7 +555,6 @@ public sealed class WorkItemService : IWorkItemService
             (x.UploadedAtSort >= fromSort && x.UploadedAtSort <= toSort) ||
             (x.WorkedOnSort != null && x.WorkedOnSort >= fromSort && x.WorkedOnSort <= toSort));
 
-        var active = await window.CountAsync(x => x.StatusId == SeedIds.StatusInProgress, cancellationToken);
         var pending = await window.CountAsync(x => x.StatusId == SeedIds.StatusPending, cancellationToken);
         var priority = await window.CountAsync(x => x.IsPriority, cancellationToken);
         var completed = await items.CountAsync(
@@ -1043,9 +1048,19 @@ public sealed class WorkItemService : IWorkItemService
             : ApplyThenSort(grouped, filter.SortBy, desc);
     }
 
+    /// <summary>
+    /// CR05 default order: Pending first, then other statuses, oldest upload/created ascending.
+    /// </summary>
+    private static IOrderedQueryable<WorkItem> ApplyQueueSort(IQueryable<WorkItem> query) =>
+        query
+            .OrderBy(x => x.StatusId == SeedIds.StatusPending ? 0 : 1)
+            .ThenBy(x => x.Status.SortOrder)
+            .ThenBy(x => x.UploadedAtSort);
+
     private static IOrderedQueryable<WorkItem> ApplyPrimarySort(IQueryable<WorkItem> query, string? sortBy, bool desc) =>
         sortBy?.ToLowerInvariant() switch
         {
+            "queue" => ApplyQueueSort(query),
             "filename" or "title" => desc ? query.OrderByDescending(x => x.FileName) : query.OrderBy(x => x.FileName),
             "organization" or "client" => desc ? query.OrderByDescending(x => x.Organization.Name) : query.OrderBy(x => x.Organization.Name),
             "documenttype" => desc ? query.OrderByDescending(x => x.DocumentType.Name) : query.OrderBy(x => x.DocumentType.Name),
@@ -1069,6 +1084,10 @@ public sealed class WorkItemService : IWorkItemService
     private static IOrderedQueryable<WorkItem> ApplyThenSort(IOrderedQueryable<WorkItem> query, string? sortBy, bool desc) =>
         sortBy?.ToLowerInvariant() switch
         {
+            "queue" => query
+                .ThenBy(x => x.StatusId == SeedIds.StatusPending ? 0 : 1)
+                .ThenBy(x => x.Status.SortOrder)
+                .ThenBy(x => x.UploadedAtSort),
             "filename" or "title" => desc ? query.ThenByDescending(x => x.FileName) : query.ThenBy(x => x.FileName),
             "organization" or "client" => desc ? query.ThenByDescending(x => x.Organization.Name) : query.ThenBy(x => x.Organization.Name),
             "documenttype" => desc ? query.ThenByDescending(x => x.DocumentType.Name) : query.ThenBy(x => x.DocumentType.Name),
