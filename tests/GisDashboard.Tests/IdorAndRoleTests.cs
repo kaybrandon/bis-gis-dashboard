@@ -94,7 +94,7 @@ public sealed class IdorAndRoleTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Viewer_can_upload_to_assigned_organization()
+    public async Task Viewer_cannot_upload()
     {
         var client = await _factory.LoginAsync("viewer@bisconsultants.local");
         using var form = new MultipartFormDataContent();
@@ -102,7 +102,7 @@ public sealed class IdorAndRoleTests : IClassFixture<ApiFactory>
         form.Add(new StringContent(SeedIds.TypePlat.ToString()), "documentTypeId");
         form.Add(new ByteArrayContent([0x25, 0x50, 0x44, 0x46] ) { Headers = { ContentType = new("application/pdf") } }, "file", "x.pdf");
         var response = await client.PostAsync("/api/work-items", form);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

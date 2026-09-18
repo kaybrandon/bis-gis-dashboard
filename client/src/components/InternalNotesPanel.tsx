@@ -48,7 +48,7 @@ export function InternalNotesPanel({
     <Card
       size="small"
       title={(
-        <TitleWithHelp help="Staff-only notes. Global Administrators, Administrators, and Editors can read and edit. Viewers and clients cannot see this field.">
+        <TitleWithHelp help="Staff-only notes. Global Administrators, Administrators, and Editors can read and edit. Viewers and Uploaders cannot see this field.">
           Internal Notes — staff only
         </TitleWithHelp>
       )}

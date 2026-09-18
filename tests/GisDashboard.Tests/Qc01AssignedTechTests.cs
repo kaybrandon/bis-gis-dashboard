@@ -8,7 +8,7 @@ namespace GisDashboard.Tests;
 
 /// <summary>
 /// QC01 — Admin and Editor can reassign organization Assigned tech(s).
-/// Viewer (upload-capable client) cannot. Multi-tech is preserved.
+/// Viewer and Uploader cannot. Multi-tech is preserved.
 /// Changing org techs does not force-reassign existing work-item Assigned To.
 /// </summary>
 public sealed class Qc01AssignedTechTests : IClassFixture<ApiFactory>
@@ -33,7 +33,12 @@ public sealed class Qc01AssignedTechTests : IClassFixture<ApiFactory>
         var viewer = await _factory.LoginAsync("viewer@bisconsultants.local");
         var viewerMe = await (await viewer.GetAsync("/api/auth/me")).ReadJsonAsync();
         viewerMe.GetProperty("canManageAssignedTechs").GetBoolean().Should().BeFalse();
-        viewerMe.GetProperty("canUpload").GetBoolean().Should().BeTrue();
+        viewerMe.GetProperty("canUpload").GetBoolean().Should().BeFalse();
+
+        var uploader = await _factory.LoginAsync("uploader@bisconsultants.local");
+        var uploaderMe = await (await uploader.GetAsync("/api/auth/me")).ReadJsonAsync();
+        uploaderMe.GetProperty("canManageAssignedTechs").GetBoolean().Should().BeFalse();
+        uploaderMe.GetProperty("canUpload").GetBoolean().Should().BeTrue();
     }
 
     [Fact]

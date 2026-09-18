@@ -17,12 +17,12 @@ public sealed class UploadNotesTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Signed_in_upload_writes_optional_client_notes_as_a_comment()
     {
-        var viewer = await _factory.LoginAsync("viewer@bisconsultants.local");
-        var uploaded = await PostSignedAsync(viewer, "notes-from-client.pdf", "Please check the west line.");
+        var uploader = await _factory.LoginAsync("uploader@bisconsultants.local");
+        var uploaded = await PostSignedAsync(uploader, "notes-from-client.pdf", "Please check the west line.");
         uploaded.StatusCode.Should().Be(HttpStatusCode.OK, await uploaded.Content.ReadAsStringAsync());
         var id = (await uploaded.ReadJsonAsync()).GetProperty("id").GetGuid();
 
-        var comments = await (await viewer.GetAsync($"/api/work-items/{id}/comments")).ReadJsonAsync();
+        var comments = await (await uploader.GetAsync($"/api/work-items/{id}/comments")).ReadJsonAsync();
         comments.EnumerateArray().Select(x => x.GetProperty("body").GetString())
             .Should().Contain("Please check the west line.");
     }
@@ -30,11 +30,11 @@ public sealed class UploadNotesTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Signed_in_upload_without_notes_has_no_comment()
     {
-        var viewer = await _factory.LoginAsync("viewer@bisconsultants.local");
-        var uploaded = await PostSignedAsync(viewer, "no-notes.pdf");
+        var uploader = await _factory.LoginAsync("uploader@bisconsultants.local");
+        var uploaded = await PostSignedAsync(uploader, "no-notes.pdf");
         uploaded.StatusCode.Should().Be(HttpStatusCode.OK, await uploaded.Content.ReadAsStringAsync());
         var id = (await uploaded.ReadJsonAsync()).GetProperty("id").GetGuid();
-        var comments = await (await viewer.GetAsync($"/api/work-items/{id}/comments")).ReadJsonAsync();
+        var comments = await (await uploader.GetAsync($"/api/work-items/{id}/comments")).ReadJsonAsync();
         comments.GetArrayLength().Should().Be(0);
     }
 

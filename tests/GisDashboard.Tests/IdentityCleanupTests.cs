@@ -20,6 +20,7 @@ public sealed class IdentityCleanupTests
         UserIdentity.LooksLikePersonName("Demo Client Administrator").Should().BeFalse();
         UserIdentity.LooksLikePersonName("admin@bisconsultants.local").Should().BeFalse();
         UserIdentity.LooksLikePersonName("Token upload").Should().BeFalse();
+        UserIdentity.LooksLikePersonName("Uploader").Should().BeFalse();
     }
 
     [Fact]

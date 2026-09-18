@@ -25,6 +25,7 @@ public static class SeedIds
     public static readonly Guid OrgAdminDemo = Guid.Parse("dddddddd-0000-0000-0000-000000000004");
     public static readonly Guid EditorOther = Guid.Parse("dddddddd-0000-0000-0000-000000000005");
     public static readonly Guid OrgAdminOther = Guid.Parse("dddddddd-0000-0000-0000-000000000006");
+    public static readonly Guid UploaderDemo = Guid.Parse("dddddddd-0000-0000-0000-000000000007");
     public static readonly Guid TokenUploadUser = Guid.Parse("dddddddd-0000-0000-0000-000000000099");
 
     public static readonly Guid DemoPlat = Guid.Parse("eeeeeeee-0000-0000-0000-000000000001");

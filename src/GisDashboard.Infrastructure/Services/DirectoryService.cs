@@ -463,7 +463,7 @@ public sealed class DirectoryService : IDirectoryService
 
         if (distinct.Count == 0)
         {
-            throw new ValidationException("Administrator, Editor, and Viewer accounts must be assigned to at least one organization.");
+            throw new ValidationException("Administrator, Editor, Uploader, and Viewer accounts must be assigned to at least one organization.");
         }
 
         var existing = await _db.Organizations.CountAsync(x => distinct.Contains(x.Id), cancellationToken);

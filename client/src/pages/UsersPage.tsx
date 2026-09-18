@@ -33,6 +33,7 @@ export function UsersPage() {
     ...(user?.canManageGlobalDirectory ? [{ value: 'GlobalAdministrator', label: 'Global Administrator' }] : []),
     { value: 'Administrator', label: 'Administrator' },
     { value: 'Editor', label: 'Editor' },
+    { value: 'Uploader', label: 'Uploader' },
     { value: 'Viewer', label: 'Viewer' },
   ]
 
@@ -51,7 +52,7 @@ export function UsersPage() {
   return (
     <Card
       title={(
-        <TitleWithHelp help="Global Administrator, Administrator, and Editor see and work documents from every organization. Viewer stays scoped to assigned clients and can upload files for those clients. There is no Client role — a client is an organization.">
+        <TitleWithHelp help="Global Administrator, Administrator, and Editor see and work documents from every organization. Uploader is Viewer visibility plus uploads and client-visible Comments on assigned orgs. Viewer stays read-only for upload and comments. There is no Client role — a client is an organization.">
           Users & organization assignments
         </TitleWithHelp>
       )}

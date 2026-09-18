@@ -5,6 +5,7 @@ public static class Roles
     public const string GlobalAdministrator = "GlobalAdministrator";
     public const string Administrator = "Administrator";
     public const string Editor = "Editor";
+    public const string Uploader = "Uploader";
     public const string Viewer = "Viewer";
 
     /// <summary>Legacy Phase 1 role name. Migrated to org Administrator. Not assignable.</summary>
@@ -15,6 +16,7 @@ public static class Roles
         GlobalAdministrator,
         Administrator,
         Editor,
+        Uploader,
         Viewer
     ];
 
@@ -28,6 +30,7 @@ public static class Roles
         GlobalAdministrator => "Global Administrator",
         Administrator => "Administrator",
         Editor => "Editor",
+        Uploader => "Uploader",
         Viewer => "Viewer",
         _ => role
     };
@@ -36,17 +39,21 @@ public static class Roles
 
     public static bool IsOrgAdmin(string role) => role == Administrator;
 
+    /// <summary>QC04 — org-scoped client roles. Viewer is read-only; Uploader can upload and comment.</summary>
+    public static bool IsOrgScopedClient(string role) =>
+        role is Viewer or Uploader;
+
     public static bool CanSeeInternalNotes(string role) =>
         role is GlobalAdministrator or Administrator or Editor;
 
     public static bool CanPostComments(string role) =>
-        role is GlobalAdministrator or Administrator or Editor or Viewer;
+        role is GlobalAdministrator or Administrator or Editor or Uploader;
 
     public static bool CanEditInternalNotes(string role) =>
         role is GlobalAdministrator or Administrator or Editor;
 
     public static bool CanSeeTimeLogs(string role) =>
-        role is GlobalAdministrator or Administrator or Editor or Viewer;
+        role is GlobalAdministrator or Administrator or Editor or Uploader or Viewer;
 
     public static bool CanLogTime(string role) =>
         role is GlobalAdministrator or Administrator or Editor;
@@ -55,7 +62,7 @@ public static class Roles
         role is GlobalAdministrator or Administrator or Editor;
 
     public static bool CanUpload(string role) =>
-        role is GlobalAdministrator or Administrator or Editor or Viewer;
+        role is GlobalAdministrator or Administrator or Editor or Uploader;
 
     public static bool CanMutateWorkItems(string role) =>
         role is GlobalAdministrator or Administrator or Editor;
@@ -83,4 +90,8 @@ public static class Roles
 
     public static bool CanManageConnections(string role) =>
         role is GlobalAdministrator or Administrator;
+
+    /// <summary>QC04 / QC08 preview — Dashboard Assignee filter is hidden for Uploader.</summary>
+    public static bool CanSeeDashboardAssignee(string role) =>
+        role is not Uploader;
 }
