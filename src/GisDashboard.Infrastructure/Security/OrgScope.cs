@@ -97,6 +97,17 @@ public sealed class OrgScope : IOrgScope
         {
             if ((organizationId is null || organizationId == Guid.Empty) && string.IsNullOrWhiteSpace(nameOrCode))
             {
+                // WL04 — single-org clients (Uploader) auto-resolve their assigned organization.
+                // Staff (all-orgs) still must pick a client.
+                if (!_currentUser.CanSeeAllOrganizations)
+                {
+                    var allowed = await GetAllowedOrganizationIdsAsync(cancellationToken);
+                    if (allowed.Count == 1)
+                    {
+                        return allowed.First();
+                    }
+                }
+
                 throw new ValidationException("An organization is required.");
             }
 

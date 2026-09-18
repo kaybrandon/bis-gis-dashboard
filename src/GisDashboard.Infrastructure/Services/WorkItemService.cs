@@ -181,9 +181,10 @@ public sealed class WorkItemService : IWorkItemService
             request.OrganizationId,
             request.OrganizationName,
             cancellationToken);
+        // WL04 — type and priority are staff-only on signed-in upload. Uploaders default to Other.
         var documentTypeId = await ResolveDocumentTypeAsync(
-            request.DocumentTypeId,
-            request.DocumentTypeName,
+            _currentUser.CanMutateWorkItems ? request.DocumentTypeId : Guid.Empty,
+            _currentUser.CanMutateWorkItems ? request.DocumentTypeName : null,
             cancellationToken,
             allowDefault: !_currentUser.CanMutateWorkItems);
 
