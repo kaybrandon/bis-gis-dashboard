@@ -57,6 +57,17 @@ export type WorkItemListItem = {
   isPriority?: boolean
   priorityNote?: string | null
   isReviewed?: boolean
+  difficulty?: DocumentDifficulty | null
+}
+
+export type DocumentDifficultyBand = 'Easy' | 'Medium' | 'Hard'
+export type DocumentDifficulty = {
+  band?: DocumentDifficultyBand | string | null
+  why?: string | null
+  reasons: string[]
+  overridden: boolean
+  aiBand?: DocumentDifficultyBand | string | null
+  keptOverride?: boolean
 }
 
 export type BucketCounts = {
@@ -285,6 +296,7 @@ export type AiFillResponse = {
   overallConfidence: number
   deployment: string
   warning?: string | null
+  difficulty: DocumentDifficulty
   fields: {
     title: AiFillStringField
     type: AiFillTypeField
@@ -651,8 +663,11 @@ export const api = {
     URL.revokeObjectURL(url)
   },
   workItem: (id: string) => request<WorkItemDetail>(`/api/work-items/${id}`),
-  aiFillFromPdf: (id: string) =>
-    request<AiFillResponse>(`/api/work-items/${id}/ai-fill`, { method: 'POST' }),
+  aiFillFromPdf: (id: string, options?: { rescore?: boolean }) =>
+    request<AiFillResponse>(
+      `/api/work-items/${id}/ai-fill${options?.rescore ? '?rescore=true' : ''}`,
+      { method: 'POST' },
+    ),
   neighbors: (id: string, query: WorkItemQuery) =>
     request<{ previousId?: string | null; nextId?: string | null }>(
       `/api/work-items/${id}/neighbors?${queryString(query)}`,

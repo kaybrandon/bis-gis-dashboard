@@ -103,7 +103,11 @@ public sealed class WorkItemService : IWorkItemService
                 x.FileSizeBytes,
                 x.IsPriority,
                 x.PriorityNote,
-                x.IsReviewed
+                x.IsReviewed,
+                x.DifficultyBand,
+                x.DifficultyWhy,
+                x.DifficultyOverridden,
+                x.AiDifficultyBand
             })
             .ToListAsync(cancellationToken);
 
@@ -133,7 +137,8 @@ public sealed class WorkItemService : IWorkItemService
             x.FileSizeBytes,
             x.IsPriority,
             x.PriorityNote,
-            x.IsReviewed)).ToList();
+            x.IsReviewed,
+            DocumentDifficulty.FromStored(x.DifficultyBand, x.DifficultyWhy, x.DifficultyOverridden, x.AiDifficultyBand))).ToList();
 
         return new WorkItemListResponse(
             items,
@@ -438,6 +443,22 @@ public sealed class WorkItemService : IWorkItemService
             item.IsReviewed = reviewed;
         }
 
+        if (request.ClearDifficultyOverride)
+        {
+            EnsureCanMutate();
+            item.RestoreAiDifficulty();
+        }
+        else if (request.DifficultyBand is not null)
+        {
+            EnsureCanMutate();
+            if (!DocumentDifficultyBands.TryNormalize(request.DifficultyBand, out var band))
+            {
+                throw new ValidationException("Difficulty must be Easy, Medium, or Hard.");
+            }
+
+            item.OverrideDifficulty(band, _currentUser.UserId, DateTimeOffset.UtcNow);
+        }
+
         if (request.PropertyIds is not null)
         {
             EnsureCanMutate();
@@ -710,7 +731,11 @@ public sealed class WorkItemService : IWorkItemService
                 x.FileSizeBytes,
                 x.IsPriority,
                 x.PriorityNote,
-                x.IsReviewed
+                x.IsReviewed,
+                x.DifficultyBand,
+                x.DifficultyWhy,
+                x.DifficultyOverridden,
+                x.AiDifficultyBand
             })
             .ToListAsync(cancellationToken);
 
@@ -745,7 +770,8 @@ public sealed class WorkItemService : IWorkItemService
                     x.UploadedByIsArchived),
                 x.UpdatedAt,
                 x.WorkedOn, TimeDurations.ToHours(x.Minutes), TimeDurations.Format(x.Minutes), x.FirstDeadline, x.FinalDeadline,
-                x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed)).ToList(),
+                x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed,
+                DocumentDifficulty.FromStored(x.DifficultyBand, x.DifficultyWhy, x.DifficultyOverridden, x.AiDifficultyBand))).ToList(),
             await BuildVolumeOverTimeAsync(items, range, cancellationToken),
             await BuildHoursByAssigneeAsync(items, fromSort, toSort, cancellationToken),
             await BuildHoursByClientAsync(items, fromSort, toSort, cancellationToken),
@@ -905,7 +931,11 @@ public sealed class WorkItemService : IWorkItemService
                 x.FileSizeBytes,
                 x.IsPriority,
                 x.PriorityNote,
-                x.IsReviewed
+                x.IsReviewed,
+                x.DifficultyBand,
+                x.DifficultyWhy,
+                x.DifficultyOverridden,
+                x.AiDifficultyBand
             })
             .ToListAsync(cancellationToken);
 
@@ -924,7 +954,8 @@ public sealed class WorkItemService : IWorkItemService
                 x.UploadedByIsArchived),
             x.UpdatedAt,
             x.WorkedOn, TimeDurations.ToHours(x.Minutes), TimeDurations.Format(x.Minutes), x.FirstDeadline, x.FinalDeadline,
-            x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed)).ToList();
+            x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed,
+            DocumentDifficulty.FromStored(x.DifficultyBand, x.DifficultyWhy, x.DifficultyOverridden, x.AiDifficultyBand))).ToList();
         return WorkItemCsvExport.Build(items);
     }
 
@@ -1208,6 +1239,9 @@ public sealed class WorkItemService : IWorkItemService
             "reviewed" or "review" => desc
                 ? query.OrderByDescending(x => x.IsReviewed)
                 : query.OrderBy(x => x.IsReviewed),
+            "difficulty" => desc
+                ? query.OrderByDescending(x => x.DifficultyBand == "Hard" ? 2 : x.DifficultyBand == "Medium" ? 1 : x.DifficultyBand == "Easy" ? 0 : 3)
+                : query.OrderBy(x => x.DifficultyBand == "Hard" ? 2 : x.DifficultyBand == "Medium" ? 1 : x.DifficultyBand == "Easy" ? 0 : 3),
             "firstdeadline" => desc ? query.OrderByDescending(x => x.FirstDeadlineSort) : query.OrderBy(x => x.FirstDeadlineSort),
             "finaldeadline" => desc ? query.OrderByDescending(x => x.FinalDeadlineSort) : query.OrderBy(x => x.FinalDeadlineSort),
             _ => desc ? query.OrderByDescending(x => x.UploadedAtSort) : query.OrderBy(x => x.UploadedAtSort)
@@ -1235,6 +1269,9 @@ public sealed class WorkItemService : IWorkItemService
             "reviewed" or "review" => desc
                 ? query.ThenByDescending(x => x.IsReviewed)
                 : query.ThenBy(x => x.IsReviewed),
+            "difficulty" => desc
+                ? query.ThenByDescending(x => x.DifficultyBand == "Hard" ? 2 : x.DifficultyBand == "Medium" ? 1 : x.DifficultyBand == "Easy" ? 0 : 3)
+                : query.ThenBy(x => x.DifficultyBand == "Hard" ? 2 : x.DifficultyBand == "Medium" ? 1 : x.DifficultyBand == "Easy" ? 0 : 3),
             "firstdeadline" => desc ? query.ThenByDescending(x => x.FirstDeadlineSort) : query.ThenBy(x => x.FirstDeadlineSort),
             "finaldeadline" => desc ? query.ThenByDescending(x => x.FinalDeadlineSort) : query.ThenBy(x => x.FinalDeadlineSort),
             _ => desc ? query.ThenByDescending(x => x.UploadedAtSort) : query.ThenBy(x => x.UploadedAtSort)
@@ -1448,7 +1485,8 @@ public sealed class WorkItemService : IWorkItemService
             item.PriorityRequestedByUserId == SeedIds.TokenUploadUser ? "Upload link" : null,
             _currentUser.CanMutateWorkItems,
             item.IsReviewed,
-            item.PriorityNeededBy);
+            item.PriorityNeededBy,
+            DocumentDifficulty.FromStored(item.DifficultyBand, item.DifficultyWhy, item.DifficultyOverridden, item.AiDifficultyBand));
     }
 
     private async Task<Guid> ResolveDocumentTypeAsync(

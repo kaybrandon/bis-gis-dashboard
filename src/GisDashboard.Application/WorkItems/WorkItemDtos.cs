@@ -26,7 +26,8 @@ public sealed record WorkItemListItem(
     long FileSizeBytes,
     bool IsPriority,
     string? PriorityNote,
-    bool IsReviewed);
+    bool IsReviewed,
+    DocumentDifficulty? Difficulty);
 
 public sealed record NamedCount(Guid Id, string Name, string? Color, int Count);
 
@@ -85,7 +86,8 @@ public sealed record WorkItemDetail(
     string? PriorityRequestedByName,
     bool CanSetPriority,
     bool IsReviewed,
-    DateTimeOffset? PriorityNeededBy);
+    DateTimeOffset? PriorityNeededBy,
+    DocumentDifficulty? Difficulty);
 
 public sealed record WorkItemNeighbors(Guid? PreviousId, Guid? NextId);
 
@@ -136,6 +138,8 @@ public sealed class UpdateWorkItemRequest
     public DateTimeOffset? PriorityNeededBy { get; set; }
     public bool ClearPriorityNeededBy { get; set; }
     public bool? IsReviewed { get; set; }
+    public string? DifficultyBand { get; set; }
+    public bool ClearDifficultyOverride { get; set; }
 }
 
 public sealed class UploadWorkItemRequest

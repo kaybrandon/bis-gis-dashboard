@@ -88,6 +88,11 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
             entity.Property(x => x.BlobPath).HasMaxLength(1024);
             entity.Property(x => x.ContentType).HasMaxLength(200);
             entity.Property(x => x.PriorityNote).HasMaxLength(500);
+            entity.Property(x => x.DifficultyBand).HasMaxLength(16);
+            entity.Property(x => x.DifficultyWhy).HasMaxLength(1000);
+            entity.Property(x => x.AiDifficultyBand).HasMaxLength(16);
+            entity.Property(x => x.AiDifficultyWhy).HasMaxLength(1000);
+            entity.HasIndex(x => x.DifficultyBand);
             entity.HasIndex(x => new { x.OrganizationId, x.IsPriority });
             entity.HasIndex(x => new { x.OrganizationId, x.UploadedAt });
             entity.HasIndex(x => x.StatusId);

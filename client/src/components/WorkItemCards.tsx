@@ -4,6 +4,7 @@ import type { WorkItemListItem } from '../api'
 import { ASSIGNED_TO_LABEL, UNASSIGNED_LABEL } from '../assignmentLabels'
 import { isNeededByOverdue } from '../neededBy'
 import { neededByBadgeText } from '../workItemDates'
+import { DocumentDifficultyChip } from './DocumentDifficultyChip'
 import { WorkPresenceMarks } from './PresencePeople'
 import { statusLabel } from '../statusLabels'
 import { PENDING_HIGHLIGHT_CARD_CLASS, isPendingStatus } from '../theme/pendingHighlight'
@@ -50,6 +51,7 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
           <div className="work-item-card-meta">
             <span>{item.organizationName}</span>
             <Tag color={item.statusColor} style={{ marginInlineEnd: 0 }}>{statusLabel(item.statusName)}</Tag>
+            <DocumentDifficultyChip difficulty={item.difficulty} />
             {item.isPriority && <Tag color="red">Priority</Tag>}
             {item.isPriority && due && (
               <Tag color={isNeededByOverdue(item.isPriority, item.priorityNeededBy) ? 'volcano' : 'gold'}>

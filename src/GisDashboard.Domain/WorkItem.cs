@@ -61,6 +61,14 @@ public sealed class WorkItem
     public long UpdatedAtSort { get; set; }
     public Guid UpdatedByUserId { get; set; }
 
+    public string? DifficultyBand { get; set; }
+    public string? DifficultyWhy { get; set; }
+    public bool DifficultyOverridden { get; set; }
+    public string? AiDifficultyBand { get; set; }
+    public string? AiDifficultyWhy { get; set; }
+    public DateTimeOffset? DifficultyOverriddenAt { get; set; }
+    public Guid? DifficultyOverriddenByUserId { get; set; }
+
     public void TouchDates(DateTimeOffset uploadedAt, DateTimeOffset updatedAt)
     {
         UploadedAt = uploadedAt;
@@ -131,5 +139,56 @@ public sealed class WorkItem
         var day = new DateTimeOffset(utc.Year, utc.Month, utc.Day, 0, 0, 0, TimeSpan.Zero);
         PriorityNeededBy = day;
         PriorityNeededBySort = day.ToUnixTimeMilliseconds();
+    }
+
+    public void ApplyAiDifficulty(string band, string why, bool replaceOverride)
+    {
+        var clipped = ClipWhy(why);
+        AiDifficultyBand = band;
+        AiDifficultyWhy = clipped;
+        if (!DifficultyOverridden || replaceOverride)
+        {
+            DifficultyBand = band;
+            DifficultyWhy = clipped;
+            if (replaceOverride)
+            {
+                ClearDifficultyOverrideFlags();
+            }
+        }
+    }
+
+    public void OverrideDifficulty(string band, Guid userId, DateTimeOffset now)
+    {
+        DifficultyBand = band;
+        if (string.IsNullOrWhiteSpace(DifficultyWhy))
+        {
+            DifficultyWhy = string.IsNullOrWhiteSpace(AiDifficultyWhy)
+                ? "Staff override."
+                : AiDifficultyWhy;
+        }
+
+        DifficultyOverridden = true;
+        DifficultyOverriddenByUserId = userId;
+        DifficultyOverriddenAt = now;
+    }
+
+    public void RestoreAiDifficulty()
+    {
+        ClearDifficultyOverrideFlags();
+        DifficultyBand = AiDifficultyBand;
+        DifficultyWhy = AiDifficultyWhy;
+    }
+
+    private void ClearDifficultyOverrideFlags()
+    {
+        DifficultyOverridden = false;
+        DifficultyOverriddenAt = null;
+        DifficultyOverriddenByUserId = null;
+    }
+
+    private static string ClipWhy(string why)
+    {
+        var trimmed = why.Trim();
+        return trimmed.Length > 1000 ? trimmed[..1000] : trimmed;
     }
 }

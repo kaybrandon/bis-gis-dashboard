@@ -27,6 +27,7 @@ import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
 import { ShowArchivedSwitch } from '../components/ShowArchivedSwitch'
 import { orgPickerOption } from '../orgArchive'
+import { DocumentDifficultyChip } from '../components/DocumentDifficultyChip'
 import { WorkPresenceMarks } from '../components/PresencePeople'
 import { WorkItemCards } from '../components/WorkItemCards'
 import { useAuth } from '../auth'
@@ -412,6 +413,7 @@ export function ManageDocumentsPage() {
           return (
             <Space size={6} wrap>
               <span>{name}</span>
+              <DocumentDifficultyChip difficulty={row.difficulty} />
               {row.isPriority && <Tag color="red">Priority</Tag>}
               {due && <Tag color={overdue ? 'volcano' : 'gold'}>{overdue ? `Overdue · ${due}` : due}</Tag>}
             </Space>
@@ -520,6 +522,14 @@ export function ManageDocumentsPage() {
         sorter: true,
         width: 140,
         render: (v: string | null) => (v ? dayjs(v).format('YYYY-MM-DD') : '—'),
+      },
+      {
+        title: 'Difficulty',
+        dataIndex: ['difficulty', 'band'],
+        key: 'difficulty',
+        sorter: true,
+        width: 120,
+        render: (_: unknown, row) => <DocumentDifficultyChip difficulty={row.difficulty} />,
       },
       {
         title: 'Review',
