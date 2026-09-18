@@ -12,6 +12,7 @@ import { InternalNotesPanel } from '../components/InternalNotesPanel'
 import { WorkPresenceMarks } from '../components/PresencePeople'
 import { TimeLogPanel } from '../components/TimeLogPanel'
 import { isNeededByOverdue, neededByLabel } from '../neededBy'
+import { statusSelectOptions } from '../statusSelectOptions'
 import { statusLabel } from '../statusLabels'
 
 type Draft = {
@@ -472,22 +473,7 @@ export function ViewDocumentPage() {
                     style={{ width: '100%' }}
                     value={draft.statusId}
                     onChange={(value) => setStatus(value)}
-                    options={[
-                      { value: actions.activeId, label: 'Active' },
-                      { value: actions.pendingId, label: 'Pending' },
-                      { value: actions.completeId, label: 'Complete' },
-                      { value: actions.onHoldId, label: 'On-Hold' },
-                      { value: actions.cancelledId, label: 'Cancelled' },
-                      ...(![
-                        actions.activeId,
-                        actions.pendingId,
-                        actions.completeId,
-                        actions.onHoldId,
-                        actions.cancelledId,
-                      ].includes(draft.statusId)
-                        ? [{ value: draft.statusId, label: statusLabel(item.statusName) }]
-                        : []),
-                    ]}
+                    options={statusSelectOptions(actions, { id: draft.statusId, name: item.statusName })}
                   />
                 )}
                 <AiField field="documentTypeId" hints={aiHints} onApprove={approveField}>

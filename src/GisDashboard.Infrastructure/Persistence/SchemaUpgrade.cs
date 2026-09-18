@@ -121,5 +121,6 @@ public static class SchemaUpgrade
         await Phase46Schema.ApplyAsync(db, cancellationToken);
         await Phase47Schema.ApplyAsync(db, cancellationToken);
         await Phase48Schema.ApplyAsync(db, cancellationToken);
+        await Phase49Schema.ApplyAsync(db, cancellationToken);
     }
 }

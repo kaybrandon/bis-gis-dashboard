@@ -191,6 +191,7 @@ export type StatusActions = {
   onHoldId: string
   completeId: string
   cancelledId: string
+  needsReviewId: string
   completedIds: string[]
 }
 

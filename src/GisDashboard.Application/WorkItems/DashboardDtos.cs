@@ -85,6 +85,7 @@ public sealed record StatusActions(
     Guid OnHoldId,
     Guid CompleteId,
     Guid CancelledId,
+    Guid NeedsReviewId,
     IReadOnlyList<Guid> CompletedIds);
 
 public sealed record CommentDto(

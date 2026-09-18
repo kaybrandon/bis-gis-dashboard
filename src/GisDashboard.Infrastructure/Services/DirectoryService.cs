@@ -449,6 +449,7 @@ public sealed class DirectoryService : IDirectoryService
             SeedIds.StatusHeld,
             SeedIds.StatusWorked,
             SeedIds.StatusCancelled,
+            SeedIds.StatusNeedsReview,
             [SeedIds.StatusWorked, SeedIds.StatusQcd]));
     }
 
