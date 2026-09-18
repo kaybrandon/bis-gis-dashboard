@@ -594,6 +594,11 @@ public sealed class WorkItemService : IWorkItemService
             items = items.Where(x => x.StatusId == statusId);
         }
 
+        // GIS-UI-05 — same date rules as Manage Documents Due this week / First / Final deadline chips.
+        var dueThisWeek = await ApplyDueThisWeek(items).CountAsync(cancellationToken);
+        var firstDeadline = await items.CountAsync(x => x.FirstDeadlineSort != null, cancellationToken);
+        var finalDeadline = await items.CountAsync(x => x.FinalDeadlineSort != null, cancellationToken);
+
         var range = DashboardRange.Resolve(query.From, query.To);
         var fromSort = range.FromSort;
         var toSort = range.ToSort;
@@ -712,7 +717,10 @@ public sealed class WorkItemService : IWorkItemService
                 new DashboardKpi("active", "Active", active, "#1890ff"),
                 new DashboardKpi("pending", "Pending", pending, "#faad14"),
                 new DashboardKpi("completed", "Completed", completed, "#52c41a"),
-                new DashboardKpi("priority", "Priority", priority, "#f5222d")
+                new DashboardKpi("priority", "Priority", priority, "#f5222d"),
+                new DashboardKpi("duethisweek", "Due this week", dueThisWeek, "#fa8c16"),
+                new DashboardKpi("firstdeadline", "First deadline", firstDeadline, "#2f54eb"),
+                new DashboardKpi("finaldeadline", "Final deadline", finalDeadline, "#13c2c2")
             ],
             statusCounts
                 .Where(x => SeedIds.IsCanonicalStatus(x.StatusId))

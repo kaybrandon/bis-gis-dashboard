@@ -70,15 +70,27 @@ public static class DashboardPdf
         {
             col.Item().PaddingBottom(8).Text("Filters on this report match the Dashboard page: organization, status, assignee, and date range.").FontSize(9).FontColor(Muted);
 
-            col.Item().PaddingBottom(10).Row(row =>
+            col.Item().PaddingBottom(10).Column(kpis =>
             {
-                foreach (var kpi in data.Kpis)
+                void AddRow(IEnumerable<DashboardKpi> slice)
                 {
-                    row.RelativeItem().PaddingRight(6).Border(1).BorderColor("#d9d9d9").Padding(8).Column(box =>
+                    kpis.Item().PaddingBottom(6).Row(row =>
                     {
-                        box.Item().Text(kpi.Label).FontSize(9).FontColor(Muted);
-                        box.Item().Text(kpi.Count.ToString(CultureInfo.InvariantCulture)).FontSize(18).Bold().FontColor(kpi.Color ?? "#262626");
+                        foreach (var kpi in slice)
+                        {
+                            row.RelativeItem().PaddingRight(6).Border(1).BorderColor("#d9d9d9").Padding(8).Column(box =>
+                            {
+                                box.Item().Text(kpi.Label).FontSize(9).FontColor(Muted);
+                                box.Item().Text(kpi.Count.ToString(CultureInfo.InvariantCulture)).FontSize(18).Bold().FontColor(kpi.Color ?? "#262626");
+                            });
+                        }
                     });
+                }
+
+                AddRow(data.Kpis.Take(4));
+                if (data.Kpis.Count > 4)
+                {
+                    AddRow(data.Kpis.Skip(4));
                 }
             });
 

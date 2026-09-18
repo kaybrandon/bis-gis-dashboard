@@ -1,0 +1,63 @@
+/* GIS-UI-04 — Pending / All Pending light blue. Distinct from mint zebra, yellow select, navy headers. */
+:root {
+  --pending-highlight: #E6F4FF;
+  --pending-highlight-text: #111827;
+  --pending-highlight-border: #91CAFF;
+}
+
+.pending-highlight-item.ant-menu-item-selected,
+.bucket-sider .ant-menu-item-selected.pending-highlight-item,
+.bucket-sider .ant-menu-item-selected.pending-highlight-item .ant-menu-title-content,
+.bucket-sider .ant-menu-item-selected.pending-highlight-item .ant-typography,
+.bucket-sider .ant-menu-item-selected.pending-highlight-item .ant-menu-item-icon {
+  background: var(--pending-highlight) !important;
+  color: var(--pending-highlight-text) !important;
+}
+
+.bucket-sider .ant-menu-item.pending-highlight-item {
+  color: var(--pending-highlight-text);
+}
+
+.bucket-select.pending-highlight .ant-select-selector {
+  background: var(--pending-highlight) !important;
+  color: var(--pending-highlight-text) !important;
+  border-color: var(--pending-highlight-border) !important;
+}
+
+.kpi-card.pending-highlight-card,
+.content-wrap .kpi-card.pending-highlight-card.ant-card {
+  background: var(--pending-highlight);
+  border-color: var(--pending-highlight-border);
+}
+
+.kpi-card.pending-highlight-card > .ant-card-body,
+.content-wrap .kpi-card.pending-highlight-card > .ant-card-body,
+.bis-theme-panel.kpi-card.pending-highlight-card > .ant-card-body {
+  background: var(--pending-highlight);
+  color: var(--pending-highlight-text);
+}
+
+.kpi-card.pending-highlight-card .ant-statistic-title,
+.kpi-card.pending-highlight-card .ant-statistic-content,
+.content-wrap .kpi-card.pending-highlight-card .ant-statistic-content {
+  color: var(--pending-highlight-text);
+}
+
+.work-item-card.pending-highlight-card,
+.content-wrap .work-item-card.pending-highlight-card.ant-card {
+  background: var(--pending-highlight);
+  border-color: var(--pending-highlight-border);
+  color: var(--pending-highlight-text);
+}
+
+.work-item-card.pending-highlight-card > .ant-card-body,
+.content-wrap .work-item-card.pending-highlight-card > .ant-card-body,
+.bis-theme-panel.work-item-card.pending-highlight-card > .ant-card-body {
+  background: var(--pending-highlight);
+  color: var(--pending-highlight-text);
+}
+
+.manage-documents-grid .ant-table-tbody > tr.pending-highlight-row > td {
+  background: var(--pending-highlight);
+  color: var(--pending-highlight-text);
+}

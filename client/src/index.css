@@ -854,6 +854,23 @@ body,
   max-width: 100%;
 }
 
+.dashboard-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.dashboard-kpis .kpi-card-col {
+  flex: 1 1 148px;
+  min-width: min(148px, 100%);
+  max-width: 100%;
+}
+
+.dashboard-kpis .kpi-card {
+  height: 100%;
+}
+
 .kpi-card {
   cursor: pointer;
 }
