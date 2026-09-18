@@ -81,6 +81,42 @@ public sealed class Qc03StaffOrganizationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Creating_administrator_ignores_partial_org_list_and_grants_all()
+    {
+        var admin = await _factory.LoginAsync("admin@bisconsultants.local");
+        var created = await admin.PostAsJsonAsync("/api/admin/users", new
+        {
+            email = "qc03.admin.partial@bisconsultants.local",
+            password = "Demo!Gis2026",
+            displayName = "QC03 Admin Partial",
+            role = "Administrator",
+            organizationIds = new[] { SeedIds.DemoClient }
+        });
+        created.StatusCode.Should().Be(HttpStatusCode.OK, await created.Content.ReadAsStringAsync());
+        OrgIds(await created.ReadJsonAsync()).Should().BeEquivalentTo(await AllOrganizationIdsAsync(admin));
+
+        var client = await _factory.LoginAsync("qc03.admin.partial@bisconsultants.local");
+        var me = await (await client.GetAsync("/api/auth/me")).ReadJsonAsync();
+        me.GetProperty("role").GetString().Should().Be("Administrator");
+        me.GetProperty("canSeeAllOrganizations").GetBoolean().Should().BeTrue();
+        MeOrgIds(me).Should().BeEquivalentTo(await AllOrganizationIdsAsync(admin));
+    }
+
+    [Fact]
+    public async Task Global_administrator_membership_stays_empty()
+    {
+        var admin = await _factory.LoginAsync("admin@bisconsultants.local");
+        var me = await (await admin.GetAsync("/api/auth/me")).ReadJsonAsync();
+        me.GetProperty("canSeeAllOrganizations").GetBoolean().Should().BeTrue();
+        me.GetProperty("canManageGlobalDirectory").GetBoolean().Should().BeTrue();
+        MeOrgIds(me).Should().BeEquivalentTo(await AllOrganizationIdsAsync(admin));
+
+        var listed = await (await admin.GetAsync("/api/admin/users")).ReadJsonAsync();
+        listed.EnumerateArray().Single(x => x.GetProperty("email").GetString() == "admin@bisconsultants.local")
+            .GetProperty("organizations").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
     public async Task New_organization_is_auto_available_to_existing_editor_and_administrator()
     {
         var admin = await _factory.LoginAsync("admin@bisconsultants.local");
@@ -241,6 +277,8 @@ public sealed class Qc03StaffOrganizationTests : IClassFixture<ApiFactory>
         {
             org.GetProperty("assignedTechs").EnumerateArray()
                 .Should().NotContain(x => x.GetProperty("id").GetGuid() == userId);
+            org.GetProperty("members").EnumerateArray()
+                .Should().Contain(x => x.GetProperty("id").GetGuid() == userId);
         }
     }
 

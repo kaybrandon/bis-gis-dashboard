@@ -52,7 +52,7 @@ export function UsersPage() {
   return (
     <Card
       title={(
-        <TitleWithHelp help="Global Administrator, Administrator, and Editor see and work documents from every organization. Uploader is Viewer visibility plus uploads and client-visible Comments on assigned orgs. Viewer stays read-only for upload and comments. There is no Client role — a client is an organization.">
+        <TitleWithHelp help="Global Administrator, Administrator, and Editor see and work documents from every organization. New Editor and Administrator accounts receive every current organization automatically, including organizations added later. Uploader is Viewer visibility plus uploads and client-visible Comments on assigned orgs. Viewer stays read-only for upload and comments. There is no Client role — a client is an organization.">
           Users & organization assignments
         </TitleWithHelp>
       )}
