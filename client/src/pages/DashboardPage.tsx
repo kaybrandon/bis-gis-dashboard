@@ -14,6 +14,7 @@ import { WorkItemCards } from '../components/WorkItemCards'
 import { documentsHref, type DocumentsHrefQuery } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
 import { canSeeDashboardAssignee } from '../roles'
+import { activeDocumentsQuery, resolveAssigneeFilter } from '../staffQueue'
 
 const kpiIcon: Record<string, ReactNode> = {
   active: <ThunderboltOutlined />,
@@ -41,7 +42,7 @@ export function DashboardPage() {
   const [assignees, setAssignees] = useState<AssignableUser[]>([])
   const [orgId, setOrgId] = useState<string | undefined>()
   const [statusId, setStatusId] = useState<string | undefined>()
-  const [assignedTo, setAssignedTo] = useState<string | undefined>()
+  const [assignedTo, setAssignedTo] = useState<string | undefined>(() => resolveAssigneeFilter(undefined, user))
   const [range, setRange] = useState<[Dayjs, Dayjs]>(defaultRange)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -121,7 +122,12 @@ export function DashboardPage() {
     }
     if (key === 'active') {
       const activeId = statuses.find((s) => s.name === 'In Progress')?.id
-      openDocuments({ ...filters, bucket: 'all', statusId: activeId })
+      openDocuments(activeDocumentsQuery({
+        organizationId: orgId,
+        assignedToUserId: assignedTo,
+        activeStatusId: activeId,
+        user,
+      }))
       return
     }
     openDocuments({
@@ -193,7 +199,7 @@ export function DashboardPage() {
     <Space direction="vertical" size={8} style={{ width: '100%' }}>
       <div>
         <Typography.Title level={3} className="page-title" style={{ margin: 0 }}>
-          <TitleWithHelp help={`Active, pending, completed, and priority volume for ${user?.displayName ?? 'your account'}. The date range filters KPIs and charts (default last 30 days). Completed counts items marked Worked or QC'd in that range. Download PDF and Send report use the same filters. Click a card or chart to open the matching work items.`}>
+          <TitleWithHelp help={`Active, pending, completed, and priority volume for ${user?.displayName ?? 'your account'}. Staff default to items assigned to you; switch Assignee to all or another person. The Active tile is the full matching Active total (not one page) and opens that same queue. The date range filters pending/completed/priority charts (default last 30 days), not the Active count. Viewer and Uploader do not see Assignee and stay in assigned organizations.`}>
             Dashboard
           </TitleWithHelp>
         </Typography.Title>
@@ -219,7 +225,7 @@ export function DashboardPage() {
         {showAssignee && (
           <Select
             allowClear
-            placeholder="Assignee"
+            placeholder="All assignees"
             className="filter-field"
             value={assignedTo}
             onChange={setAssignedTo}

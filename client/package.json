@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --experimental-strip-types --test src/headerGreeting.test.ts src/helpInbox.test.ts src/statusLabels.test.ts src/statusSelectOptions.test.ts src/roles.test.ts src/theme/bisManageDocuments.test.ts src/lastActivity.test.ts src/usersPresence.test.ts src/workItemDates.test.ts",
+    "test": "node --experimental-strip-types --test src/headerGreeting.test.ts src/helpInbox.test.ts src/statusLabels.test.ts src/statusSelectOptions.test.ts src/roles.test.ts src/theme/bisManageDocuments.test.ts src/lastActivity.test.ts src/usersPresence.test.ts src/workItemDates.test.ts src/staffQueue.test.ts src/documentsHref.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

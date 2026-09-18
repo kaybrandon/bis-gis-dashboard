@@ -26,6 +26,13 @@ import { isNeededByOverdue } from '../neededBy'
 import { neededByBadgeText } from '../workItemDates'
 import { statusSelectOptions } from '../statusSelectOptions'
 import { reviewLabel, statusLabel } from '../statusLabels'
+import { canSeeDashboardAssignee } from '../roles'
+import {
+  QUEUE_SORT_BY,
+  QUEUE_SORT_DIR,
+  defaultDocumentsBucket,
+  resolveAssigneeFilter,
+} from '../staffQueue'
 import { manageDocumentsRowClassName, manageDocumentsTableTheme } from '../theme/bisManageDocuments'
 import '../theme/bisManageDocuments.css'
 
@@ -90,11 +97,6 @@ function groupValue(item: WorkItemListItem, groupBy?: string) {
   }
 }
 
-function parseBucket(value: string | null, hasOtherFilter: boolean): Bucket {
-  if (value && bucketKeys.includes(value as Bucket)) return value as Bucket
-  return hasOtherFilter ? 'all' : 'pending'
-}
-
 function parseDay(value: string | null): Dayjs | null {
   if (!value) return null
   const day = dayjs(value)
@@ -119,14 +121,12 @@ export function ManageDocumentsPage() {
   const [counts, setCounts] = useState(emptyCounts())
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
-  const [sortBy, setSortBy] = useState('uploadedAt')
-  const [sortDir, setSortDir] = useState('desc')
+  const [sortBy, setSortBy] = useState(QUEUE_SORT_BY)
+  const [sortDir, setSortDir] = useState(QUEUE_SORT_DIR)
   const [bucket, setBucket] = useState<Bucket>(() => {
     const fromUrl = params.get('bucket')
     if (fromUrl && bucketKeys.includes(fromUrl as Bucket)) return fromUrl as Bucket
-    const preset = readQueuePreset()
-    if (preset) return preset
-    return parseBucket(fromUrl, incomingFilters)
+    return defaultDocumentsBucket(null, readQueuePreset(), user, incomingFilters) as Bucket
   })
   const [queuePreset, setQueuePreset] = useState<QueuePreset>(() => {
     const fromUrl = params.get('bucket')
@@ -136,7 +136,9 @@ export function ManageDocumentsPage() {
   const [search, setSearch] = useState('')
   const [orgId, setOrgId] = useState<string | undefined>(() => params.get('organizationId') ?? undefined)
   const [statusId, setStatusId] = useState<string | undefined>(() => params.get('statusId') ?? undefined)
-  const [assignedTo, setAssignedTo] = useState<string | undefined>(() => params.get('assignedToUserId') ?? undefined)
+  const [assignedTo, setAssignedTo] = useState<string | undefined>(() =>
+    resolveAssigneeFilter(params.get('assignedToUserId'), user),
+  )
   const [docTypeId, setDocTypeId] = useState<string | undefined>(() => params.get('documentTypeId') ?? undefined)
   const [uploaded, setUploaded] = useState<[Dayjs | null, Dayjs | null] | null>(() => {
     const from = parseDay(params.get('uploadedFrom'))
@@ -168,12 +170,14 @@ export function ManageDocumentsPage() {
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const showAssignee = canSeeDashboardAssignee(user)
+
   const loadLookups = useCallback(async () => {
     try {
       const [o, s, a, t, act] = await Promise.all([
         api.organizations(),
         api.statuses(),
-        api.assignees(),
+        showAssignee ? api.assignees() : Promise.resolve([] as AssignableUser[]),
         api.documentTypes(),
         api.statusActions(),
       ])
@@ -185,7 +189,7 @@ export function ManageDocumentsPage() {
     } catch {
       /* keep empty */
     }
-  }, [])
+  }, [showAssignee])
 
   const query = useCallback((): WorkItemQuery => ({
     page,
@@ -196,14 +200,14 @@ export function ManageDocumentsPage() {
     search: search || undefined,
     organizationId: orgId,
     statusId,
-    assignedToUserId: assignedTo,
+    assignedToUserId: showAssignee ? assignedTo : undefined,
     documentTypeId: docTypeId,
     uploadedFrom: uploaded?.[0]?.toISOString(),
     uploadedTo: uploaded?.[1]?.endOf('day').toISOString(),
     workedFrom: worked?.[0]?.toISOString(),
     workedTo: worked?.[1]?.endOf('day').toISOString(),
     groupBy,
-  }), [assignedTo, bucket, docTypeId, groupBy, orgId, page, pageSize, search, sortBy, sortDir, statusId, uploaded, worked])
+  }), [assignedTo, bucket, docTypeId, groupBy, orgId, page, pageSize, search, showAssignee, sortBy, sortDir, statusId, uploaded, worked])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -234,11 +238,11 @@ export function ManageDocumentsPage() {
       setBucket(nextBucket as Bucket)
       setQueuePreset(nextBucket === 'mine' || nextBucket === 'priority' || nextBucket === 'duethisweek' ? nextBucket : '')
     } else {
-      setBucket(parseBucket(nextBucket, hasFilter))
+      setBucket(defaultDocumentsBucket(null, readQueuePreset(), user, hasFilter) as Bucket)
     }
     setOrgId(params.get('organizationId') ?? undefined)
     setStatusId(params.get('statusId') ?? undefined)
-    setAssignedTo(params.get('assignedToUserId') ?? undefined)
+    setAssignedTo(resolveAssigneeFilter(params.get('assignedToUserId'), user))
     setDocTypeId(params.get('documentTypeId') ?? undefined)
     const uploadedFrom = parseDay(params.get('uploadedFrom'))
     const uploadedTo = parseDay(params.get('uploadedTo'))
@@ -247,7 +251,7 @@ export function ManageDocumentsPage() {
     const workedTo = parseDay(params.get('workedTo'))
     setWorked(workedFrom || workedTo ? [workedFrom, workedTo] : null)
     setPage(1)
-  }, [params])
+  }, [params, user])
 
   useEffect(() => {
     void loadLookups()
@@ -261,8 +265,20 @@ export function ManageDocumentsPage() {
     setQueuePreset(preset)
     writeQueuePreset(preset)
     setPage(1)
-    if (preset === 'mine' || preset === 'priority' || preset === 'duethisweek') {
+    if (preset === 'mine') {
+      if (showAssignee && user?.id) setAssignedTo(user.id)
+      setBucket('mine')
+      return
+    }
+    if (preset === 'priority' || preset === 'duethisweek') {
       setBucket(preset)
+      return
+    }
+    if (showAssignee && user?.id) {
+      setAssignedTo(user.id)
+      setBucket('all')
+      setSortBy(QUEUE_SORT_BY)
+      setSortDir(QUEUE_SORT_DIR)
       return
     }
     setBucket(incomingFilters ? 'all' : 'pending')
@@ -476,9 +492,10 @@ export function ManageDocumentsPage() {
         }}
         options={statuses.map((s) => ({ value: s.id, label: statusLabel(s.name) }))}
       />
+      {showAssignee && (
       <Select
         allowClear
-        placeholder="Assigned to"
+        placeholder="All assignees"
         className="filter-field"
         value={assignedTo}
         onChange={(v) => {
@@ -487,6 +504,7 @@ export function ManageDocumentsPage() {
         }}
         options={assignees.map((a) => ({ value: a.id, label: a.displayName }))}
       />
+      )}
       <Select
         allowClear
         placeholder="Client"
@@ -551,7 +569,7 @@ export function ManageDocumentsPage() {
       <Flex justify="space-between" align="flex-start" wrap="wrap" gap={8}>
         <div>
           <Typography.Title level={3} className="page-title" style={{ margin: 0 }}>
-            <TitleWithHelp help="Status buckets, assignment, and review for GIS work items. Assigned to shows the person's name only. Editors can change status and assignee in the grid. My queue presets stay in this browser.">
+            <TitleWithHelp help="Staff land on items assigned to you, Pending first then oldest upload. Switch Assignee to all or another person. Viewer and Uploader do not see Assignee and stay in assigned organizations. Editors can change status and assignee in the grid. My queue presets stay in this browser.">
               Manage Documents
             </TitleWithHelp>
           </Typography.Title>
