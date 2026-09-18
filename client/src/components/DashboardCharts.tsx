@@ -2,6 +2,7 @@ import { Column, Line, Pie } from '@ant-design/plots'
 import { Card, Col, Empty, Row } from 'antd'
 import type { DashboardResponse } from '../api'
 import { TitleWithHelp } from './HelpTip'
+import { dashboardCategoryBarPlot } from '../dashboardBarPalette'
 import {
   DOCUMENTS_BY_CAD_HELP,
   DOCUMENTS_BY_CAD_TITLE,
@@ -130,7 +131,7 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
               xField="name"
               yField="count"
               height={height}
-              color="#2f54eb"
+              {...dashboardCategoryBarPlot(documentsByCad.map((x) => x.name))}
               axis={{ x: { title: false, labelAutoRotate: isMobile }, y: { title: false } }}
               tooltip={{ items: [{ field: 'count', name: 'Documents' }] }}
               onEvent={(_chart, event) => {
@@ -158,7 +159,7 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
               xField="name"
               yField="count"
               height={height}
-              color="#fa8c16"
+              {...dashboardCategoryBarPlot(documentsByTechnician.map((x) => x.name))}
               axis={{ x: { title: false, labelAutoRotate: isMobile }, y: { title: false } }}
               tooltip={{ items: [{ field: 'count', name: 'Documents' }] }}
               onEvent={(_chart, event) => {
@@ -181,7 +182,7 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
               xField="name"
               yField="hours"
               height={height}
-              color="#1890ff"
+              {...dashboardCategoryBarPlot(hoursAssignee.map((x) => x.name))}
               axis={{ x: { title: false, labelAutoRotate: isMobile }, y: { title: false } }}
               tooltip={{ items: [{ field: 'hours', name: 'Hours' }] }}
               onEvent={(_chart, event) => {
@@ -204,7 +205,7 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
               xField="name"
               yField="hours"
               height={height}
-              color="#13c2c2"
+              {...dashboardCategoryBarPlot(hoursClient.map((x) => x.name))}
               axis={{ x: { title: false, labelAutoRotate: isMobile }, y: { title: false } }}
               tooltip={{ items: [{ field: 'hours', name: 'Hours' }] }}
               onEvent={(_chart, event) => {
