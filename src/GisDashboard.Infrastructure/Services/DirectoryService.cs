@@ -76,7 +76,8 @@ public sealed class DirectoryService : IDirectoryService
         };
         _db.Organizations.Add(org);
         await _db.SaveChangesAsync(cancellationToken);
-        return MapOrg(org);
+        await StaffOrganizationMembership.AssociateWithOrganizationAsync(_db, org.Id, cancellationToken);
+        return MapOrg(await LoadOrganizationGraphAsync(org.Id, cancellationToken));
     }
 
     public async Task<OrganizationDto> UpdateOrganizationAsync(Guid id, UpdateOrganizationRequest request, CancellationToken cancellationToken = default)
@@ -453,7 +454,7 @@ public sealed class DirectoryService : IDirectoryService
             [SeedIds.StatusWorked, SeedIds.StatusQcd]));
     }
 
-    private async Task<List<Guid>> NormalizeOrgIdsAsync(string role, IReadOnlyList<Guid> requested, CancellationToken cancellationToken)
+    private async Task<List<Guid>> NormalizeOrgIdsAsync(string role, IReadOnlyList<Guid>? requested, CancellationToken cancellationToken)
     {
         var distinct = (requested ?? []).Distinct().ToList();
         if (Roles.IsGlobalAdmin(role))
@@ -461,9 +462,16 @@ public sealed class DirectoryService : IDirectoryService
             return [];
         }
 
+        if (Roles.ReceivesAllOrganizationMembership(role))
+        {
+            return await _db.Organizations.AsNoTracking()
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+        }
+
         if (distinct.Count == 0)
         {
-            throw new ValidationException("Administrator, Editor, Uploader, and Viewer accounts must be assigned to at least one organization.");
+            throw new ValidationException("Uploader and Viewer accounts must be assigned to at least one organization.");
         }
 
         var existing = await _db.Organizations.CountAsync(x => distinct.Contains(x.Id), cancellationToken);
@@ -641,8 +649,9 @@ public sealed class DirectoryService : IDirectoryService
         CancellationToken cancellationToken)
     {
         var techs = await _db.OrganizationTechs.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
-        if (Roles.IsGlobalAdmin(role))
+        if (Roles.IsGlobalAdmin(role) || Roles.ReceivesAllOrganizationMembership(role))
         {
+            // QC03 — all-org staff membership is access. Assigned techs stay on Organizations (QC01).
             return;
         }
 

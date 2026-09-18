@@ -97,7 +97,10 @@ public sealed class RoleModelTests : IClassFixture<ApiFactory>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await response.ReadJsonAsync();
         json.GetProperty("role").GetString().Should().Be("Editor");
-        json.GetProperty("organizations")[0].GetProperty("organizationName").GetString().Should().Be("Demo Client");
+        json.GetProperty("organizations").EnumerateArray()
+            .Select(x => x.GetProperty("organizationName").GetString())
+            .Should().Contain("Demo Client")
+            .And.Contain("Other Client");
     }
 
     [Fact]

@@ -15,32 +15,9 @@ public sealed class DirectoryAssignmentTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Assigning_staff_to_org_on_users_adds_assigned_tech_and_member()
+    public async Task Staff_are_members_of_every_organization_without_becoming_assigned_techs()
     {
         var ga = await _factory.LoginAsync("admin@bisconsultants.local");
-        (await ga.PutAsJsonAsync($"/api/admin/users/{SeedIds.EditorOther}", new
-        {
-            displayName = "Casey Nguyen",
-            email = "editor.other@bisconsultants.local",
-            role = "Editor",
-            organizationIds = new[] { SeedIds.OtherClient, SeedIds.DemoClient },
-            isActive = true
-        })).StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var orgs = await (await ga.GetAsync("/api/admin/organizations")).ReadJsonAsync();
-        var demo = orgs.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == SeedIds.DemoClient);
-        demo.GetProperty("assignedTechs").EnumerateArray()
-            .Should().Contain(x => x.GetProperty("id").GetGuid() == SeedIds.EditorOther);
-        demo.GetProperty("members").EnumerateArray()
-            .Should().Contain(x => x.GetProperty("id").GetGuid() == SeedIds.EditorOther);
-
-        var users = await (await ga.GetAsync("/api/admin/users")).ReadJsonAsync();
-        users.EnumerateArray()
-            .Single(x => x.GetProperty("id").GetGuid() == SeedIds.EditorOther)
-            .GetProperty("organizations")
-            .EnumerateArray()
-            .Should().Contain(x => x.GetProperty("organizationId").GetGuid() == SeedIds.DemoClient);
-
         (await ga.PutAsJsonAsync($"/api/admin/users/{SeedIds.EditorOther}", new
         {
             displayName = "Casey Nguyen",
@@ -50,12 +27,21 @@ public sealed class DirectoryAssignmentTests : IClassFixture<ApiFactory>
             isActive = true
         })).StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var after = await (await ga.GetAsync("/api/admin/organizations")).ReadJsonAsync();
-        after.EnumerateArray()
-            .Single(x => x.GetProperty("id").GetGuid() == SeedIds.DemoClient)
-            .GetProperty("assignedTechs")
-            .EnumerateArray()
+        var orgs = await (await ga.GetAsync("/api/admin/organizations")).ReadJsonAsync();
+        var demo = orgs.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == SeedIds.DemoClient);
+        demo.GetProperty("members").EnumerateArray()
+            .Should().Contain(x => x.GetProperty("id").GetGuid() == SeedIds.EditorOther);
+        demo.GetProperty("assignedTechs").EnumerateArray()
             .Should().NotContain(x => x.GetProperty("id").GetGuid() == SeedIds.EditorOther);
+
+        var users = await (await ga.GetAsync("/api/admin/users")).ReadJsonAsync();
+        users.EnumerateArray()
+            .Single(x => x.GetProperty("id").GetGuid() == SeedIds.EditorOther)
+            .GetProperty("organizations")
+            .EnumerateArray()
+            .Select(x => x.GetProperty("organizationId").GetGuid())
+            .Should().Contain(SeedIds.DemoClient)
+            .And.Contain(SeedIds.OtherClient);
     }
 
     [Fact]
@@ -119,7 +105,15 @@ public sealed class DirectoryAssignmentTests : IClassFixture<ApiFactory>
         var orgs = await (await ga.GetAsync("/api/admin/organizations")).ReadJsonAsync();
         var demo = orgs.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == SeedIds.DemoClient);
         demo.GetProperty("members").EnumerateArray().Select(x => x.GetProperty("id").GetGuid())
-            .Should().BeEquivalentTo(new[] { SeedIds.EditorDemo, SeedIds.ViewerDemo, SeedIds.UploaderDemo, SeedIds.OrgAdminDemo });
+            .Should().BeEquivalentTo(new[]
+            {
+                SeedIds.EditorDemo,
+                SeedIds.ViewerDemo,
+                SeedIds.UploaderDemo,
+                SeedIds.OrgAdminDemo,
+                SeedIds.EditorOther,
+                SeedIds.OrgAdminOther
+            });
         demo.GetProperty("assignedTechs").EnumerateArray().Select(x => x.GetProperty("id").GetGuid())
             .Should().BeEquivalentTo(new[] { SeedIds.EditorDemo, SeedIds.OrgAdminDemo });
     }

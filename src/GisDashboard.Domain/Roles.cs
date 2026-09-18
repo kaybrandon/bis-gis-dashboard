@@ -43,6 +43,17 @@ public static class Roles
     public static bool IsOrgScopedClient(string role) =>
         role is Viewer or Uploader;
 
+    /// <summary>
+    /// QC03 — Editor and Administrator are persisted as members of every organization.
+    /// Global Administrator keeps implicit all-org access (WL01) without membership rows.
+    /// </summary>
+    public static bool ReceivesAllOrganizationMembership(string role) =>
+        role is Administrator or Editor;
+
+    /// <summary>QC03 / QC04 — Viewer and Uploader stay limited to explicitly assigned orgs.</summary>
+    public static bool RequiresAssignedOrganizations(string role) =>
+        role is Viewer or Uploader;
+
     public static bool CanSeeInternalNotes(string role) =>
         role is GlobalAdministrator or Administrator or Editor;
 

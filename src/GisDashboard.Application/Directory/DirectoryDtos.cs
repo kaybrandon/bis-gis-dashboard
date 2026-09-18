@@ -29,7 +29,7 @@ public sealed record UpdateUserRequest(
     string DisplayName,
     string Email,
     string Role,
-    IReadOnlyList<Guid> OrganizationIds,
+    IReadOnlyList<Guid>? OrganizationIds,
     bool IsActive,
     string? Password,
     string? FullName = null,
@@ -62,11 +62,11 @@ public sealed record CreateUserRequest(
     string Password,
     string DisplayName,
     string Role,
-    IReadOnlyList<Guid> OrganizationIds,
+    IReadOnlyList<Guid>? OrganizationIds = null,
     string? FullName = null,
     string? WorkPhone = null);
 
-public sealed record UpdateUserOrgsRequest(IReadOnlyList<Guid> OrganizationIds);
+public sealed record UpdateUserOrgsRequest(IReadOnlyList<Guid>? OrganizationIds);
 
 public sealed record LookupItem(Guid Id, string Name, string? Color, int SortOrder);
 
