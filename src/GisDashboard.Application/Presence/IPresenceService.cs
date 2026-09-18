@@ -7,5 +7,6 @@ public interface IPresenceService
     Task<NeedHelpResponse> SetNeedsHelpAsync(bool needsHelp, CancellationToken cancellationToken = default);
     Task<(Stream Stream, string ContentType)> GetAvatarAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<bool> CanSeePresenceUserAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<HashSet<Guid>> FilterVisiblePresenceUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default);
     Task<string?> PresenceStatusOfAsync(Guid userId, CancellationToken cancellationToken = default);
 }

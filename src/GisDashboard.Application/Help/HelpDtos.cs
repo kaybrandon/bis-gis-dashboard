@@ -69,3 +69,18 @@ public sealed record SendHelpMessageRequest(
     Guid ToUserId,
     string? Chip,
     string? Body);
+
+public sealed record HelpInboxThreadDto(
+    Guid WithUserId,
+    string WithDisplayName,
+    string PresenceStatus,
+    bool CanCompose,
+    string? ComposeDisabledReason,
+    string Preview,
+    DateTimeOffset LastAt,
+    bool Unread,
+    int UnreadCount);
+
+public sealed record HelpInboxResponse(
+    int UnreadCount,
+    IReadOnlyList<HelpInboxThreadDto> Items);

@@ -13,7 +13,7 @@ import { usePresence } from '../presence'
 import { LoadError } from './LoadError'
 
 export function HelpMessageSheet() {
-  const { helpPeer, closeHelp } = usePresence()
+  const { helpPeer, closeHelp, refreshHelpInbox } = usePresence()
   const isMobile = useIsMobile()
   const [thread, setThread] = useState<HelpThread | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -27,12 +27,13 @@ export function HelpMessageSheet() {
     setError(null)
     try {
       setThread(await api.helpThread(helpPeer.userId))
+      void refreshHelpInbox()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load messages.')
     } finally {
       setLoading(false)
     }
-  }, [helpPeer])
+  }, [helpPeer, refreshHelpInbox])
 
   useEffect(() => {
     setThread(null)

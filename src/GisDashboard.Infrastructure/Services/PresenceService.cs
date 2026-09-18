@@ -180,6 +180,18 @@ public sealed class PresenceService : IPresenceService
     public Task<bool> CanSeePresenceUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
         CanSeeUserAsync(userId, cancellationToken);
 
+    public Task<HashSet<Guid>> FilterVisiblePresenceUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_currentUser.CanSeePresence || userIds.Count == 0)
+        {
+            return Task.FromResult(new HashSet<Guid>());
+        }
+
+        return VisibleUserIdsAsync(userIds, cancellationToken);
+    }
+
     public async Task<string?> PresenceStatusOfAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var row = await _db.UserPresences.AsNoTracking()

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { PresenceUser } from './api'
+import type { HelpInboxThread, PresenceUser } from './api'
 import { api } from './api'
 
 const POLL_MS = 20_000
@@ -21,6 +21,11 @@ type PresenceContextValue = {
   helpPeer: HelpPeer | null
   openHelp: (peer: HelpPeer) => void
   closeHelp: () => void
+  inboxItems: HelpInboxThread[]
+  inboxUnreadCount: number
+  inboxError: string | null
+  loadInbox: () => Promise<void>
+  refreshHelpInbox: () => Promise<void>
 }
 
 const PresenceContext = createContext<PresenceContextValue | null>(null)
@@ -41,6 +46,9 @@ export function PresenceProvider({
   const [loading, setLoading] = useState(enabled)
   const [selfNeedsHelp, setSelfNeedsHelp] = useState(false)
   const [helpPeer, setHelpPeer] = useState<HelpPeer | null>(null)
+  const [inboxItems, setInboxItems] = useState<HelpInboxThread[]>([])
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0)
+  const [inboxError, setInboxError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!enabled) return
@@ -59,19 +67,42 @@ export function PresenceProvider({
     }
   }, [enabled, selfUserId])
 
+  const loadInbox = useCallback(async () => {
+    if (!enabled) return
+    try {
+      const result = await api.helpInbox()
+      setInboxItems(result.items)
+      setInboxUnreadCount(result.unreadCount)
+      setInboxError(null)
+    } catch (err) {
+      setInboxError(err instanceof Error ? err.message : 'Could not load Need-help inbox.')
+    }
+  }, [enabled])
+
+  const refreshHelpInbox = useCallback(async () => {
+    await Promise.all([loadInbox(), load()])
+  }, [load, loadInbox])
+
   useEffect(() => {
     if (!enabled) {
       setItems([])
       setOnlineCount(0)
       setNeedsHelpCount(0)
       setSelfNeedsHelp(false)
+      setInboxItems([])
+      setInboxUnreadCount(0)
+      setInboxError(null)
       setLoading(false)
       return
     }
     void load()
-    const id = window.setInterval(() => void load(), POLL_MS)
+    void loadInbox()
+    const id = window.setInterval(() => {
+      void load()
+      void loadInbox()
+    }, POLL_MS)
     return () => window.clearInterval(id)
-  }, [enabled, load])
+  }, [enabled, load, loadInbox])
 
   const setNeedsHelp = useCallback(async (needsHelp: boolean) => {
     setSelfNeedsHelp(needsHelp)
@@ -104,10 +135,41 @@ export function PresenceProvider({
       openHelp: (peer) => {
         if (peer.userId === selfUserId) return
         setHelpPeer(peer)
+        setInboxItems((current) =>
+          current.map((row) =>
+            row.withUserId === peer.userId ? { ...row, unread: false, unreadCount: 0 } : row,
+          ),
+        )
+        setInboxUnreadCount((count) => {
+          const row = inboxItems.find((item) => item.withUserId === peer.userId)
+          return row?.unread ? Math.max(0, count - 1) : count
+        })
       },
       closeHelp: () => setHelpPeer(null),
+      inboxItems,
+      inboxUnreadCount,
+      inboxError,
+      loadInbox,
+      refreshHelpInbox,
     }),
-    [enabled, error, helpPeer, items, load, loading, needsHelpCount, onlineCount, selfNeedsHelp, selfUserId, setNeedsHelp],
+    [
+      enabled,
+      error,
+      helpPeer,
+      inboxError,
+      inboxItems,
+      inboxUnreadCount,
+      items,
+      load,
+      loadInbox,
+      loading,
+      needsHelpCount,
+      onlineCount,
+      refreshHelpInbox,
+      selfNeedsHelp,
+      selfUserId,
+      setNeedsHelp,
+    ],
   )
 
   return <PresenceContext.Provider value={value}>{children}</PresenceContext.Provider>
@@ -130,6 +192,11 @@ export function usePresence() {
       helpPeer: null,
       openHelp: () => undefined,
       closeHelp: () => undefined,
+      inboxItems: [],
+      inboxUnreadCount: 0,
+      inboxError: null,
+      loadInbox: async () => undefined,
+      refreshHelpInbox: async () => undefined,
     } satisfies PresenceContextValue
   }
   return ctx

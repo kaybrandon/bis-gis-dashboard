@@ -82,12 +82,20 @@ public sealed class NeedHelpTests : IClassFixture<ApiFactory>
         (await viewer.PostAsJsonAsync("/api/presence", Heartbeat("/"))).EnsureSuccessStatusCode();
         (await viewer.GetAsync("/api/presence")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await viewer.GetAsync($"/api/help-messages?withUserId={SeedIds.EditorDemo}")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await viewer.GetAsync("/api/help-messages/inbox")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await viewer.PostAsJsonAsync("/api/help-messages", new
         {
             toUserId = SeedIds.EditorDemo,
             chip = "need-help",
             body = (string?)null
         })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Uploader_cannot_list_inbox()
+    {
+        var uploader = await _factory.LoginAsync("uploader@bisconsultants.local");
+        (await uploader.GetAsync("/api/help-messages/inbox")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
