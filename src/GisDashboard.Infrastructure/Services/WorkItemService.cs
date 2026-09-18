@@ -44,7 +44,8 @@ public sealed class WorkItemService : IWorkItemService
         await EnsureOrganizationFilterAsync(query.OrganizationId, cancellationToken);
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
         var scoped = ApplyFilters(BaseQuery(allowed), query);
-        var buckets = await ComputeBucketsAsync(scoped, cancellationToken);
+        var assigneeAgnostic = ApplyFilters(BaseQuery(allowed), query, ignoreAssignee: true);
+        var buckets = await ComputeBucketsAsync(scoped, assigneeAgnostic, cancellationToken);
         var filtered = ApplyBucket(scoped, query.Bucket);
 
         var statusCounts = await filtered
@@ -523,6 +524,7 @@ public sealed class WorkItemService : IWorkItemService
         if (!Roles.CanSeeDashboardAssignee(_currentUser.Role))
         {
             query.AssignedToUserId = null;
+            query.UnassignedOnly = false;
         }
 
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
@@ -532,7 +534,11 @@ public sealed class WorkItemService : IWorkItemService
             items = items.Where(x => x.OrganizationId == orgId);
         }
 
-        if (query.AssignedToUserId is { } assigned)
+        if (query.UnassignedOnly)
+        {
+            items = items.Where(x => x.AssignedToUserId == null);
+        }
+        else if (query.AssignedToUserId is { } assigned)
         {
             items = items.Where(x => x.AssignedToUserId == assigned);
         }
@@ -929,7 +935,7 @@ public sealed class WorkItemService : IWorkItemService
     private IQueryable<WorkItem> BaseQuery(IReadOnlyCollection<Guid> allowed) =>
         _db.WorkItems.AsNoTracking().Where(x => allowed.Contains(x.OrganizationId));
 
-    private IQueryable<WorkItem> ApplyFilters(IQueryable<WorkItem> query, WorkItemQuery filter)
+    private IQueryable<WorkItem> ApplyFilters(IQueryable<WorkItem> query, WorkItemQuery filter, bool ignoreAssignee = false)
     {
         if (filter.OrganizationId is { } orgId)
         {
@@ -946,9 +952,16 @@ public sealed class WorkItemService : IWorkItemService
             query = query.Where(x => x.StatusId == statusId);
         }
 
-        if (Roles.CanSeeDashboardAssignee(_currentUser.Role) && filter.AssignedToUserId is { } assigned)
+        if (!ignoreAssignee && Roles.CanSeeDashboardAssignee(_currentUser.Role))
         {
-            query = query.Where(x => x.AssignedToUserId == assigned);
+            if (filter.UnassignedOnly)
+            {
+                query = query.Where(x => x.AssignedToUserId == null);
+            }
+            else if (filter.AssignedToUserId is { } assigned)
+            {
+                query = query.Where(x => x.AssignedToUserId == assigned);
+            }
         }
 
         if (filter.UploadedFrom is { } from)
@@ -997,6 +1010,7 @@ public sealed class WorkItemService : IWorkItemService
         {
             "pending" => query.Where(x => x.StatusId == SeedIds.StatusPending),
             "mine" => query.Where(x => x.AssignedToUserId == _currentUser.UserId),
+            "unassigned" => query.Where(x => x.AssignedToUserId == null),
             "hold" => query.Where(x => x.StatusId == SeedIds.StatusHeld),
             "completed" => query.Where(x => x.StatusId == SeedIds.StatusWorked || x.StatusId == SeedIds.StatusQcd),
             "firstdeadline" => query.Where(x => x.FirstDeadlineSort != null),
@@ -1006,7 +1020,10 @@ public sealed class WorkItemService : IWorkItemService
             _ => query
         };
 
-    private async Task<BucketCounts> ComputeBucketsAsync(IQueryable<WorkItem> query, CancellationToken cancellationToken)
+    private async Task<BucketCounts> ComputeBucketsAsync(
+        IQueryable<WorkItem> query,
+        IQueryable<WorkItem> assigneeAgnostic,
+        CancellationToken cancellationToken)
     {
         var pending = await query.CountAsync(x => x.StatusId == SeedIds.StatusPending, cancellationToken);
         var mine = await query.CountAsync(x => x.AssignedToUserId == _currentUser.UserId, cancellationToken);
@@ -1016,7 +1033,9 @@ public sealed class WorkItemService : IWorkItemService
         var final = await query.CountAsync(x => x.FinalDeadlineSort != null, cancellationToken);
         var priority = await query.CountAsync(x => x.IsPriority, cancellationToken);
         var dueThisWeek = await ApplyDueThisWeek(query).CountAsync(cancellationToken);
-        return new BucketCounts(pending, mine, hold, completed, first, final, priority, dueThisWeek);
+        // CR08 — Unassigned count stays visible on the personal Assigned-to queue.
+        var unassigned = await assigneeAgnostic.CountAsync(x => x.AssignedToUserId == null, cancellationToken);
+        return new BucketCounts(pending, mine, hold, completed, first, final, priority, dueThisWeek, unassigned);
     }
 
     private static IQueryable<WorkItem> ApplyDueThisWeek(IQueryable<WorkItem> query)
@@ -1213,21 +1232,23 @@ public sealed class WorkItemService : IWorkItemService
 
     private async Task<Guid?> ResolveDefaultAssigneeAsync(Guid organizationId, CancellationToken cancellationToken)
     {
-        var rows = await (
-            from tech in _db.OrganizationTechs.AsNoTracking()
-            join ur in _db.UserRoles on tech.UserId equals ur.UserId
-            join role in _db.Roles on ur.RoleId equals role.Id
-            where tech.OrganizationId == organizationId
-            select new { tech.UserId, Role = role.Name, tech.User.DisplayName, tech.IsPrimary, tech.User.IsActive, tech.User.IsArchived }
-        ).ToListAsync(cancellationToken);
+        var rows = await _db.OrganizationTechs.AsNoTracking()
+            .Where(tech => tech.OrganizationId == organizationId)
+            .Select(tech => new
+            {
+                tech.UserId,
+                tech.User.DisplayName,
+                tech.IsPrimary,
+                tech.User.IsActive,
+                tech.User.IsArchived
+            })
+            .ToListAsync(cancellationToken);
 
-        return rows
-            .Where(x => UserIdentity.CanSignIn(x.IsActive, x.IsArchived))
-            .OrderBy(x => x.IsPrimary ? 0 : 1)
-            .ThenBy(x => x.Role == Roles.Editor ? 0 : x.Role == Roles.Administrator ? 1 : 2)
-            .ThenBy(x => x.DisplayName)
-            .Select(x => (Guid?)x.UserId)
-            .FirstOrDefault();
+        return OrgAssignee.ResolveDefault(rows.Select(x => (
+            x.UserId,
+            x.DisplayName,
+            x.IsPrimary,
+            UserIdentity.CanSignIn(x.IsActive, x.IsArchived))));
     }
 
     private WorkItemDetail MapDetail(WorkItem item)

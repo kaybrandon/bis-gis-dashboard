@@ -11,6 +11,7 @@ import { DocumentViewer } from '../components/DocumentViewer'
 import { InternalNotesPanel } from '../components/InternalNotesPanel'
 import { WorkPresenceMarks } from '../components/PresencePeople'
 import { TimeLogPanel } from '../components/TimeLogPanel'
+import { ASSIGNED_TO_HELP, ASSIGNED_TO_LABEL, UNASSIGNED_LABEL } from '../assignmentLabels'
 import { isNeededByOverdue } from '../neededBy'
 import { statusSelectOptions } from '../statusSelectOptions'
 import { statusLabel } from '../statusLabels'
@@ -495,15 +496,18 @@ export function ViewDocumentPage() {
                     onChange={(documentTypeId) => patchDraft({ documentTypeId }, 'documentTypeId')}
                   />
                 </AiField>
-                <Select
-                  allowClear
-                  size="small"
-                  style={{ width: '100%' }}
-                  placeholder="Assigned to"
-                  value={draft.assignedToUserId ?? undefined}
-                  options={assignees.map((u) => ({ value: u.id, label: u.displayName }))}
-                  onChange={(value) => setDraft({ ...draft, assignedToUserId: value ?? null })}
-                />
+                <div>
+                  <div className="detail-field-label" title={ASSIGNED_TO_HELP}>{ASSIGNED_TO_LABEL}</div>
+                  <Select
+                    allowClear
+                    size="small"
+                    style={{ width: '100%' }}
+                    placeholder={UNASSIGNED_LABEL}
+                    value={draft.assignedToUserId ?? undefined}
+                    options={assignees.map((u) => ({ value: u.id, label: u.displayName }))}
+                    onChange={(value) => setDraft({ ...draft, assignedToUserId: value ?? null })}
+                  />
+                </div>
                 <WorkPresenceMarks workItemId={item.id} assignedToUserId={draft.assignedToUserId} />
                 <Space wrap size={[12, 4]} className="detail-flags">
                   <Checkbox checked={draft.isSplit} onChange={(e) => setDraft({ ...draft, isSplit: e.target.checked })}>
@@ -600,7 +604,7 @@ export function ViewDocumentPage() {
             ) : (
               <div className="detail-readonly">
                 <span>
-                  Assigned to {item.assignedToName || 'Unassigned'}
+                  {ASSIGNED_TO_LABEL} {item.assignedToName || UNASSIGNED_LABEL}
                   <WorkPresenceMarks workItemId={item.id} assignedToUserId={item.assignedToUserId} />
                 </span>
                 {item.isPriority && neededByBadgeText({ neededBy: item.priorityNeededBy, workedOn: item.workedOn }) ? (

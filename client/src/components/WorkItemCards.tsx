@@ -1,6 +1,7 @@
 import { Card, Empty, Spin, Tag, Typography } from 'antd'
 import dayjs from 'dayjs'
 import type { WorkItemListItem } from '../api'
+import { ASSIGNED_TO_LABEL, UNASSIGNED_LABEL } from '../assignmentLabels'
 import { isNeededByOverdue } from '../neededBy'
 import { neededByBadgeText } from '../workItemDates'
 import { WorkPresenceMarks } from './PresencePeople'
@@ -54,7 +55,7 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
             )}
           </div>
           <Typography.Text type="secondary" className="work-item-card-line">
-            Assigned to {item.assignedToName ?? '—'}
+            {ASSIGNED_TO_LABEL} {item.assignedToName ?? UNASSIGNED_LABEL}
             <WorkPresenceMarks workItemId={item.id} assignedToUserId={item.assignedToUserId} />
           </Typography.Text>
           <Typography.Text type="secondary" className="work-item-card-line">

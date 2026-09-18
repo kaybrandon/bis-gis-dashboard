@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import type { AssignableUser, LookupItem, OrgOption } from '../api'
 import { api } from '../api'
 import { useAuth } from '../auth'
+import { ASSIGNED_TO_LABEL, ASSIGNED_TO_UPLOAD_HELP } from '../assignmentLabels'
 import { AssignedTechnicianField, type AssignedTechnician } from '../components/AssignedTechnicianField'
 import { CompanyContactBlock } from '../components/CompanyContactBlock'
 import { TitleWithHelp } from '../components/HelpTip'
@@ -115,8 +116,8 @@ export function UploadDocumentsPage() {
         <Typography.Title level={3} className="page-title" style={{ marginBottom: 0 }}>
           <TitleWithHelp
             help={isStaff
-              ? 'Choose the client. Files auto-assign to that organization’s BIS editor. Set document type and priority here, or leave assignment blank to use the org assignee.'
-              : 'Files are assigned to your organization. BIS staff will set document type and priority after upload.'}
+              ? 'Choose the client. New files auto-assign Assigned to the organization’s Assigned technician (primary, else first). Leave Assigned to blank to use that default, or pick a person for this batch. If the org has no Assigned technician, the document stays unassigned and staff can pick it up. Assigned technician is the org default — Assigned to is the work-item assignee.'
+              : 'Files are assigned to your organization. BIS staff will set document type and priority after upload. Assigned technician is the org default, not a person you pick for this file.'}
           >
             Upload Documents
           </TitleWithHelp>
@@ -221,8 +222,8 @@ export function UploadDocumentsPage() {
               <Col xs={24} sm={12}>
                 <Form.Item
                   name="assignedToUserId"
-                  label="Assigned to"
-                  tooltip="Blank auto-assigns to this client’s BIS editor."
+                  label={ASSIGNED_TO_LABEL}
+                  tooltip={ASSIGNED_TO_UPLOAD_HELP}
                 >
                   <Select allowClear options={assignees.map((u) => ({ value: u.id, label: u.displayName }))} disabled={saving} />
                 </Form.Item>

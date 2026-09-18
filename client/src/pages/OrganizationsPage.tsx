@@ -6,6 +6,12 @@ import { useNavigate } from 'react-router-dom'
 import type { UploadLink } from '../api'
 import { api } from '../api'
 import { useAuth } from '../auth'
+import {
+  ASSIGNED_TECHS_HELP,
+  ASSIGNED_TECHS_LABEL,
+  PRIMARY_ASSIGNED_TECH_HELP,
+  PRIMARY_ASSIGNED_TECH_LABEL,
+} from '../assignmentLabels'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
 
@@ -170,7 +176,7 @@ export function OrganizationsPage() {
           },
           { title: 'Created', dataIndex: 'createdAt', render: (value: string) => dayjs(value).format('YYYY-MM-DD') },
           {
-            title: 'Assigned tech(s)',
+            title: <TitleWithHelp help={ASSIGNED_TECHS_HELP}>{ASSIGNED_TECHS_LABEL}</TitleWithHelp>,
             key: 'assignedTechs',
             render: (_: unknown, row: OrgRow) => names(row.assignedTechs),
           },
@@ -266,7 +272,7 @@ export function OrganizationsPage() {
             <Descriptions.Item label="Members">
               {viewing.members?.length ? names(viewing.members) : 'None assigned'}
             </Descriptions.Item>
-            <Descriptions.Item label="Assigned tech(s)">
+            <Descriptions.Item label={ASSIGNED_TECHS_LABEL}>
               {viewing.assignedTechs?.length ? names(viewing.assignedTechs) : 'None assigned'}
             </Descriptions.Item>
             <Descriptions.Item label="Total real accounts">
@@ -352,8 +358,8 @@ export function OrganizationsPage() {
           {canAssignTechs ? (
             <Form.Item
               name="assignedTechIds"
-              label="Assigned tech(s)"
-              tooltip="Staff assigned to this client. Adding someone here also adds the organization on Users. Editors, Administrators, and Global Administrators only. Notified on priority work."
+              label={ASSIGNED_TECHS_LABEL}
+              tooltip={ASSIGNED_TECHS_HELP}
             >
               <Select
                 mode="multiple"
@@ -372,8 +378,8 @@ export function OrganizationsPage() {
           {canAssignTechs ? (
             <Form.Item
               name="primaryAssignedTechId"
-              label="Primary assigned tech"
-              tooltip="Default assignee for new uploads when no one else is chosen. If none is set, the first Assigned tech is primary."
+              label={PRIMARY_ASSIGNED_TECH_LABEL}
+              tooltip={PRIMARY_ASSIGNED_TECH_HELP}
             >
               <Select
                 allowClear
@@ -389,8 +395,8 @@ export function OrganizationsPage() {
             </Form.Item>
           ) : (
             <Form.Item
-              label="Assigned tech(s)"
-              tooltip="Primary GIS contact(s) for this client. An Administrator or Editor sets this on the organization."
+              label={ASSIGNED_TECHS_LABEL}
+              tooltip={ASSIGNED_TECHS_HELP}
             >
               <Typography.Text>
                 {editing?.assignedTechs?.length

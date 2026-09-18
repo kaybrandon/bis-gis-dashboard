@@ -68,6 +68,7 @@ export type BucketCounts = {
   finalDeadline: number
   priority: number
   dueThisWeek: number
+  unassigned: number
 }
 
 export type WorkItemListResponse = {
@@ -81,7 +82,7 @@ export type WorkItemListResponse = {
 }
 
 export type DashboardKpi = { key: string; label: string; count: number; color?: string | null }
-export type DashboardQuery = Pick<WorkItemQuery, 'organizationId' | 'statusId' | 'assignedToUserId'> & {
+export type DashboardQuery = Pick<WorkItemQuery, 'organizationId' | 'statusId' | 'assignedToUserId' | 'unassignedOnly'> & {
   from?: string
   to?: string
 }
@@ -471,6 +472,7 @@ export type WorkItemQuery = {
   documentTypeId?: string
   statusId?: string
   assignedToUserId?: string
+  unassignedOnly?: boolean
   uploadedFrom?: string
   uploadedTo?: string
   workedFrom?: string
@@ -509,7 +511,12 @@ export function setToken(token: string | null) {
 
 export function queryString(query: Record<string, string | number | boolean | undefined | null>) {
   const params = new URLSearchParams()
-  Object.entries(query).forEach(([key, value]) => {
+  const entries = { ...query }
+  if (entries.assignedToUserId === 'unassigned') {
+    delete entries.assignedToUserId
+    entries.unassignedOnly = true
+  }
+  Object.entries(entries).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
       params.set(key, String(value))
     }
