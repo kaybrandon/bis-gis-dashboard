@@ -179,8 +179,12 @@ public sealed class Cr03Cr05Tests : IClassFixture<ApiFactory>
 
         var tile = Kpi(dash, "active");
         var list = await (await client.GetAsync(
-            $"/api/work-items?statusId={SeedIds.StatusInProgress}&assignedToUserId={SeedIds.EditorOther}&pageSize=1")).ReadJsonAsync();
+            $"/api/work-items?statusId={SeedIds.StatusInProgress}&pageSize=1")).ReadJsonAsync();
         list.GetProperty("total").GetInt32().Should().Be(tile);
+        var bypass = await (await client.GetAsync(
+            $"/api/work-items?statusId={SeedIds.StatusInProgress}&assignedToUserId={SeedIds.EditorOther}&pageSize=1")).ReadJsonAsync();
+        bypass.GetProperty("total").GetInt32().Should().Be(tile,
+            "Fail if: Viewer/Uploader assignee query param hides assigned-org Active rows.");
         list.GetProperty("items").EnumerateArray()
             .Select(x => x.GetProperty("organizationName").GetString())
             .Should().OnlyContain(name => name == "Demo Client");

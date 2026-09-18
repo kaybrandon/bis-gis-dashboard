@@ -946,7 +946,7 @@ public sealed class WorkItemService : IWorkItemService
             query = query.Where(x => x.StatusId == statusId);
         }
 
-        if (filter.AssignedToUserId is { } assigned)
+        if (Roles.CanSeeDashboardAssignee(_currentUser.Role) && filter.AssignedToUserId is { } assigned)
         {
             query = query.Where(x => x.AssignedToUserId == assigned);
         }
