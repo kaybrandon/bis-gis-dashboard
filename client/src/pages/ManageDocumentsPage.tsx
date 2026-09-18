@@ -45,6 +45,8 @@ import {
 } from '../staffQueue'
 import { manageDocumentsRowClassName, manageDocumentsTableTheme } from '../theme/bisManageDocuments'
 import '../theme/bisManageDocuments.css'
+import { PENDING_HIGHLIGHT_ITEM_CLASS, PENDING_HIGHLIGHT_ROW_CLASS, isPendingStatus } from '../theme/pendingHighlight'
+import '../theme/pendingHighlight.css'
 
 type Bucket = 'all' | 'pending' | 'mine' | 'unassigned' | 'hold' | 'completed' | 'firstdeadline' | 'finaldeadline' | 'priority' | 'duethisweek'
 type QueuePreset = 'mine' | 'unassigned' | 'priority' | 'duethisweek' | ''
@@ -375,6 +377,7 @@ export function ManageDocumentsPage() {
   const menuItems = bucketItems.map((b) => ({
     key: b.key,
     icon: b.icon,
+    className: b.key === 'pending' ? PENDING_HIGHLIGHT_ITEM_CLASS : undefined,
     label: (
       <Flex justify="space-between" gap={12}>
         <span>{b.label}</span>
@@ -671,7 +674,7 @@ export function ManageDocumentsPage() {
         <div className="documents-sider">
           {isMobile ? (
             <Select
-              className="bucket-select"
+              className={bucket === 'pending' ? 'bucket-select pending-highlight' : 'bucket-select'}
               value={bucket}
               style={{ width: '100%' }}
               onChange={(key) => {
@@ -764,7 +767,10 @@ export function ManageDocumentsPage() {
               dataSource={items}
               columns={columns}
               scroll={{ x: 980 }}
-              rowClassName={(row, index) => manageDocumentsRowClassName(index, selectedId === row.id)}
+              rowClassName={(row, index) => {
+                const zebra = manageDocumentsRowClassName(index, selectedId === row.id)
+                return isPendingStatus(row.statusName) ? `${zebra} ${PENDING_HIGHLIGHT_ROW_CLASS}` : zebra
+              }}
               pagination={{
                 current: page,
                 pageSize,

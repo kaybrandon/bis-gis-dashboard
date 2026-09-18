@@ -6,6 +6,8 @@ import { isNeededByOverdue } from '../neededBy'
 import { neededByBadgeText } from '../workItemDates'
 import { WorkPresenceMarks } from './PresencePeople'
 import { statusLabel } from '../statusLabels'
+import { PENDING_HIGHLIGHT_CARD_CLASS, isPendingStatus } from '../theme/pendingHighlight'
+import '../theme/pendingHighlight.css'
 import { workItemTimeLine } from '../workItemDisplay'
 
 type Props = {
@@ -41,7 +43,7 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
           key={item.id}
           size="small"
           hoverable
-          className="work-item-card bis-theme-panel"
+          className={isPendingStatus(item.statusName) ? `work-item-card bis-theme-panel ${PENDING_HIGHLIGHT_CARD_CLASS}` : 'work-item-card bis-theme-panel'}
           title={<Typography.Text strong ellipsis style={{ color: 'inherit', maxWidth: '100%' }}>{item.fileName}</Typography.Text>}
           onClick={() => onOpen(item.id)}
         >

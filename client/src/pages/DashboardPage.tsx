@@ -1,5 +1,5 @@
-import { CheckCircleOutlined, ClockCircleOutlined, DownloadOutlined, MailOutlined, ThunderboltOutlined } from '@ant-design/icons'
-import { Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Statistic, Table, Typography, message } from 'antd'
+import { CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, DownloadOutlined, FileOutlined, MailOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { Button, Card, DatePicker, Form, Input, Modal, Select, Space, Statistic, Table, Typography, message } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -12,25 +12,44 @@ import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
 import { WorkPresenceMarks } from '../components/PresencePeople'
 import { WorkItemCards } from '../components/WorkItemCards'
+import {
+  ALL_ORGANIZATIONS,
+  ALL_ORGANIZATIONS_LABEL,
+  DASHBOARD_DEADLINE_KPI_KEYS,
+  DASHBOARD_KPI_KEYS,
+  dashboardOrgSelectValue,
+  deadlineKpiDocumentsQuery,
+  parseDashboardOrgId,
+  showAllOrganizationsControl,
+  type DashboardKpiKey,
+} from '../dashboardKpis'
 import { documentsHref, type DocumentsHrefQuery } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
 import { canSeeDashboardAssignee } from '../roles'
 import { statusLabel } from '../statusLabels'
 import { reportPersonLabel } from '../personLabel'
 import { UNASSIGNED, activeDocumentsQuery, assigneeHrefValue, resolveAssigneeFilter } from '../staffQueue'
+import { PENDING_HIGHLIGHT_CARD_CLASS, isPendingStatus } from '../theme/pendingHighlight'
+import '../theme/pendingHighlight.css'
 
-const kpiIcon: Record<string, ReactNode> = {
+const kpiIcon: Record<DashboardKpiKey, ReactNode> = {
   active: <ThunderboltOutlined />,
   pending: <ClockCircleOutlined />,
   completed: <CheckCircleOutlined />,
   priority: <ThunderboltOutlined />,
+  duethisweek: <CalendarOutlined />,
+  firstdeadline: <ThunderboltOutlined />,
+  finaldeadline: <FileOutlined />,
 }
 
-const kpiFallback: Record<string, string> = {
+const kpiFallback: Record<DashboardKpiKey, string> = {
   active: 'Active',
   pending: 'Pending',
   completed: 'Completed',
   priority: 'Priority',
+  duethisweek: 'Due this week',
+  firstdeadline: 'First deadline',
+  finaldeadline: 'Final deadline',
 }
 
 const defaultRange = (): [Dayjs, Dayjs] => [dayjs().subtract(29, 'day'), dayjs()]
@@ -114,7 +133,15 @@ export function DashboardPage() {
     navigate(documentsHref(query))
   }
 
-  const openKpi = (key: 'active' | 'pending' | 'completed' | 'priority') => {
+  const openKpi = (key: DashboardKpiKey) => {
+    if ((DASHBOARD_DEADLINE_KPI_KEYS as readonly string[]).includes(key)) {
+      openDocuments(deadlineKpiDocumentsQuery(key as (typeof DASHBOARD_DEADLINE_KPI_KEYS)[number], {
+        organizationId: orgId,
+        statusId,
+        assignedToUserId: showAssignee ? assigneeHrefValue(assignedTo, user) : undefined,
+      }))
+      return
+    }
     if (key === 'pending') {
       openDocuments({ ...filters, bucket: 'pending' })
       return
@@ -211,12 +238,21 @@ export function DashboardPage() {
       <div className="filter-toolbar">
         <Select
           allowClear
-          placeholder="Organization"
+          placeholder={ALL_ORGANIZATIONS_LABEL}
           className="filter-field"
-          value={orgId}
-          onChange={setOrgId}
-          options={orgs.map((o) => ({ value: o.id, label: o.name }))}
+          aria-label={ALL_ORGANIZATIONS_LABEL}
+          value={dashboardOrgSelectValue(orgId)}
+          onChange={(value) => setOrgId(parseDashboardOrgId(value))}
+          options={[
+            { value: ALL_ORGANIZATIONS, label: ALL_ORGANIZATIONS_LABEL },
+            ...orgs.map((o) => ({ value: o.id, label: o.name })),
+          ]}
         />
+        {showAllOrganizationsControl(orgId) ? (
+          <Button size="small" className="all-organizations-clear" onClick={() => setOrgId(undefined)}>
+            {ALL_ORGANIZATIONS_LABEL}
+          </Button>
+        ) : null}
         <Select
           allowClear
           placeholder="Status"
@@ -261,16 +297,17 @@ export function DashboardPage() {
 
       {error && <LoadError message={error} onRetry={() => void load()} />}
 
-      <Row gutter={[8, 8]}>
-        {(['active', 'pending', 'completed', 'priority'] as const).map((key) => {
+      <div className="dashboard-kpis">
+        {DASHBOARD_KPI_KEYS.map((key) => {
           const card = kpi(key)
+          const pendingCard = isPendingStatus(card?.label ?? kpiFallback[key]) || key === 'pending'
           return (
-            <Col xs={12} md={6} key={key}>
+            <div className="kpi-card-col" key={key}>
               <Card
                 loading={loading}
                 size="small"
                 hoverable
-                className="kpi-card bis-theme-panel"
+                className={pendingCard ? `kpi-card bis-theme-panel ${PENDING_HIGHLIGHT_CARD_CLASS}` : 'kpi-card bis-theme-panel'}
                 title={card?.label ?? kpiFallback[key]}
                 role="button"
                 tabIndex={0}
@@ -290,10 +327,10 @@ export function DashboardPage() {
                   valueStyle={card?.color ? { color: card.color } : undefined}
                 />
               </Card>
-            </Col>
+            </div>
           )
         })}
-      </Row>
+      </div>
 
       <DashboardCharts data={data} loading={loading} filters={filters} onOpen={openDocuments} />
 
