@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { reviewLabel } from './statusLabels.ts'
+import { CANONICAL_STATUS_LABELS, reviewLabel, statusLabel } from './statusLabels.ts'
+import { statusSelectOptions } from './statusSelectOptions.ts'
 import { resolveAssigneeFilter } from './staffQueue.ts'
 import { viewerKind } from './documentPreview.ts'
 
@@ -13,6 +14,8 @@ const shell = readFileSync(join(here, 'layout/AppShell.tsx'), 'utf8')
 const manage = readFileSync(join(here, 'pages/ManageDocumentsPage.tsx'), 'utf8')
 const upload = readFileSync(join(here, 'pages/UploadDocumentsPage.tsx'), 'utf8')
 const detail = readFileSync(join(here, 'pages/ViewDocumentPage.tsx'), 'utf8')
+const dashboard = readFileSync(join(here, 'pages/DashboardPage.tsx'), 'utf8')
+const charts = readFileSync(join(here, 'components/DashboardCharts.tsx'), 'utf8')
 
 describe('WL pack UI Musts', () => {
   it('WL03/WL06 — Upload Documents is its own left-nav page and + Upload goes there', () => {
@@ -36,6 +39,42 @@ describe('WL pack UI Musts', () => {
     assert.match(upload, /if \(isStaff && nextTypeId\)/)
     assert.match(upload, /if \(isStaff && values.isPriority\)/)
     assert.match(upload, /body.append\('organizationId', nextOrgId\)/)
+  })
+
+  it('WL07 — selectors, filters, tiles, charts use the six statuses; Needs Review ≠ Reviewed', () => {
+    // WL07 close — CR11 already ships this. Fail if: form ≠ charts with no mapping · Needs Review dropped · silent remap.
+    const canonical = ['Active', 'Pending', 'Complete', 'On-Hold', 'Cancelled', 'Needs Review']
+    const actions = {
+      pendingId: 'pending',
+      activeId: 'active',
+      onHoldId: 'hold',
+      completeId: 'complete',
+      cancelledId: 'cancelled',
+      needsReviewId: 'needs-review',
+      completedIds: ['complete', 'qcd'],
+    }
+    assert.deepEqual([...CANONICAL_STATUS_LABELS], canonical)
+    assert.deepEqual(statusSelectOptions(actions).map((option) => option.label), canonical)
+    assert.equal(statusLabel('In Progress'), 'Active', 'Fail if: form ≠ charts with no mapping.')
+    assert.equal(statusLabel('Held'), 'On-Hold')
+    assert.equal(statusLabel('Worked'), 'Complete')
+    assert.equal(statusLabel('Needs Review'), 'Needs Review', 'Fail if: Needs Review dropped.')
+    assert.notEqual(statusLabel('Needs Review'), reviewLabel(true))
+    assert.notEqual(statusLabel('Needs Review'), 'Reviewed')
+    assert.equal(statusLabel("QC'd"), "QC'd", 'Fail if: silent remap of QC\'d.')
+
+    assert.match(detail, /statusSelectOptions\(actions/)
+    assert.match(manage, /statusSelectOptions\(actions/)
+    assert.match(manage, /options=\{statuses\.map\(\(s\) => \(\{ value: s\.id, label: statusLabel\(s\.name\) \}\)\)\}/)
+    assert.match(dashboard, /options=\{statuses\.map\(\(s\) => \(\{ value: s\.id, label: statusLabel\(s\.name\) \}\)\)\}/)
+    assert.match(manage, /label: 'On-Hold'/)
+    assert.match(manage, /label: 'Complete'/)
+    assert.match(dashboard, /active: 'Active'/)
+    assert.match(dashboard, /pending: 'Pending'/)
+    assert.match(charts, /chartStatusCounts/)
+    assert.match(charts, /statusLabel\(x\.name\)/)
+    assert.match(manage, /title: 'Review'/)
+    assert.match(manage, /reviewLabel\(value\)/)
   })
 
   it('WL08 — document type options keep API order Deed…Other', () => {

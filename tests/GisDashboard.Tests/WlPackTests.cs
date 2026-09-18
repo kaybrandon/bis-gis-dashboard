@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using FluentAssertions;
 using GisDashboard.Application.WorkItems;
 using GisDashboard.Domain;
+using GisDashboard.Infrastructure.AiFill;
 using GisDashboard.Infrastructure.Persistence;
 
 namespace GisDashboard.Tests;
@@ -11,8 +13,9 @@ namespace GisDashboard.Tests;
 /// <summary>
 /// WL01–WL13 verify/close. Linked QC/CR already shipped; this pack locks the Musts
 /// and the two WL04 API holes (org auto + ignore client type/priority).
-/// WL07 — Status dropdown + Needs Review vocabulary — HOLD until CR11 (#27) is on main.
-/// Do not change status names, selectors, tiles, or charts here.
+/// WL07 — Status dropdown + Needs Review vocabulary — closed by CR11 (#27 / c9db1fe).
+/// Canonical set: Active · Pending · Complete · On-Hold · Cancelled · Needs Review.
+/// Fail if: form ≠ charts with no mapping · Needs Review dropped · data destroyed · silent remap.
 /// </summary>
 public sealed class WlPackTests : IClassFixture<ApiFactory>
 {
@@ -171,8 +174,138 @@ public sealed class WlPackTests : IClassFixture<ApiFactory>
         note.Should().Contain("/upload-documents");
     }
 
-    // WL07 HOLD — Status dropdown + Needs Review vocabulary depends on CR11 (#27).
-    // Do not change status names, selectors, tiles, charts, or exports here until CR11 is on main.
+    [Fact]
+    public async Task Wl07_canonical_statuses_on_selectors_filters_tiles_charts_exports()
+    {
+        // WL07 close — CR11 (#27 / c9db1fe) already ships this vocabulary. Evidence only.
+        // Fail if: form ≠ charts with no mapping · Needs Review dropped · data destroyed · silent remap.
+        var client = await _factory.LoginAsync("admin@bisconsultants.local");
+        string[] canonical = ["Active", "Pending", "Complete", "On-Hold", "Cancelled", "Needs Review"];
+
+        var statuses = await (await client.GetAsync("/api/lookups/statuses")).ReadJsonAsync();
+        var names = statuses.EnumerateArray().Select(x => x.GetProperty("name").GetString()).ToList();
+        names.Should().Equal(canonical,
+            "Fail if: selectors/filters do not expose the six canonical statuses.");
+        names.Should().Contain("Needs Review", "Fail if: Needs Review dropped.");
+        names.Should().NotContain(["Reviewed", "In Progress", "Held", "Worked", "QC'd"],
+            "Fail if: form uses unmapped legacy labels or Reviewed as a status.");
+
+        var actions = await (await client.GetAsync("/api/lookups/status-actions")).ReadJsonAsync();
+        actions.GetProperty("activeId").GetGuid().Should().Be(SeedIds.StatusInProgress);
+        actions.GetProperty("pendingId").GetGuid().Should().Be(SeedIds.StatusPending);
+        actions.GetProperty("completeId").GetGuid().Should().Be(SeedIds.StatusWorked);
+        actions.GetProperty("onHoldId").GetGuid().Should().Be(SeedIds.StatusHeld);
+        actions.GetProperty("cancelledId").GetGuid().Should().Be(SeedIds.StatusCancelled);
+        actions.GetProperty("needsReviewId").GetGuid().Should().Be(SeedIds.StatusNeedsReview,
+            "Fail if: Needs Review is missing from status selectors.");
+
+        StatusDisplay.CanonicalNames.Should().Equal(canonical);
+        StatusDisplay.Label("In Progress").Should().Be("Active",
+            "Fail if: form ≠ charts with no mapping (In Progress → Active).");
+        StatusDisplay.Label("Held").Should().Be("On-Hold");
+        StatusDisplay.Label("Worked").Should().Be("Complete");
+        StatusDisplay.Label("Needs Review").Should().Be("Needs Review");
+        StatusDisplay.Label("QC'd").Should().Be("QC'd",
+            "Fail if: silent remap of QC'd.");
+
+        var qcd = await (await client.GetAsync($"/api/work-items/{SeedIds.DemoDeed}")).ReadJsonAsync();
+        qcd.GetProperty("statusId").GetGuid().Should().Be(SeedIds.StatusQcd,
+            "Fail if: data destroyed — QC'd row lost its id.");
+        qcd.GetProperty("statusName").GetString().Should().Be("QC'd",
+            "Fail if: silent remap of stored QC'd data.");
+        qcd.GetProperty("isReviewed").GetBoolean().Should().BeFalse();
+
+        var cancelledId = await UploadNamedAsync(client, "wl07-cancelled.pdf");
+        (await client.PatchAsJsonAsync($"/api/work-items/{cancelledId}", new
+        {
+            statusId = SeedIds.StatusCancelled
+        })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var reviewId = await UploadNamedAsync(client, "wl07-needs-review.pdf");
+        var marked = await client.PatchAsJsonAsync($"/api/work-items/{reviewId}", new
+        {
+            statusId = SeedIds.StatusNeedsReview
+        });
+        marked.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reviewItem = await marked.ReadJsonAsync();
+        reviewItem.GetProperty("statusName").GetString().Should().Be("Needs Review");
+        reviewItem.GetProperty("isReviewed").GetBoolean().Should().BeFalse(
+            "Fail if: Needs Review is treated as Reviewed Yes.");
+
+        var pairs = new (Guid StatusId, string Label)[]
+        {
+            (SeedIds.StatusInProgress, "Active"),
+            (SeedIds.StatusPending, "Pending"),
+            (SeedIds.StatusWorked, "Complete"),
+            (SeedIds.StatusHeld, "On-Hold"),
+            (SeedIds.StatusCancelled, "Cancelled"),
+            (SeedIds.StatusNeedsReview, "Needs Review"),
+        };
+        foreach (var (statusId, label) in pairs)
+        {
+            var filtered = await (await client.GetAsync(
+                $"/api/work-items?pageSize=100&bucket=all&statusId={statusId}")).ReadJsonAsync();
+            filtered.GetProperty("items").EnumerateArray().Should().NotBeEmpty(
+                "Fail if: {0} filter returns no rows.", label);
+            filtered.GetProperty("items").EnumerateArray().Should().OnlyContain(x =>
+                x.GetProperty("statusId").GetGuid() == statusId &&
+                x.GetProperty("statusName").GetString() == label,
+                "Fail if: filter {0} returns a different status label.", label);
+        }
+
+        var hold = await (await client.GetAsync("/api/work-items?pageSize=100&bucket=hold")).ReadJsonAsync();
+        hold.GetProperty("items").EnumerateArray().Should().OnlyContain(x =>
+            x.GetProperty("statusName").GetString() == "On-Hold",
+            "Fail if: On-Hold tile/bucket does not use the canonical label.");
+        var complete = await (await client.GetAsync("/api/work-items?pageSize=100&bucket=completed")).ReadJsonAsync();
+        complete.GetProperty("items").EnumerateArray().Should().OnlyContain(x =>
+            x.GetProperty("statusName").GetString() == "Complete" ||
+            x.GetProperty("statusId").GetGuid() == SeedIds.StatusQcd,
+            "Fail if: Complete tile remaps or drops stored rows.");
+
+        var dash = await (await client.GetAsync("/api/dashboard")).ReadJsonAsync();
+        var kpiLabels = dash.GetProperty("kpis").EnumerateArray()
+            .Select(x => x.GetProperty("label").GetString()).ToList();
+        kpiLabels.Should().Contain(["Active", "Pending"],
+            "Fail if: dashboard tiles drop Active/Pending.");
+        var chartNames = dash.GetProperty("statusCounts").EnumerateArray()
+            .Select(x => x.GetProperty("name").GetString()).ToList();
+        chartNames.Should().OnlyContain(name => canonical.Contains(name!),
+            "Fail if: form ≠ charts with no mapping — chart stages are outside the canonical set.");
+        chartNames.Should().Contain("Needs Review", "Fail if: Needs Review dropped from charts.");
+        chartNames.Should().NotContain(["Reviewed", "In Progress", "Held", "Worked", "QC'd"]);
+
+        var csv = await client.GetAsync("/api/work-items/export?pageSize=100&bucket=all");
+        csv.StatusCode.Should().Be(HttpStatusCode.OK);
+        var csvText = Encoding.UTF8.GetString(await csv.Content.ReadAsByteArrayAsync());
+        foreach (var label in canonical)
+        {
+            csvText.Should().Contain(label, "Fail if: export drops {0}.", label);
+        }
+        csvText.Should().Contain("QC'd", "Fail if: data destroyed — QC'd export row missing.");
+        csvText.Should().NotContain("Reviewed Yes");
+
+        var reviewCsv = await client.GetAsync(
+            $"/api/work-items/export?pageSize=100&bucket=all&statusId={SeedIds.StatusNeedsReview}");
+        var reviewText = Encoding.UTF8.GetString(await reviewCsv.Content.ReadAsByteArrayAsync());
+        reviewText.Should().Contain("wl07-needs-review.pdf");
+        reviewText.Should().Contain("Needs Review");
+        reviewText.Should().NotContain("Reviewed Yes");
+
+        var pdf = await client.GetAsync("/api/dashboard/pdf");
+        pdf.StatusCode.Should().Be(HttpStatusCode.OK);
+        var pdfText = PdfTextExtractor.Extract(new MemoryStream(await pdf.Content.ReadAsByteArrayAsync()));
+        pdfText.Should().Contain("Active");
+        pdfText.Should().Contain("Needs Review", "Fail if: Needs Review dropped from exports.");
+        pdfText.Should().NotContain("In Progress");
+
+        var reviewed = await client.PatchAsJsonAsync($"/api/work-items/{reviewId}", new { isReviewed = true });
+        reviewed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var afterReview = await reviewed.ReadJsonAsync();
+        afterReview.GetProperty("statusName").GetString().Should().Be("Needs Review");
+        afterReview.GetProperty("isReviewed").GetBoolean().Should().BeTrue(
+            "Fail if: Needs Review and Reviewed Yes/No are the same field.");
+    }
 
     [Fact]
     public async Task Wl08_document_types_are_deed_plat_survey_subdivision_other()
@@ -258,7 +391,7 @@ public sealed class WlPackTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Settings_name_the_wl_pack_and_hold_wl07()
+    public async Task Settings_name_the_wl_pack_and_close_wl07()
     {
         var client = await _factory.LoginAsync("admin@bisconsultants.local");
         var note = (await (await client.GetAsync("/api/settings")).ReadJsonAsync())
@@ -267,7 +400,9 @@ public sealed class WlPackTests : IClassFixture<ApiFactory>
         note.Should().Contain("WL13");
         note.Should().Contain("WL07");
         note.Should().Contain("CR11");
-        note.Should().Contain("held");
+        note.Should().Contain("Needs Review");
+        note.Should().Contain("pack complete");
+        note.Should().NotContain("held");
     }
 
     private static async Task<HttpResponseMessage> UploadAsync(
@@ -315,5 +450,13 @@ public sealed class WlPackTests : IClassFixture<ApiFactory>
         file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
         form.Add(file, "file", fileName);
         return await client.PostAsync("/api/work-items", form);
+    }
+
+    private static async Task<Guid> UploadNamedAsync(HttpClient client, string fileName)
+    {
+        var response = await UploadAsync(client, SeedIds.DemoClient.ToString(), "Demo Client",
+            SeedIds.TypeDeed.ToString(), "Deed", fileName);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        return (await response.ReadJsonAsync()).GetProperty("id").GetGuid();
     }
 }
