@@ -864,7 +864,13 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
             return WorkItemAiScanStatus.FailedMessage;
         }
 
-        return ClipScanMessage(text) ?? WorkItemAiScanStatus.FailedMessage;
+        if (text.Contains("AI scan failed", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("not configured", StringComparison.OrdinalIgnoreCase))
+        {
+            return ClipScanMessage(text) ?? WorkItemAiScanStatus.FailedMessage;
+        }
+
+        return ClipScanMessage($"AI scan failed. {text}") ?? WorkItemAiScanStatus.FailedMessage;
     }
 
     private static string? ClipScanMessage(string? message)

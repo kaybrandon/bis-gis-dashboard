@@ -37,7 +37,7 @@ describe('P1 auto AI-scan on upload + P0 subject PIDs', () => {
     assert.doesNotMatch(review, /no extractable text|cannot be AI-filled/i)
     assert.doesNotMatch(api, /documentIntelligence|DocumentIntelligence|formrecognizer|FormRecognizer/i)
     assert.doesNotMatch(fill, /documentIntelligence|DocumentIntelligence|formrecognizer/i)
-    assert.doesNotMatch(fill, /no extractable text|cannot be AI-filled/i)
+    assert.match(fill, /SanitizeScanMessage/)
     assert.match(fill, /page images/)
     assert.match(fill, /subject Property IDs|subject PIDs/)
   })
