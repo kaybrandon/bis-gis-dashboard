@@ -1,4 +1,4 @@
-import { GREETING_TIME_ZONE } from './headerGreeting'
+import { GREETING_TIME_ZONE } from './headerGreeting.ts'
 
 export const HELP_INBOX_PREVIEW_MAX = 80
 
