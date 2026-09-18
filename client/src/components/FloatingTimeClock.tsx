@@ -133,7 +133,7 @@ export function FloatingTimeClock() {
     setOpen((value) => !value)
   }
 
-  const fabLabel = running ? `Clocked in ${formatElapsed(clock.startedAt!, now)}` : 'Clock in'
+  const fabLabel = running ? 'Clocked in' : 'Clock in'
   const alignLeft = (pos?.x ?? 0) < (typeof window === 'undefined' ? 0 : window.innerWidth / 2)
   const openBelow = (pos?.y ?? 0) < 220
 
