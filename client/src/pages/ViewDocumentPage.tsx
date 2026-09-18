@@ -526,6 +526,7 @@ export function ViewDocumentPage() {
                       Reviewed
                     </Checkbox>
                   )}
+                  <Typography.Text type="secondary">Total time {item.hoursLabel || '0m'}</Typography.Text>
                 </Space>
                 {item.canSetPriority && draft.isPriority && (
                   <>
@@ -611,7 +612,7 @@ export function ViewDocumentPage() {
                   <span>{isNeededByOverdue(item.isPriority, item.priorityNeededBy) ? 'Overdue · ' : ''}{neededByBadgeText({ neededBy: item.priorityNeededBy, workedOn: item.workedOn })}</span>
                 ) : null}
                 <span>
-                  Split? {item.isSplit ? 'Yes' : 'No'} · Sketch? {item.isSketch ? 'Yes' : 'No'} · Reviewed {item.isReviewed ? 'Yes' : 'No'}
+                  Split? {item.isSplit ? 'Yes' : 'No'} · Sketch? {item.isSketch ? 'Yes' : 'No'} · Reviewed {item.isReviewed ? 'Yes' : 'No'} · Total time {item.hoursLabel || '0m'}
                 </span>
                 <span>Worked {item.workedOn ? dayjs(item.workedOn).format('YYYY-MM-DD') : '—'}</span>
                 <span>
@@ -629,7 +630,7 @@ export function ViewDocumentPage() {
             <div>{item.organizationName} · {typeLabel}</div>
             <div>
               Uploaded {dayjs(item.uploadedAt).format('YYYY-MM-DD HH:mm')} by {item.uploadedByName}
-              {' · '}Hours {item.hoursLabel}
+              {' · '}Total time {item.hoursLabel || '0m'}
             </div>
           </div>
         </div>

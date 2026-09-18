@@ -1,19 +1,17 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api } from './api'
-import { documentIdFromPath, loadClock, TIME_CLOCK_CHANGED } from './timeClock'
+import { attendancePresence, documentIdFromPath, TIME_CLOCK_CHANGED } from './timeClock'
 
 const HEARTBEAT_MS = 45_000
 
 function payload(pathname: string) {
-  const clock = loadClock()
-  const routeId = documentIdFromPath(pathname)
-  const clockedIn = clock.startedAt != null && Boolean(clock.target?.id)
+  const attendance = attendancePresence()
   return {
     route: pathname || '/',
-    workItemId: routeId,
-    clockedIn,
-    clockWorkItemId: clockedIn ? clock.target?.id ?? null : null,
+    workItemId: documentIdFromPath(pathname),
+    clockedIn: attendance.clockedIn,
+    clockWorkItemId: attendance.clockWorkItemId,
   }
 }
 

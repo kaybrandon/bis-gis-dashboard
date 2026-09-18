@@ -5,7 +5,8 @@ import { ASSIGNED_TO_LABEL, UNASSIGNED_LABEL } from '../assignmentLabels'
 import { isNeededByOverdue } from '../neededBy'
 import { neededByBadgeText } from '../workItemDates'
 import { WorkPresenceMarks } from './PresencePeople'
-import { reviewLabel, statusLabel } from '../statusLabels'
+import { statusLabel } from '../statusLabels'
+import { workItemTimeLine } from '../workItemDisplay'
 
 type Props = {
   items: WorkItemListItem[]
@@ -14,9 +15,10 @@ type Props = {
   onOpen: (id: string) => void
   showUploadDate?: boolean
   showReview?: boolean
+  showTotalTime?: boolean
 }
 
-export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDate, showReview }: Props) {
+export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDate, showReview, showTotalTime }: Props) {
   if (loading && items.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: 24 }}>
@@ -33,6 +35,7 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
     <div className="work-item-cards">
       {items.map((item) => {
         const due = neededByBadgeText({ neededBy: item.priorityNeededBy, workedOn: item.workedOn })
+        const timeLine = workItemTimeLine(item, { showReview, showTotalTime })
         return (
         <Card
           key={item.id}
@@ -62,8 +65,7 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
             {showUploadDate ? `Uploaded ${dayjs(item.uploadedAt).format('YYYY-MM-DD')}` : null}
             {showUploadDate ? ' · ' : null}
             Worked {item.workedOn ? dayjs(item.workedOn).format('YYYY-MM-DD') : '—'}
-            {' · '}
-            {showReview ? `Review ${reviewLabel(item.isReviewed)}` : item.hoursLabel}
+            {timeLine ? ` · ${timeLine}` : ''}
           </Typography.Text>
         </Card>
         )
