@@ -218,6 +218,7 @@ public sealed class WorkflowCommsService : IWorkflowComms
             join role in _db.Roles on ur.RoleId equals role.Id
             where member.OrganizationId == organizationId
                   && user.IsActive
+                  && !user.IsArchived
                   && user.Id != SeedIds.TokenUploadUser
                   && user.Email != null
                   && user.Email != ""
@@ -242,6 +243,7 @@ public sealed class WorkflowCommsService : IWorkflowComms
             join user in _db.Users.AsNoTracking() on tech.UserId equals user.Id
             where tech.OrganizationId == organizationId
                   && user.IsActive
+                  && !user.IsArchived
                   && user.Id != SeedIds.TokenUploadUser
                   && (excludeUserId == null || user.Id != excludeUserId)
                   && user.Email != null
@@ -264,7 +266,7 @@ public sealed class WorkflowCommsService : IWorkflowComms
         }
 
         var email = await _db.Users.AsNoTracking()
-            .Where(x => x.Id == userId && x.IsActive && x.Email != null && x.Email != "")
+            .Where(x => x.Id == userId && x.IsActive && !x.IsArchived && x.Email != null && x.Email != "")
             .Select(x => x.Email)
             .FirstOrDefaultAsync(cancellationToken);
         return string.IsNullOrWhiteSpace(email) ? null : email.Trim();

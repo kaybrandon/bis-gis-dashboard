@@ -33,7 +33,8 @@ public sealed record UpdateUserRequest(
     bool IsActive,
     string? Password,
     string? FullName = null,
-    string? WorkPhone = null);
+    string? WorkPhone = null,
+    string? Title = null);
 
 public sealed record UploadLinkDto(
     Guid OrganizationId,
@@ -51,7 +52,11 @@ public sealed record UserListItem(
     IReadOnlyList<OrgMember> Organizations,
     string? FullName = null,
     string? WorkPhone = null,
-    bool HasAvatar = false);
+    bool HasAvatar = false,
+    DateTimeOffset? LastLoginAt = null,
+    bool IsArchived = false,
+    DateTimeOffset? ArchivedAt = null,
+    string? Title = null);
 
 public sealed record OrgMember(Guid OrganizationId, string OrganizationName);
 
@@ -64,7 +69,8 @@ public sealed record CreateUserRequest(
     string Role,
     IReadOnlyList<Guid>? OrganizationIds = null,
     string? FullName = null,
-    string? WorkPhone = null);
+    string? WorkPhone = null,
+    string? Title = null);
 
 public sealed record UpdateUserOrgsRequest(IReadOnlyList<Guid>? OrganizationIds);
 

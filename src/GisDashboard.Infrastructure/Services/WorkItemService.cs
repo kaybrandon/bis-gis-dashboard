@@ -83,12 +83,14 @@ public sealed class WorkItemService : IWorkItemService
                         ? x.AssignedToUser.FullName
                         : x.AssignedToUser.DisplayName)
                     : null,
+                AssignedToIsArchived = x.AssignedToUser != null && x.AssignedToUser.IsArchived,
                 x.AssignedToUserId,
                 x.PriorityNeededBy,
                 x.UploadedAt,
                 UploadedByName = x.UploadedByUser.FullName != null && x.UploadedByUser.FullName != ""
                     ? x.UploadedByUser.FullName
                     : x.UploadedByUser.DisplayName,
+                UploadedByIsArchived = x.UploadedByUser.IsArchived,
                 x.UpdatedAt,
                 x.WorkedOn,
                 Minutes = x.TimeEntries.Sum(t => t.Minutes),
@@ -113,11 +115,11 @@ public sealed class WorkItemService : IWorkItemService
             x.StatusId,
             x.StatusName,
             x.StatusColor,
-            x.AssignedToName,
+            UserIdentity.WithArchivedSuffix(x.AssignedToName, x.AssignedToIsArchived),
             x.AssignedToUserId,
             x.PriorityNeededBy,
             x.UploadedAt,
-            x.UploadedByName,
+            UserIdentity.WithArchivedSuffix(x.UploadedByName, x.UploadedByIsArchived),
             x.UpdatedAt,
             x.WorkedOn,
             TimeDurations.ToHours(x.Minutes),
@@ -569,9 +571,10 @@ public sealed class WorkItemService : IWorkItemService
                 x.AssignedToUserId,
                 Name = x.AssignedToUser!.FullName != null && x.AssignedToUser.FullName != ""
                     ? x.AssignedToUser.FullName
-                    : x.AssignedToUser.DisplayName
+                    : x.AssignedToUser.DisplayName,
+                IsArchived = x.AssignedToUser.IsArchived
             })
-            .Select(g => new { g.Key.AssignedToUserId, g.Key.Name, Count = g.Count() })
+            .Select(g => new { g.Key.AssignedToUserId, g.Key.Name, g.Key.IsArchived, Count = g.Count() })
             .OrderByDescending(x => x.Count)
             .ToListAsync(cancellationToken);
 
@@ -605,12 +608,14 @@ public sealed class WorkItemService : IWorkItemService
                         ? x.AssignedToUser.FullName
                         : x.AssignedToUser.DisplayName)
                     : null,
+                AssignedToIsArchived = x.AssignedToUser != null && x.AssignedToUser.IsArchived,
                 x.AssignedToUserId,
                 x.PriorityNeededBy,
                 x.UploadedAt,
                 UploadedByName = x.UploadedByUser.FullName != null && x.UploadedByUser.FullName != ""
                     ? x.UploadedByUser.FullName
                     : x.UploadedByUser.DisplayName,
+                UploadedByIsArchived = x.UploadedByUser.IsArchived,
                 x.UpdatedAt,
                 x.WorkedOn,
                 Minutes = x.TimeEntries.Sum(t => t.Minutes),
@@ -632,12 +637,12 @@ public sealed class WorkItemService : IWorkItemService
                 new DashboardKpi("priority", "Priority", priority, "#f5222d")
             ],
             statusCounts.Select(x => new NamedCount(x.StatusId, x.Name, x.Color, x.Count)).ToList(),
-            assigneeRows.Select(x => new NamedCount(x.AssignedToUserId!.Value, x.Name, null, x.Count)).ToList(),
+            assigneeRows.Select(x => new NamedCount(x.AssignedToUserId!.Value, UserIdentity.WithArchivedSuffix(x.Name, x.IsArchived), null, x.Count)).ToList(),
             orgCounts.Select(x => new NamedCount(x.OrganizationId, x.Name, null, x.Count)).ToList(),
             recentRows.Select(x => new WorkItemListItem(
                 x.Id, x.FileName, x.Title, x.OrganizationId, x.OrganizationName, x.DocumentTypeId, x.DocumentTypeName,
-                x.StatusId, x.StatusName, x.StatusColor, x.AssignedToName, x.AssignedToUserId, x.PriorityNeededBy,
-                x.UploadedAt, x.UploadedByName, x.UpdatedAt,
+                x.StatusId, x.StatusName, x.StatusColor, UserIdentity.WithArchivedSuffix(x.AssignedToName, x.AssignedToIsArchived), x.AssignedToUserId, x.PriorityNeededBy,
+                x.UploadedAt, UserIdentity.WithArchivedSuffix(x.UploadedByName, x.UploadedByIsArchived), x.UpdatedAt,
                 x.WorkedOn, TimeDurations.ToHours(x.Minutes), TimeDurations.Format(x.Minutes), x.FirstDeadline, x.FinalDeadline,
                 x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed)).ToList(),
             await BuildVolumeOverTimeAsync(items, range, cancellationToken),
@@ -781,12 +786,14 @@ public sealed class WorkItemService : IWorkItemService
                         ? x.AssignedToUser.FullName
                         : x.AssignedToUser.DisplayName)
                     : null,
+                AssignedToIsArchived = x.AssignedToUser != null && x.AssignedToUser.IsArchived,
                 x.AssignedToUserId,
                 x.PriorityNeededBy,
                 x.UploadedAt,
                 UploadedByName = x.UploadedByUser.FullName != null && x.UploadedByUser.FullName != ""
                     ? x.UploadedByUser.FullName
                     : x.UploadedByUser.DisplayName,
+                UploadedByIsArchived = x.UploadedByUser.IsArchived,
                 x.UpdatedAt,
                 x.WorkedOn,
                 Minutes = x.TimeEntries.Sum(t => t.Minutes),
@@ -802,8 +809,8 @@ public sealed class WorkItemService : IWorkItemService
 
         var items = rows.Select(x => new WorkItemListItem(
             x.Id, x.FileName, x.Title, x.OrganizationId, x.OrganizationName, x.DocumentTypeId, x.DocumentTypeName,
-            x.StatusId, x.StatusName, x.StatusColor, x.AssignedToName, x.AssignedToUserId, x.PriorityNeededBy,
-            x.UploadedAt, x.UploadedByName, x.UpdatedAt,
+            x.StatusId, x.StatusName, x.StatusColor, UserIdentity.WithArchivedSuffix(x.AssignedToName, x.AssignedToIsArchived), x.AssignedToUserId, x.PriorityNeededBy,
+            x.UploadedAt, UserIdentity.WithArchivedSuffix(x.UploadedByName, x.UploadedByIsArchived), x.UpdatedAt,
             x.WorkedOn, TimeDurations.ToHours(x.Minutes), TimeDurations.Format(x.Minutes), x.FirstDeadline, x.FinalDeadline,
             x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed)).ToList();
         return WorkItemCsvExport.Build(items);
@@ -867,6 +874,7 @@ public sealed class WorkItemService : IWorkItemService
                         ? x.AssignedToUser.FullName
                         : x.AssignedToUser.DisplayName)
                     : "Unassigned",
+                IsArchived = x.AssignedToUser != null && x.AssignedToUser.IsArchived,
                 Minutes = x.TimeEntries
                     .Where(t => t.WorkedOnSort >= fromSort && t.WorkedOnSort <= toSort)
                     .Sum(t => t.Minutes)
@@ -874,7 +882,7 @@ public sealed class WorkItemService : IWorkItemService
             .ToListAsync(cancellationToken);
 
         return rows
-            .GroupBy(x => new { x.Id, x.Name })
+            .GroupBy(x => new { x.Id, Name = UserIdentity.WithArchivedSuffix(x.Name, x.IsArchived) })
             .Select(g => new HoursSlice(g.Key.Id, g.Key.Name, TimeDurations.ToHours(g.Sum(x => x.Minutes))))
             .Where(x => x.Hours > 0)
             .OrderByDescending(x => x.Hours)
@@ -1113,7 +1121,7 @@ public sealed class WorkItemService : IWorkItemService
 
     private async Task EnsureAssignableAsync(Guid userId, Guid organizationId, CancellationToken cancellationToken)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId && x.IsActive, cancellationToken)
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId && x.IsActive && !x.IsArchived, cancellationToken)
             ?? throw new ValidationException("Assigned user was not found.");
 
         var roles = await _db.UserRoles
@@ -1176,11 +1184,12 @@ public sealed class WorkItemService : IWorkItemService
                 x.User.DisplayName,
                 x.User.UserName,
                 x.User.Email,
+                x.User.IsArchived,
                 x.IsPrimary
             })
             .ToListAsync(cancellationToken);
         return AssignedTechnicianNames.FromUsers(
-            rows.Select(x => (x.FullName, x.DisplayName, x.UserName, (string?)x.Email, x.IsPrimary)));
+            rows.Select(x => (x.FullName, x.DisplayName, x.UserName, (string?)x.Email, x.IsPrimary, x.IsArchived)));
     }
 
     private async Task<Guid?> ResolveDefaultAssigneeAsync(Guid organizationId, CancellationToken cancellationToken)
@@ -1190,10 +1199,11 @@ public sealed class WorkItemService : IWorkItemService
             join ur in _db.UserRoles on tech.UserId equals ur.UserId
             join role in _db.Roles on ur.RoleId equals role.Id
             where tech.OrganizationId == organizationId
-            select new { tech.UserId, Role = role.Name, tech.User.DisplayName, tech.IsPrimary }
+            select new { tech.UserId, Role = role.Name, tech.User.DisplayName, tech.IsPrimary, tech.User.IsActive, tech.User.IsArchived }
         ).ToListAsync(cancellationToken);
 
         return rows
+            .Where(x => UserIdentity.CanSignIn(x.IsActive, x.IsArchived))
             .OrderBy(x => x.IsPrimary ? 0 : 1)
             .ThenBy(x => x.Role == Roles.Editor ? 0 : x.Role == Roles.Administrator ? 1 : 2)
             .ThenBy(x => x.DisplayName)
@@ -1214,7 +1224,12 @@ public sealed class WorkItemService : IWorkItemService
                     x.Id,
                     x.Body,
                     x.EditedAt,
-                    x.EditedByUser.PublicName))
+                    UserIdentity.HistoricalName(
+                        x.EditedByUser.FullName,
+                        x.EditedByUser.DisplayName,
+                        x.EditedByUser.IsArchived,
+                        x.EditedByUser.UserName,
+                        x.EditedByUser.Email)))
                 .ToList();
             var latest = history.FirstOrDefault();
             notesUpdatedAt = latest?.EditedAt;
@@ -1234,7 +1249,14 @@ public sealed class WorkItemService : IWorkItemService
             item.Status.Name,
             item.Status.Color,
             item.AssignedToUserId,
-            item.AssignedToUser?.PublicName,
+            item.AssignedToUser is null
+                ? null
+                : UserIdentity.HistoricalName(
+                    item.AssignedToUser.FullName,
+                    item.AssignedToUser.DisplayName,
+                    item.AssignedToUser.IsArchived,
+                    item.AssignedToUser.UserName,
+                    item.AssignedToUser.Email),
             _currentUser.CanSeeInternalNotes ? item.InternalNotes : null,
             _currentUser.CanSeeInternalNotes,
             _currentUser.CanEditInternalNotes,
@@ -1258,7 +1280,12 @@ public sealed class WorkItemService : IWorkItemService
             item.PlatCount,
             item.PropertyIds,
             item.UploadedAt,
-            item.UploadedByUser.PublicName,
+            UserIdentity.HistoricalName(
+                item.UploadedByUser.FullName,
+                item.UploadedByUser.DisplayName,
+                item.UploadedByUser.IsArchived,
+                item.UploadedByUser.UserName,
+                item.UploadedByUser.Email),
             item.UpdatedAt,
             item.ContentType,
             item.FileSizeBytes,

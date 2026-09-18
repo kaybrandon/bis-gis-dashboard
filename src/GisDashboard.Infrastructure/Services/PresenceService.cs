@@ -35,6 +35,13 @@ public sealed class PresenceService : IPresenceService
             throw new ForbiddenException("Authentication is required.");
         }
 
+        var self = await _db.Users.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == _currentUser.UserId, cancellationToken);
+        if (self is null || self.IsArchived)
+        {
+            throw new ForbiddenException("This account has been archived.");
+        }
+
         var now = DateTimeOffset.UtcNow;
         var route = NormalizeRoute(request.Route);
         var workItemId = await ResolveWorkItemIdAsync(request.WorkItemId, route, cancellationToken);
@@ -84,8 +91,15 @@ public sealed class PresenceService : IPresenceService
 
         var userIds = rows.Select(x => x.UserId).ToList();
         var users = await _db.Users.AsNoTracking()
-            .Where(x => userIds.Contains(x.Id))
+            .Where(x => userIds.Contains(x.Id) && !x.IsArchived)
             .ToDictionaryAsync(x => x.Id, cancellationToken);
+        rows = rows.Where(x => users.ContainsKey(x.UserId)).ToList();
+        if (rows.Count == 0)
+        {
+            return new PresenceListResponse([], 0, 0);
+        }
+
+        userIds = rows.Select(x => x.UserId).ToList();
 
         var workItemIds = rows
             .Select(DisplayWorkItemId)

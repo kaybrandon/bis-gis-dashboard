@@ -5,11 +5,13 @@ namespace GisDashboard.Application.WorkItems;
 public static class AssignedTechnicianNames
 {
     public static IReadOnlyList<AssignedTechnicianDisplay> FromUsers(
-        IEnumerable<(string? FullName, string? DisplayName, string? UserName, string? Email, bool IsPrimary)> rows)
+        IEnumerable<(string? FullName, string? DisplayName, string? UserName, string? Email, bool IsPrimary, bool IsArchived)> rows)
     {
         var all = rows
             .Select(x => new AssignedTechnicianDisplay(
-                UserIdentity.ShortPublicName(x.FullName, x.DisplayName, x.UserName, x.Email),
+                UserIdentity.WithArchivedSuffix(
+                    UserIdentity.ShortPublicName(x.FullName, x.DisplayName, x.UserName, x.Email),
+                    x.IsArchived),
                 x.IsPrimary))
             .Where(x => !string.IsNullOrWhiteSpace(x.Name))
             .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)

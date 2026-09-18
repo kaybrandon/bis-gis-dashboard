@@ -659,6 +659,19 @@ body,
   height: auto;
 }
 
+.users-show-archived {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 13px;
+}
+
+.users-row-archived td {
+  background: #f5f5f5 !important;
+  color: rgba(0, 0, 0, 0.45);
+}
+
 .filter-toolbar {
   display: flex;
   flex-wrap: wrap;

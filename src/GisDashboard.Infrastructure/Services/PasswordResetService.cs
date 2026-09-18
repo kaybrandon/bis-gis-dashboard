@@ -111,7 +111,7 @@ public sealed class PasswordResetService : IPasswordResetService
             .Include(x => x.User)
             .FirstOrDefaultAsync(x => x.TokenHash == hash && x.UsedAt == null, cancellationToken);
 
-        if (row is null || row.ExpiresAt <= now || !row.User.IsActive)
+        if (row is null || row.ExpiresAt <= now || !UserIdentity.CanSignIn(row.User.IsActive, row.User.IsArchived))
         {
             throw new ValidationException(InvalidLinkMessage);
         }
@@ -187,7 +187,7 @@ public sealed class PasswordResetService : IPasswordResetService
     {
         var user = await _users.FindByEmailAsync(identifier)
             ?? await _users.FindByNameAsync(identifier);
-        return user is { IsActive: true } ? user : null;
+        return user is not null && UserIdentity.CanSignIn(user.IsActive, user.IsArchived) ? user : null;
     }
 
     private string PublicOrigin()

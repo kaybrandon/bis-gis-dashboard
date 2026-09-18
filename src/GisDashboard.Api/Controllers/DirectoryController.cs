@@ -74,8 +74,8 @@ public sealed class DirectoryController : ControllerBase
 
     [Authorize(Roles = Domain.Roles.DirectoryManagers)]
     [HttpGet("admin/users")]
-    public Task<IReadOnlyList<UserListItem>> Users(CancellationToken cancellationToken) =>
-        _directory.ListUsersAsync(cancellationToken);
+    public Task<IReadOnlyList<UserListItem>> Users([FromQuery] bool includeArchived = false, CancellationToken cancellationToken = default) =>
+        _directory.ListUsersAsync(includeArchived, cancellationToken);
 
     [Authorize(Roles = Domain.Roles.DirectoryManagers)]
     [HttpPost("admin/users")]
@@ -86,6 +86,16 @@ public sealed class DirectoryController : ControllerBase
     [HttpPut("admin/users/{id:guid}")]
     public Task<UserListItem> UpdateUser(Guid id, [FromBody] UpdateUserRequest request, CancellationToken cancellationToken) =>
         _directory.UpdateUserAsync(id, request, cancellationToken);
+
+    [Authorize(Roles = Domain.Roles.DirectoryManagers)]
+    [HttpPost("admin/users/{id:guid}/archive")]
+    public Task<UserListItem> ArchiveUser(Guid id, CancellationToken cancellationToken) =>
+        _directory.ArchiveUserAsync(id, cancellationToken);
+
+    [Authorize(Roles = Domain.Roles.DirectoryManagers)]
+    [HttpPost("admin/users/{id:guid}/restore")]
+    public Task<UserListItem> RestoreUser(Guid id, CancellationToken cancellationToken) =>
+        _directory.RestoreUserAsync(id, cancellationToken);
 
     [Authorize(Roles = Domain.Roles.DirectoryManagers)]
     [HttpPut("admin/users/{id:guid}/organizations")]

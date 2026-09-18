@@ -71,7 +71,7 @@ public sealed class DashboardReportService : IDashboardReportService
 
         return await _db.Users
             .AsNoTracking()
-            .Where(u => u.IsActive && (
+            .Where(u => u.IsActive && !u.IsArchived && (
                 u.Organizations.Any(m => allowed.Contains(m.OrganizationId)) ||
                 _db.UserRoles.Any(ur => ur.UserId == u.Id && ur.RoleId == globalRoleId)))
             .OrderBy(u => u.DisplayName)
@@ -119,7 +119,7 @@ public sealed class DashboardReportService : IDashboardReportService
         var selectedUsers = await _db.Users
             .AsNoTracking()
             .Include(u => u.Organizations)
-            .Where(u => userIds.Contains(u.Id) && u.IsActive)
+            .Where(u => userIds.Contains(u.Id) && u.IsActive && !u.IsArchived)
             .ToListAsync(cancellationToken);
 
         if (selectedUsers.Count != userIds.Count)

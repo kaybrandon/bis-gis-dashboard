@@ -33,20 +33,32 @@ public sealed class CommentService : ICommentService
     public async Task<IReadOnlyList<CommentDto>> ListAsync(Guid workItemId, CancellationToken cancellationToken = default)
     {
         await EnsureWorkItemInScopeAsync(workItemId, cancellationToken);
-        return await _db.WorkItemComments.AsNoTracking()
+        var rows = await _db.WorkItemComments.AsNoTracking()
             .Where(x => x.WorkItemId == workItemId)
             .OrderBy(x => x.CreatedAtSort)
             .Include(x => x.AuthorUser)
+            .Select(x => new
+            {
+                x.Id,
+                x.WorkItemId,
+                x.Body,
+                x.AuthorUserId,
+                Name = x.AuthorUser.FullName != null && x.AuthorUser.FullName != ""
+                    ? x.AuthorUser.FullName
+                    : x.AuthorUser.DisplayName,
+                x.AuthorUser.IsArchived,
+                x.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+        return rows
             .Select(x => new CommentDto(
                 x.Id,
                 x.WorkItemId,
                 x.Body,
                 x.AuthorUserId,
-                x.AuthorUser.FullName != null && x.AuthorUser.FullName != ""
-                    ? x.AuthorUser.FullName
-                    : x.AuthorUser.DisplayName,
+                UserIdentity.WithArchivedSuffix(x.Name, x.IsArchived),
                 x.CreatedAt))
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 
     public async Task<CommentDto> CreateAsync(Guid workItemId, CreateCommentRequest request, CancellationToken cancellationToken = default)

@@ -171,8 +171,11 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
             entity.Property(x => x.DisplayName).HasMaxLength(200).IsRequired();
             entity.Property(x => x.FullName).HasMaxLength(200);
             entity.Property(x => x.WorkPhone).HasMaxLength(40);
+            entity.Property(x => x.JobTitle).HasMaxLength(200);
             entity.Property(x => x.AvatarBlobPath).HasMaxLength(1024);
             entity.Property(x => x.AvatarContentType).HasMaxLength(100);
+            entity.HasIndex(x => x.IsArchived);
+            entity.HasIndex(x => x.LastLoginAt);
         });
 
         builder.Entity<MonthlyReport>(entity =>

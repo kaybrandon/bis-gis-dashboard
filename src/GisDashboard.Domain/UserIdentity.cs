@@ -52,6 +52,29 @@ public static class UserIdentity
         return $"{first} {lastInitial}.";
     }
 
+    public static string HistoricalName(
+        string? fullName,
+        string? displayName,
+        bool isArchived,
+        string? userName = null,
+        string? email = null) =>
+        WithArchivedSuffix(PublicName(fullName, displayName, userName, email), isArchived);
+
+    public static string WithArchivedSuffix(string? name, bool isArchived)
+    {
+        var value = (name ?? string.Empty).Trim();
+        if (!isArchived || value.Length == 0)
+        {
+            return value;
+        }
+
+        return value.EndsWith("(archived)", StringComparison.OrdinalIgnoreCase)
+            ? value
+            : $"{value} (archived)";
+    }
+
+    public static bool CanSignIn(bool isActive, bool isArchived) => isActive && !isArchived;
+
     public static string PublicName(string? fullName, string? displayName, string? userName = null, string? email = null)
     {
         if (!string.IsNullOrWhiteSpace(fullName))
