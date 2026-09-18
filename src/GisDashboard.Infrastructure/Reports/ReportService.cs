@@ -75,6 +75,7 @@ public sealed class ReportService : IReportService
                 r.Id,
                 r.OrganizationId,
                 OrganizationName = r.Organization.Name,
+                OrganizationIsArchived = r.Organization.IsArchived,
                 r.Cadence,
                 r.Year,
                 r.Month,
@@ -93,7 +94,7 @@ public sealed class ReportService : IReportService
         return rows.Select(r => new ReportListItem(
             r.Id,
             r.OrganizationId,
-            r.OrganizationName,
+            OrganizationIdentity.HistoricalName(r.OrganizationName, r.OrganizationIsArchived),
             r.Cadence,
             r.Year,
             r.Month,
@@ -406,7 +407,7 @@ public sealed class ReportService : IReportService
             Title = annual ? ReportBranding.AnnualTitle : ReportBranding.Title,
             Cadence = cadence,
             IncludeParcelStatus = !annual,
-            OrganizationName = organization.Name,
+            OrganizationName = OrganizationIdentity.HistoricalName(organization.Name, organization.IsArchived),
             MonthName = monthName,
             MonthLabel = monthLabel,
             PeriodPhrase = periodPhrase,
@@ -467,7 +468,7 @@ public sealed class ReportService : IReportService
         return new ReportDetail(
             report.Id,
             report.OrganizationId,
-            report.Organization.Name,
+            OrganizationIdentity.HistoricalName(report.Organization.Name, report.Organization.IsArchived),
             string.IsNullOrWhiteSpace(report.Cadence) ? ReportCadences.Monthly : report.Cadence,
             report.Year,
             report.Month,
@@ -487,7 +488,7 @@ public sealed class ReportService : IReportService
     private static ReportSnapshot DeserializeSnapshot(MonthlyReport report)
     {
         var snapshot = JsonSerializer.Deserialize<ReportSnapshot>(report.SnapshotJson, JsonOptions)
-            ?? new ReportSnapshot { MonthLabel = report.MonthLabel, OrganizationName = report.Organization.Name };
+            ?? new ReportSnapshot { MonthLabel = report.MonthLabel, OrganizationName = OrganizationIdentity.HistoricalName(report.Organization.Name, report.Organization.IsArchived) };
         snapshot.Contact.Company = ReportBranding.Company;
         snapshot.Contact.Phone = ReportBranding.Phone;
         snapshot.Contact.Email = ReportBranding.Email;

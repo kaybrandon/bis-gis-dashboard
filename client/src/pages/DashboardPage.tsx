@@ -10,6 +10,8 @@ import { DashboardCharts } from '../components/DashboardCharts'
 import { ASSIGNED_TO_FILTER_HELP, ASSIGNED_TO_HELP, ASSIGNED_TO_LABEL, UNASSIGNED_LABEL } from '../assignmentLabels'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
+import { ShowArchivedSwitch } from '../components/ShowArchivedSwitch'
+import { orgPickerOption } from '../orgArchive'
 import { WorkPresenceMarks } from '../components/PresencePeople'
 import { WorkItemCards } from '../components/WorkItemCards'
 import {
@@ -63,6 +65,7 @@ export function DashboardPage() {
   const [statuses, setStatuses] = useState<LookupItem[]>([])
   const [assignees, setAssignees] = useState<AssignableUser[]>([])
   const [orgId, setOrgId] = useState<string | undefined>()
+  const [showArchived, setShowArchived] = useState(false)
   const [statusId, setStatusId] = useState<string | undefined>()
   const [assignedTo, setAssignedTo] = useState<string | undefined>(() => resolveAssigneeFilter(undefined, user))
   const [range, setRange] = useState<[Dayjs, Dayjs]>(defaultRange)
@@ -79,17 +82,18 @@ export function DashboardPage() {
   const loadLookups = useCallback(async () => {
     try {
       const [o, s, a] = await Promise.all([
-        api.organizations(),
+        api.organizations(showArchived),
         api.statuses(),
         showAssignee ? api.assignees() : Promise.resolve([] as AssignableUser[]),
       ])
       setOrgs(o)
       setStatuses(s)
       setAssignees(a)
+      setOrgId((current) => current && o.some((org) => org.id === current) ? current : undefined)
     } catch {
       /* keep empty */
     }
-  }, [showAssignee])
+  }, [showAssignee, showArchived])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -245,7 +249,7 @@ export function DashboardPage() {
           onChange={(value) => setOrgId(parseDashboardOrgId(value))}
           options={[
             { value: ALL_ORGANIZATIONS, label: ALL_ORGANIZATIONS_LABEL },
-            ...orgs.map((o) => ({ value: o.id, label: o.name })),
+            ...orgs.map(orgPickerOption),
           ]}
         />
         {showAllOrganizationsControl(orgId) ? (
@@ -253,6 +257,7 @@ export function DashboardPage() {
             {ALL_ORGANIZATIONS_LABEL}
           </Button>
         ) : null}
+        <ShowArchivedSwitch checked={showArchived} onChange={setShowArchived} />
         <Select
           allowClear
           placeholder="Status"

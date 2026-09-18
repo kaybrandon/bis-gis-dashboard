@@ -681,9 +681,14 @@ body,
   cursor: pointer;
 }
 
-.ant-table-tbody > tr.users-row-archived > td {
+.ant-table-tbody > tr.users-row-archived > td,
+.ant-table-tbody > tr.orgs-row-archived > td {
   background: #f0f0f0 !important;
   color: rgba(0, 0, 0, 0.45) !important;
+}
+
+.org-option-archived {
+  color: rgba(0, 0, 0, 0.45);
 }
 
 .filter-toolbar {

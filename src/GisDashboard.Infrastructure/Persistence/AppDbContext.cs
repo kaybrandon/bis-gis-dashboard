@@ -46,6 +46,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
             entity.HasIndex(x => x.Code).IsUnique();
             entity.Property(x => x.UploadToken).HasMaxLength(80);
             entity.HasIndex(x => x.UploadToken).IsUnique();
+            entity.HasIndex(x => x.IsArchived);
         });
 
         builder.Entity<UserOrganization>(entity =>

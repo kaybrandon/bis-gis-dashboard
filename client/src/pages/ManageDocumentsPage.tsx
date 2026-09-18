@@ -25,6 +25,8 @@ import {
 } from '../assignmentLabels'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
+import { ShowArchivedSwitch } from '../components/ShowArchivedSwitch'
+import { orgPickerOption } from '../orgArchive'
 import { WorkPresenceMarks } from '../components/PresencePeople'
 import { WorkItemCards } from '../components/WorkItemCards'
 import { useAuth } from '../auth'
@@ -167,6 +169,7 @@ export function ManageDocumentsPage() {
   })
   const [groupBy, setGroupBy] = useState<string | undefined>()
   const [orgs, setOrgs] = useState<OrgOption[]>([])
+  const [showArchived, setShowArchived] = useState(false)
   const [statuses, setStatuses] = useState<LookupItem[]>([])
   const [assignees, setAssignees] = useState<AssignableUser[]>([])
   const [docTypes, setDocTypes] = useState<LookupItem[]>([])
@@ -189,8 +192,16 @@ export function ManageDocumentsPage() {
 
   const loadLookups = useCallback(async () => {
     try {
-      const [o, s, a, t, act] = await Promise.all([
-        api.organizations(),
+      const requested = params.get('organizationId')
+      let o = await api.organizations(showArchived)
+      if (requested && !o.some((org) => org.id === requested)) {
+        const archived = await api.organizations(true)
+        if (archived.some((org) => org.id === requested)) {
+          o = archived
+          setShowArchived(true)
+        }
+      }
+      const [s, a, t, act] = await Promise.all([
         api.statuses(),
         showAssignee ? api.assignees() : Promise.resolve([] as AssignableUser[]),
         api.documentTypes(),
@@ -201,10 +212,11 @@ export function ManageDocumentsPage() {
       setAssignees(a)
       setDocTypes(t)
       setActions(act)
+      setOrgId((current) => current && o.some((org) => org.id === current) ? current : (requested && o.some((org) => org.id === requested) ? requested : undefined))
     } catch {
       /* keep empty */
     }
-  }, [showAssignee])
+  }, [params, showAssignee, showArchived])
 
   const query = useCallback((): WorkItemQuery => ({
     page,
@@ -594,8 +606,9 @@ export function ManageDocumentsPage() {
           setPage(1)
           setOrgId(v)
         }}
-        options={orgs.map((o) => ({ value: o.id, label: o.name }))}
+        options={orgs.map(orgPickerOption)}
       />
+      <ShowArchivedSwitch checked={showArchived} onChange={setShowArchived} />
       <Select
         allowClear
         placeholder="Document type"

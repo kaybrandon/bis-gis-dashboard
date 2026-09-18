@@ -20,6 +20,8 @@ public sealed class SchemaUpgradeTests
         phase51.Should().BeLessThan(phase42, "Phase51 ALTERs AspNetUsers before Phase42 SELECTs Users");
         source.Split("await Phase51Schema.ApplyAsync", StringSplitOptions.None).Length.Should().Be(2);
         source.IndexOf("await Phase52Schema.ApplyAsync", StringComparison.Ordinal).Should().BeGreaterThan(phase42);
+        source.IndexOf("await Phase53Schema.ApplyAsync", StringComparison.Ordinal).Should().BeGreaterThan(
+            source.IndexOf("await Phase52Schema.ApplyAsync", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -87,7 +89,57 @@ public sealed class SchemaUpgradeTests
                 users.Should().Contain(x => x.Id == SeedIds.TokenUploadUser);
                 users.Should().Contain(x => x.Email == "alex.rivera@bisconsultants.local");
                 ColumnNames(db, "AspNetUsers").Should().Contain(["JobTitle", "IsArchived", "ArchivedAt", "LastLoginAt"]);
+                ColumnNames(db, "Organizations").Should().Contain(["IsArchived", "ArchivedAt"]);
             }
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SchemaUpgrade_adds_missing_organization_archive_columns()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"gis-schema-org-{Guid.NewGuid():N}.db");
+        try
+        {
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite($"Data Source={path}")
+                .Options;
+
+            await using var db = new AppDbContext(options);
+            await db.Database.EnsureCreatedAsync();
+            db.Organizations.Add(new Organization
+            {
+                Id = SeedIds.DemoClient,
+                Name = "Demo Client",
+                Code = "DEMOCLIENT",
+                IsActive = true,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+            db.ChangeTracker.Clear();
+
+            await db.Database.ExecuteSqlRawAsync("""
+                DROP INDEX IF EXISTS "IX_Organizations_IsArchived";
+                ALTER TABLE "Organizations" DROP COLUMN "IsArchived";
+                ALTER TABLE "Organizations" DROP COLUMN "ArchivedAt";
+                """);
+
+            var loadBeforeUpgrade = async () => await db.Organizations.AsNoTracking().ToListAsync();
+            await loadBeforeUpgrade.Should().ThrowAsync<SqliteException>()
+                .Where(ex => ex.Message.Contains("IsArchived", StringComparison.OrdinalIgnoreCase)
+                             || ex.Message.Contains("ArchivedAt", StringComparison.OrdinalIgnoreCase));
+
+            await SchemaUpgrade.ApplyAsync(db);
+
+            var orgs = await db.Organizations.AsNoTracking().ToListAsync();
+            orgs.Should().Contain(x => x.Id == SeedIds.DemoClient && !x.IsArchived);
+            ColumnNames(db, "Organizations").Should().Contain(["IsArchived", "ArchivedAt"]);
         }
         finally
         {

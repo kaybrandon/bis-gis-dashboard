@@ -114,6 +114,11 @@ public sealed class OrgScope : IOrgScope
             throw new NotFoundException("Organization was not found.");
         }
 
+        if (org.IsArchived)
+        {
+            throw new ValidationException("This organization is archived.");
+        }
+
         await EnsureCanAccessOrganizationAsync(org.Id, cancellationToken);
         return org.Id;
     }

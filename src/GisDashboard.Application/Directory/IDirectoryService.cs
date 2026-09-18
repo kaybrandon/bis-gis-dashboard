@@ -5,9 +5,11 @@ namespace GisDashboard.Application.Directory;
 
 public interface IDirectoryService
 {
-    Task<IReadOnlyList<OrganizationDto>> ListOrganizationsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OrganizationDto>> ListOrganizationsAsync(bool includeArchived = false, CancellationToken cancellationToken = default);
     Task<OrganizationDto> CreateOrganizationAsync(CreateOrganizationRequest request, CancellationToken cancellationToken = default);
     Task<OrganizationDto> UpdateOrganizationAsync(Guid id, UpdateOrganizationRequest request, CancellationToken cancellationToken = default);
+    Task<OrganizationDto> ArchiveOrganizationAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<OrganizationDto> RestoreOrganizationAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<UserListItem>> ListUsersAsync(bool includeArchived = false, CancellationToken cancellationToken = default);
     Task<UserListItem> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default);
     Task<UserListItem> UpdateUserAsync(Guid userId, UpdateUserRequest request, CancellationToken cancellationToken = default);
@@ -18,7 +20,7 @@ public interface IDirectoryService
     Task<UploadLinkDto> RegenerateUploadLinkAsync(Guid organizationId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<LookupItem>> ListDocumentTypesAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<LookupItem>> ListStatusesAsync(CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<OrgOption>> ListAccessibleOrganizationsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OrgOption>> ListAccessibleOrganizationsAsync(bool includeArchived = false, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AssignableUser>> ListAssignableUsersAsync(Guid organizationId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AssignedTechnicianDisplay>> ListAssignedTechniciansAsync(Guid organizationId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AssignableUser>> ListScopedAssigneesAsync(CancellationToken cancellationToken = default);

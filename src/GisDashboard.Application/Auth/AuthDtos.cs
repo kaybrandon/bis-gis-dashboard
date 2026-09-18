@@ -43,4 +43,4 @@ public sealed record UpdateProfileRequest(
 
 public sealed record LoginResponse(string Token, DateTimeOffset ExpiresAt, AuthUser User);
 
-public sealed record OrgOption(Guid Id, string Name, string Code);
+public sealed record OrgOption(Guid Id, string Name, string Code, bool IsArchived = false);
