@@ -180,7 +180,7 @@ public sealed class WlPackTests : IClassFixture<ApiFactory>
         var client = await _factory.LoginAsync("admin@bisconsultants.local");
         var types = await (await client.GetAsync("/api/lookups/document-types")).ReadJsonAsync();
         types.EnumerateArray().Select(x => x.GetProperty("name").GetString()).Should().Equal(
-            "Deed", "Plat", "Survey", "Subdivision", "Other",
+            ["Deed", "Plat", "Survey", "Subdivision", "Other"],
             "Fail if: document type order is not Deed, Plat, Survey, Subdivision, Other.");
     }
 
