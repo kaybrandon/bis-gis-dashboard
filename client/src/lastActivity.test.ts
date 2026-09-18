@@ -23,16 +23,16 @@ describe('last activity display', () => {
 
   it('uses a real last-login timestamp for relative text and a CT tooltip', () => {
     const now = new Date('2026-09-18T18:21:00Z')
-    const stamped = formatLastActivity('2026-09-18T18:20:00Z', now)
+    const stamped = formatLastActivity('2026-09-18T18:20:40Z', now)
     assert.equal(stamped.label, 'Just now')
     assert.ok(stamped.tooltip)
     assert.match(stamped.tooltip ?? '', /2026/)
     assert.match(stamped.tooltip ?? '', /CT|CDT|CST/)
 
-    const older = formatLastActivity('2026-09-17T18:21:00Z', now)
-    assert.equal(older.label, '1 day ago')
+    const older = formatLastActivity('2026-09-16T18:21:00Z', now)
+    assert.equal(older.label, '2 days ago')
     assert.equal(
-      formatExactCentralTime(new Date('2026-09-18T18:20:00Z')),
+      formatExactCentralTime(new Date('2026-09-18T18:20:40Z')),
       stamped.tooltip,
     )
   })
