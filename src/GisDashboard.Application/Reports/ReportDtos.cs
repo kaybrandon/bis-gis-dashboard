@@ -66,7 +66,7 @@ public sealed record ReportEmailLogDto(
     bool Delivered,
     string? Error);
 
-public sealed record ReportRecipient(Guid Id, string DisplayName, string Email);
+public sealed record ReportRecipient(Guid Id, string DisplayName, string Email, string? FullName = null);
 
 public sealed record EmailReportResult(
     bool Delivered,

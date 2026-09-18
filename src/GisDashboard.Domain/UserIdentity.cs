@@ -75,6 +75,13 @@ public static class UserIdentity
 
     public static bool CanSignIn(bool isActive, bool isArchived) => isActive && !isArchived;
 
+    /// <summary>
+    /// Person label for send-report / emailed / exported surfaces.
+    /// Full name when on file, otherwise username/display (never a blank Full name).
+    /// </summary>
+    public static string ReportName(string? fullName, string? displayName, string? userName = null, string? email = null) =>
+        PublicName(fullName, displayName, userName, email);
+
     public static string PublicName(string? fullName, string? displayName, string? userName = null, string? email = null)
     {
         if (!string.IsNullOrWhiteSpace(fullName))

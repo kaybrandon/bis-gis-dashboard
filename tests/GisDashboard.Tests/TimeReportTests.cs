@@ -161,6 +161,8 @@ public sealed class TimeReportTests : IClassFixture<ApiFactory>
         response.Content.Headers.ContentType!.MediaType.Should().Be("text/csv");
         var csv = await response.Content.ReadAsStringAsync();
         csv.Should().Contain("Logged By");
+        csv.Should().Contain("Alex Rivera");
+        csv.Should().NotContain("arivera");
         csv.Should().Contain("West line bearing check");
         csv.Should().Contain("QC pass on bearings");
         csv.Should().NotContain(SeedIds.EditorDemo.ToString());

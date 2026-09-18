@@ -16,6 +16,7 @@ import { documentsHref, type DocumentsHrefQuery } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
 import { canSeeDashboardAssignee } from '../roles'
 import { statusLabel } from '../statusLabels'
+import { reportPersonLabel } from '../personLabel'
 import { UNASSIGNED, activeDocumentsQuery, assigneeHrefValue, resolveAssigneeFilter } from '../staffQueue'
 
 const kpiIcon: Record<string, ReactNode> = {
@@ -175,7 +176,7 @@ export function DashboardPage() {
       return
     }
     const names = [
-      ...recipients.filter((r) => userIds.includes(r.id)).map((r) => r.displayName),
+      ...recipients.filter((r) => userIds.includes(r.id)).map((r) => reportPersonLabel(r)),
       ...extraEmails,
     ]
     Modal.confirm({
@@ -360,7 +361,7 @@ export function DashboardPage() {
               mode="multiple"
               allowClear
               placeholder="Select people"
-              options={recipients.map((r) => ({ value: r.id, label: `${r.displayName} (${r.email})` }))}
+              options={recipients.map((r) => ({ value: r.id, label: `${reportPersonLabel(r)} (${r.email})` }))}
             />
           </Form.Item>
           <Form.Item name="extra" label="Additional email addresses">

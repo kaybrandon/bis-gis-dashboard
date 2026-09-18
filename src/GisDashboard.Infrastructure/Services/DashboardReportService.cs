@@ -48,7 +48,8 @@ public sealed class DashboardReportService : IDashboardReportService
     public async Task<ExcelExport> ExportPdfAsync(DashboardQuery query, CancellationToken cancellationToken = default)
     {
         var data = await _workItems.GetDashboardAsync(query, cancellationToken);
-        var pdf = DashboardPdf.Build(data, query, _currentUser.DisplayName);
+        var generatedBy = await ReportPersonNames.ForCurrentUserAsync(_db, _currentUser, cancellationToken);
+        var pdf = DashboardPdf.Build(data, query, generatedBy);
         return new ExcelExport(pdf, DashboardPdf.FileName(data), "application/pdf");
     }
 
@@ -69,14 +70,22 @@ public sealed class DashboardReportService : IDashboardReportService
             .Select(r => r.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
-        return await _db.Users
+        var rows = await _db.Users
             .AsNoTracking()
             .Where(u => u.IsActive && !u.IsArchived && (
                 u.Organizations.Any(m => allowed.Contains(m.OrganizationId)) ||
                 _db.UserRoles.Any(ur => ur.UserId == u.Id && ur.RoleId == globalRoleId)))
-            .OrderBy(u => u.DisplayName)
-            .Select(u => new DashboardRecipient(u.Id, u.DisplayName, u.Email!))
+            .Select(u => new { u.Id, u.FullName, u.DisplayName, u.UserName, u.Email })
             .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(u => new DashboardRecipient(
+                u.Id,
+                ReportPersonNames.FromFields(u.FullName, u.DisplayName, u.UserName, u.Email),
+                u.Email ?? string.Empty,
+                ReportPersonNames.FullNameOrNull(u.FullName)))
+            .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     public async Task<DashboardEmailResult> EmailAsync(
@@ -142,7 +151,7 @@ public sealed class DashboardReportService : IDashboardReportService
                 || selected.Organizations.Any(m => allowed.Contains(m.OrganizationId));
             if (!inScope)
             {
-                throw new ForbiddenException($"{selected.DisplayName} is outside your organization scope.");
+                throw new ForbiddenException($"{ReportPersonNames.FromUser(selected)} is outside your organization scope.");
             }
         }
 
@@ -160,7 +169,8 @@ public sealed class DashboardReportService : IDashboardReportService
         }
 
         var data = await _workItems.GetDashboardAsync(query, cancellationToken);
-        var pdf = DashboardPdf.Build(data, query, _currentUser.DisplayName);
+        var generatedBy = await ReportPersonNames.ForCurrentUserAsync(_db, _currentUser, cancellationToken);
+        var pdf = DashboardPdf.Build(data, query, generatedBy);
         var fileName = DashboardPdf.FileName(data);
         var link = DashboardLink(query);
         var subject = $"GIS Dashboard — {data.RangeLabel}";

@@ -86,24 +86,39 @@ public sealed class TimeReportService : ITimeReportService
             throw new ForbiddenException("You can only open your own time report card.");
         }
 
-        var raw = await _db.TimeEntries.AsNoTracking()
+        var raw = (await _db.TimeEntries.AsNoTracking()
             .Where(x => allowedIds.Contains(x.WorkItem.OrganizationId)
                 && x.WorkedOnSort >= fromSort
                 && x.WorkedOnSort < toSort)
-            .Select(x => new Row(
+            .Select(x => new
+            {
                 x.WorkedOn,
                 x.LoggedByUserId,
-                x.LoggedByUser.FullName != null && x.LoggedByUser.FullName != ""
-                    ? x.LoggedByUser.FullName
-                    : x.LoggedByUser.DisplayName,
+                x.LoggedByUser.FullName,
+                x.LoggedByUser.DisplayName,
+                x.LoggedByUser.UserName,
+                x.LoggedByUser.Email,
                 x.WorkItem.OrganizationId,
-                x.WorkItem.Organization.Name,
+                OrganizationName = x.WorkItem.Organization.Name,
                 x.WorkItemId,
                 x.WorkItem.FileName,
                 x.Minutes,
                 x.Note,
+                x.WorkedOnSort
+            })
+            .ToListAsync(cancellationToken))
+            .Select(x => new Row(
+                x.WorkedOn,
+                x.LoggedByUserId,
+                UserIdentity.ReportName(x.FullName, x.DisplayName, x.UserName, x.Email),
+                x.OrganizationId,
+                x.OrganizationName,
+                x.WorkItemId,
+                x.FileName,
+                x.Minutes,
+                x.Note,
                 x.WorkedOnSort))
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         IEnumerable<Row> scoped = raw;
         if (_currentUser.IsGlobalAdmin)
