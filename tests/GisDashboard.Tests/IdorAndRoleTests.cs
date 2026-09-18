@@ -122,7 +122,6 @@ public sealed class IdorAndRoleTests : IClassFixture<ApiFactory>
     {
         var editor = await _factory.LoginAsync("editor@bisconsultants.local");
         (await editor.GetAsync("/api/admin/users")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await editor.GetAsync("/api/admin/organizations")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

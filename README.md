@@ -103,7 +103,7 @@ Two axes: **scope** (all organizations vs assigned client orgs) and **org permis
 | Turn on client time report cards | Yes (per org) | No | No | No |
 | Mark work item priority | Yes | Yes | Yes | Badge only |
 | Clear / acknowledge priority | Yes | Yes | Yes | No |
-| Assign organization technicians | Yes | No | No | No |
+| Assign organization technicians | Yes | Yes | Yes | No |
 | Who’s online (presence) | All signed-in users | Same-org users + Global Admins + self | Same-org users + Global Admins + self | No |
 
 Claim values: `GlobalAdministrator`, `Administrator`, `Editor`, `Viewer`. UI shows **Global Administrator** (never “BIS admin”).
@@ -326,7 +326,7 @@ The floating clock uses the existing work-item time-entry APIs (`POST /api/work-
 
 Clients (org Administrator / Editor) mark a GIS work item **Priority** on the work-item page, on signed-in upload, or on the no-login upload link, with an optional short note (“needed by Friday”). Viewers see the badge only. Technicians see a red Priority tag on Manage Documents and work-item cards, a **Priority** bucket and Dashboard KPI, and an in-app header notification (20s poll; no Outlook ingest). Clearing the Priority checkbox acknowledges the item.
 
-A Global Administrator sets **Assigned tech(s)** on Organizations → Edit — the primary GIS contact(s) for that client. Staff org membership on Users and Assigned tech(s) stay in sync: assigning a person to a client on either screen updates the other. Viewers appear under **Members** only. Notifications go to those techs, the work-item Assigned To when set, and every Global Administrator — not a blast to every technician. Saving a work item with Priority on creates or updates the bell row (not only client or token upload).
+A Global Administrator, Administrator, or Editor sets **Assigned tech(s)** on Organizations → Edit — the primary GIS contact(s) for that client. Changing that list updates org mapping for future work only; it does not force-reassign existing document **Assigned To** values. Staff org membership on Users and Assigned tech(s) stay in sync: assigning a person to a client on either screen updates the other. Viewers appear under **Members** only. Notifications go to those techs, the work-item Assigned To when set, and every Global Administrator — not a blast to every technician. Saving a work item with Priority on creates or updates the bell row (not only client or token upload).
 
 **Notify rule**
 
@@ -343,6 +343,6 @@ A Global Administrator sets **Assigned tech(s)** on Organizations → Edit — t
 | GET | `/api/notifications` | Signed-in — current user’s alerts |
 | POST | `/api/notifications/{id}/read` | same |
 | POST | `/api/notifications/read-all` | same |
-| PUT | `/api/admin/organizations/{id}` | Global Admin may set `assignedTechIds` |
+| PUT | `/api/admin/organizations/{id}` | Global Admin, Administrator, or Editor may set `assignedTechIds` |
 
 Published zip: `artifacts/gisdashboard-phase3.1.zip`.

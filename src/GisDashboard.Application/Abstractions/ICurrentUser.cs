@@ -20,6 +20,7 @@ public interface ICurrentUser
     bool CanMutateWorkItems { get; }
     bool CanManageDirectory { get; }
     bool CanManageGlobalDirectory { get; }
+    bool CanManageAssignedTechs { get; }
     bool CanSeePresence { get; }
     bool CanSeeConnections { get; }
     bool CanManageConnections { get; }
