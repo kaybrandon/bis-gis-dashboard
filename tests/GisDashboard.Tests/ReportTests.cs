@@ -197,9 +197,20 @@ public sealed class ReportTests : IClassFixture<ApiFactory>
         created.GetProperty("snapshot").GetProperty("completed").GetInt32().Should().BeGreaterThanOrEqualTo(5);
         var reportId = created.GetProperty("id").GetGuid();
 
+        var otherViewer = await client.PostAsJsonAsync("/api/admin/users", new
+        {
+            email = "report.other.viewer@otherclient.local",
+            password = "Demo!Gis2026",
+            displayName = "Report Other Viewer",
+            role = "Viewer",
+            organizationIds = new[] { SeedIds.OtherClient }
+        });
+        otherViewer.StatusCode.Should().Be(HttpStatusCode.OK, await otherViewer.Content.ReadAsStringAsync());
+        var otherViewerId = (await otherViewer.ReadJsonAsync()).GetProperty("id").GetGuid();
+
         var forbidden = await client.PostAsJsonAsync($"/api/reports/{reportId}/email", new
         {
-            userIds = new[] { SeedIds.EditorOther },
+            userIds = new[] { otherViewerId },
             extraEmails = Array.Empty<string>()
         });
         forbidden.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -234,8 +245,9 @@ public sealed class ReportTests : IClassFixture<ApiFactory>
         emails.Should().Contain("admin@democlient.local");
         emails.Should().Contain("editor@bisconsultants.local");
         emails.Should().Contain("viewer@bisconsultants.local");
-        emails.Should().NotContain("admin@otherclient.local");
-        emails.Should().NotContain("editor.other@bisconsultants.local");
+        emails.Should().Contain("admin@otherclient.local");
+        emails.Should().Contain("editor.other@bisconsultants.local");
+        emails.Should().NotContain("admin@bisconsultants.local");
 
         var other = await _factory.LoginAsync("admin@otherclient.local");
         (await other.GetAsync($"/api/reports/recipients?organizationId={SeedIds.DemoClient}"))

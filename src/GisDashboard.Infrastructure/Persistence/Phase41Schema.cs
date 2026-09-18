@@ -5,7 +5,8 @@ namespace GisDashboard.Infrastructure.Persistence;
 
 /// <summary>
 /// Users → Organizations writes UserOrganizations. Org Assigned tech(s) writes
-/// OrganizationTechs. Staff membership and assigned-tech rows must stay in sync.
+/// OrganizationTechs. Partial staff membership still backfills Assigned tech.
+/// QC03 all-org staff membership is access only and is not promoted to techs.
 /// </summary>
 public static class Phase41Schema
 {
@@ -42,10 +43,24 @@ public static class Phase41Schema
         var techs = await db.OrganizationTechs.AsNoTracking()
             .Select(x => new { x.UserId, x.OrganizationId })
             .ToListAsync(cancellationToken);
+        var allOrgIds = await db.Organizations.AsNoTracking()
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+        var membershipCountByUser = memberships
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.OrganizationId).Distinct().Count());
 
         var techKeys = techs.Select(x => (x.UserId, x.OrganizationId)).ToHashSet();
         foreach (var row in memberships)
         {
+            // QC03 — all-org staff membership is access, not Assigned tech. Only promote
+            // leftover partial memberships from the pre-QC03 Users → Organizations picker.
+            if (allOrgIds.Count > 0
+                && membershipCountByUser.GetValueOrDefault(row.UserId) >= allOrgIds.Count)
+            {
+                continue;
+            }
+
             if (techKeys.Add((row.UserId, row.OrganizationId)))
             {
                 db.OrganizationTechs.Add(new OrganizationTech

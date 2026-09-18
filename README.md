@@ -63,12 +63,12 @@ Demo seed (local / `Seed__Enabled=true` only):
 | Username | Email | Full name | Role | Organizations |
 | --- | --- | --- | --- | --- |
 | `admin` | `admin@bisconsultants.local` | — | Global Administrator | All |
-| `admin2` | `admin@democlient.local` | — | Administrator | Demo Client |
-| `arivera` | `editor@bisconsultants.local` | Alex Rivera | Editor | Demo Client |
+| `admin2` | `admin@democlient.local` | — | Administrator | All |
+| `arivera` | `editor@bisconsultants.local` | Alex Rivera | Editor | All |
 | `jhale` | `viewer@bisconsultants.local` | Jordan Hale | Viewer | Demo Client |
 | `rpatel` | `uploader@bisconsultants.local` | Riley Patel | Uploader | Demo Client |
-| `admin3` | `admin@otherclient.local` | — | Administrator | Other Client |
-| `cnguyen` | `editor.other@bisconsultants.local` | Casey Nguyen | Editor | Other Client |
+| `admin3` | `admin@otherclient.local` | — | Administrator | All |
+| `cnguyen` | `editor.other@bisconsultants.local` | Casey Nguyen | Editor | All |
 
 Password for all demo users: `Demo!Gis2026`
 
@@ -80,7 +80,7 @@ Password for all demo users: `Demo!Gis2026`
 dotnet test GisDashboard.slnx
 ```
 
-The suite covers unauthenticated 401s, Viewer/Uploader org-scoped 404s (IDOR), staff all-organization document access, Uploader upload to assigned org only, Viewer upload/comment 403s (QC04 — Viewer is not migrated to Uploader), Global Administrator environment status (live DB/storage, 403 for other roles), Internal Notes visibility and history (staff only — Viewers and Uploaders cannot read notes), time-log CRUD/role gates, directory scoping, org-upload resolution (id / name / stale seed id), dashboard KPIs and chart series, bucket/export APIs, comments (Uploaders can post client-visible comments that persist; Viewers can read but not post; comment email + @mention bells), status-change and public-upload-received emails (fail closed without SMTP), Phase 3 detail fields, organization/user edit authorization, tokenized public upload (happy path, bad token, cross-org), monthly report generation, history isolation by organization, report recipient authorization, time report cards (own hours vs team, per-org client toggle, IDOR, CSV), priority work (client flag + note + needed-by date, Viewer 403, Priority and Due this week buckets, Dashboard KPI, token-upload notify, IDOR, assigned technicians, primary assigned tech), mass upload (two files → two work items, per-file size rejection that does not block the next file), Cancelled status, Needs Review status (filter, charts/exports, Reviewed independence), document-type order, Reviewed flag, auto-assign to the organization’s primary Assigned tech then Editor, AI fill from PDF (fail closed when Azure OpenAI is unset, Viewer 403 / cross-org 404, image and empty-text rejection, configured fill does not persist), Global Administrator SMTP settings (role gate, write-only password, fail-closed test send, Dashboard Send report uses saved SMTP), forgot password (generic response, no enumeration, fail-closed without SMTP, 30-minute single-use token, rate limit), and presence (heartbeat upsert, 3-minute expiry, Viewer 403 on the list, Editor same-org scoping, Global Administrator sees all, Clocked in and work-item title).
+The suite covers unauthenticated 401s, Viewer/Uploader org-scoped 404s (IDOR), staff all-organization document access, Uploader upload to assigned org only, Viewer upload/comment 403s (QC04 — Viewer is not migrated to Uploader), Editor/Administrator auto-membership of every organization including orgs created later (QC03 — Viewer/Uploader stay assigned-org), Global Administrator environment status (live DB/storage, 403 for other roles), Internal Notes visibility and history (staff only — Viewers and Uploaders cannot read notes), time-log CRUD/role gates, directory scoping, org-upload resolution (id / name / stale seed id), dashboard KPIs and chart series, bucket/export APIs, comments (Uploaders can post client-visible comments that persist; Viewers can read but not post; comment email + @mention bells), status-change and public-upload-received emails (fail closed without SMTP), Phase 3 detail fields, organization/user edit authorization, tokenized public upload (happy path, bad token, cross-org), monthly report generation, history isolation by organization, report recipient authorization, time report cards (own hours vs team, per-org client toggle, IDOR, CSV), priority work (client flag + note + needed-by date, Viewer 403, Priority and Due this week buckets, Dashboard KPI, token-upload notify, IDOR, assigned technicians, primary assigned tech), mass upload (two files → two work items, per-file size rejection that does not block the next file), Cancelled status, Needs Review status (filter, charts/exports, Reviewed independence), document-type order, Reviewed flag, auto-assign to the organization’s primary Assigned tech then Editor, AI fill from PDF (fail closed when Azure OpenAI is unset, Viewer 403 / cross-org 404, image and empty-text rejection, configured fill does not persist), Global Administrator SMTP settings (role gate, write-only password, fail-closed test send, Dashboard Send report uses saved SMTP), forgot password (generic response, no enumeration, fail-closed without SMTP, 30-minute single-use token, rate limit), and presence (heartbeat upsert, 3-minute expiry, Viewer 403 on the list, staff share every organization so Editors see colleagues across clients, Global Administrator sees all, Clocked in and work-item title).
 
 ## Roles and permissions
 
@@ -105,10 +105,12 @@ Two axes: **scope** (all organizations vs assigned client orgs) and **org permis
 | Mark work item priority | Yes | Yes | Yes | Badge only | Badge only |
 | Clear / acknowledge priority | Yes | Yes | Yes | No | No |
 | Assign organization technicians | Yes | Yes | Yes | No | No |
-| Who’s online (presence) | All signed-in users | Same-org users + Global Admins + self | Same-org users + Global Admins + self | No | No |
+| Who’s online (presence) | All signed-in users | Users in any org they belong to (every org) + Global Admins + self | Users in any org they belong to (every org) + Global Admins + self | No | No |
 | Dashboard Assignee filter | Yes | Yes | Yes | Hidden (QC08 preview) | Yes |
 
 Claim values: `GlobalAdministrator`, `Administrator`, `Editor`, `Uploader`, `Viewer`. UI shows **Global Administrator** (never “BIS admin”).
+
+**QC03 — Staff organizations:** Creating an Editor or Administrator associates them with every current organization (no Organizations picker). A new organization is added to all existing Editor/Administrator accounts automatically. Partial memberships are backfilled on startup and persist after sign-in. Viewer and Uploader stay limited to assigned orgs. Global Administrator implicit all-org access is unchanged (WL01). Assigned techs stay independent (QC01).
 
 **QC04 — Uploader:** Admin/Editor (directory managers) can create Uploader and assign one or more orgs; the role persists. Uploader sees Viewer-accessible pages/info and can upload to assigned org(s) only. Uploader posts **client-visible Comments** (not Internal Notes). No staff rights: Internal Notes, doc editing, tech assignment, user management. Existing Viewers are **not** migrated to Uploader. Viewer stays upload/comment-free.
 

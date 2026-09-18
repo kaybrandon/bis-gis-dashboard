@@ -65,7 +65,7 @@ public sealed class NeedHelpTests : IClassFixture<ApiFactory>
 
         var editorList = await (await editor.GetAsync("/api/presence")).ReadJsonAsync();
         UserIds(editorList).Should().Contain(SeedIds.EditorDemo);
-        UserIds(editorList).Should().NotContain(SeedIds.EditorOther);
+        UserIds(editorList).Should().Contain(SeedIds.EditorOther);
         Item(editorList, SeedIds.EditorDemo).GetProperty("needsHelp").GetBoolean().Should().BeTrue();
 
         var admin = await _factory.LoginAsync("admin@bisconsultants.local");
@@ -172,7 +172,7 @@ public sealed class NeedHelpTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Cannot_message_other_org_or_self()
+    public async Task Staff_can_message_other_client_staff_but_not_self()
     {
         var editor = await _factory.LoginAsync("editor@bisconsultants.local");
         (await editor.PostAsJsonAsync("/api/presence", Heartbeat("/"))).EnsureSuccessStatusCode();
@@ -185,7 +185,7 @@ public sealed class NeedHelpTests : IClassFixture<ApiFactory>
             toUserId = SeedIds.EditorOther,
             chip = "need-help"
         });
-        cross.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        cross.StatusCode.Should().Be(HttpStatusCode.Created, await cross.Content.ReadAsStringAsync());
 
         var self = await editor.PostAsJsonAsync("/api/help-messages", new
         {

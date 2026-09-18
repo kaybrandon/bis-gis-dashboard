@@ -39,7 +39,7 @@ public sealed class PresenceTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Editor_sees_self_and_same_org_viewer_not_other_org_editor()
+    public async Task Editor_sees_self_same_org_viewer_and_staff_across_clients()
     {
         var viewer = await _factory.LoginAsync("viewer@bisconsultants.local");
         (await viewer.PostAsJsonAsync("/api/presence", Heartbeat("/upload-documents"))).EnsureSuccessStatusCode();
@@ -63,7 +63,7 @@ public sealed class PresenceTests : IClassFixture<ApiFactory>
         ids.Should().Contain(SeedIds.EditorDemo);
         ids.Should().Contain(SeedIds.ViewerDemo);
         ids.Should().Contain(SeedIds.Admin);
-        ids.Should().NotContain(SeedIds.EditorOther);
+        ids.Should().Contain(SeedIds.EditorOther);
 
         var self = Item(json, SeedIds.EditorDemo);
         self.GetProperty("presenceStatus").GetString().Should().Be("Online");
@@ -154,7 +154,7 @@ public sealed class PresenceTests : IClassFixture<ApiFactory>
         var ids = UserIds(json);
         ids.Should().Contain(SeedIds.OrgAdminDemo);
         ids.Should().Contain(SeedIds.ViewerDemo);
-        ids.Should().NotContain(SeedIds.EditorOther);
+        ids.Should().Contain(SeedIds.EditorOther);
     }
 
     private async Task SetLastSeenAsync(Guid userId, TimeSpan age)

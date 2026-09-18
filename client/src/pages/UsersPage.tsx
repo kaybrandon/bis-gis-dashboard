@@ -4,7 +4,7 @@ import { api } from '../api'
 import { useAuth } from '../auth'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
-import { roleLabel } from '../roles'
+import { roleHasAllOrganizations, roleLabel, roleRequiresOrganizationAssignment } from '../roles'
 
 type UserRow = {
   id: string
@@ -72,7 +72,7 @@ export function UsersPage() {
           { title: 'Role', dataIndex: 'role', render: (value: string) => <Tag>{roleLabel(value)}</Tag> },
           {
             title: 'Organizations',
-            render: (_, row) => row.role === 'GlobalAdministrator'
+            render: (_, row) => roleHasAllOrganizations(row.role)
               ? 'All organizations'
               : row.organizations.map((o) => o.organizationName).join(', ') || '—',
           },
@@ -121,7 +121,10 @@ export function UsersPage() {
           className="dense-form"
           onFinish={async (values) => {
             try {
-              await api.createUser(values)
+              await api.createUser({
+                ...values,
+                organizationIds: roleRequiresOrganizationAssignment(values.role) ? values.organizationIds : [],
+              })
               message.success('User created.')
               setOpen(false)
               addForm.resetFields()
@@ -153,13 +156,18 @@ export function UsersPage() {
               </Form.Item>
             </Col>
           </Row>
-          {addRole && addRole !== 'GlobalAdministrator' && (
+          {roleRequiresOrganizationAssignment(addRole) && (
             <Form.Item
               name="organizationIds"
               label="Organizations"
               rules={[{ required: true, type: 'array', min: 1 }]}
             >
               <Select mode="multiple" options={orgs.map((o) => ({ value: o.id, label: o.name }))} />
+            </Form.Item>
+          )}
+          {addRole && !roleRequiresOrganizationAssignment(addRole) && addRole !== 'GlobalAdministrator' && (
+            <Form.Item label="Organizations">
+              <span>Associated with every organization automatically.</span>
             </Form.Item>
           )}
         </Form>
@@ -186,7 +194,7 @@ export function UsersPage() {
                 workPhone: values.workPhone || null,
                 email: values.email,
                 role: values.role,
-                organizationIds: values.role === 'GlobalAdministrator' ? [] : values.organizationIds,
+                organizationIds: roleRequiresOrganizationAssignment(values.role) ? values.organizationIds : [],
                 isActive: values.isActive,
                 password: values.password || undefined,
               })
@@ -222,13 +230,18 @@ export function UsersPage() {
               </Form.Item>
             </Col>
           </Row>
-          {editRole && editRole !== 'GlobalAdministrator' && (
+          {roleRequiresOrganizationAssignment(editRole) && (
             <Form.Item
               name="organizationIds"
               label="Organizations"
               rules={[{ required: true, type: 'array', min: 1 }]}
             >
               <Select mode="multiple" options={orgs.map((o) => ({ value: o.id, label: o.name }))} />
+            </Form.Item>
+          )}
+          {editRole && !roleRequiresOrganizationAssignment(editRole) && editRole !== 'GlobalAdministrator' && (
+            <Form.Item label="Organizations">
+              <span>Associated with every organization automatically.</span>
             </Form.Item>
           )}
           <Form.Item name="isActive" label="Active" valuePropName="checked">
