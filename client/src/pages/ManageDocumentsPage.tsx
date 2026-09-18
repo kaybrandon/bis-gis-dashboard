@@ -606,6 +606,7 @@ export function ManageDocumentsPage() {
       />
       <DatePicker.RangePicker
         className="filter-field-lg"
+        style={{ width: '100%' }}
         placeholder={['Uploaded from', 'Uploaded to']}
         value={uploaded}
         onChange={(v) => {
@@ -615,6 +616,7 @@ export function ManageDocumentsPage() {
       />
       <DatePicker.RangePicker
         className="filter-field-lg"
+        style={{ width: '100%' }}
         placeholder={['Worked from', 'Worked to']}
         value={worked}
         onChange={(v) => {
@@ -666,35 +668,40 @@ export function ManageDocumentsPage() {
       {error && <LoadError message={error} onRetry={() => void load()} />}
 
       <Flex gap={12} align="flex-start" className="documents-layout">
-        {isMobile ? (
-          <Select
-            className="bucket-select"
-            value={bucket}
-            style={{ width: '100%' }}
-            onChange={(key) => {
-              applyBucket(key as Bucket)
-            }}
-            options={bucketItems.map((b) => ({
-              value: b.key,
-              label: b.countKey ? `${b.label} (${counts[b.countKey] ?? 0})` : b.label,
-            }))}
-          />
-        ) : (
-          <Card size="small" className="bucket-sider bis-theme-panel" styles={{ body: { padding: 8 } }}>
-            <Menu
-              mode="inline"
-              selectedKeys={[bucket]}
-              items={menuItems}
-              onClick={({ key }) => {
+        <div className="documents-sider">
+          {isMobile ? (
+            <Select
+              className="bucket-select"
+              value={bucket}
+              style={{ width: '100%' }}
+              onChange={(key) => {
                 applyBucket(key as Bucket)
               }}
+              options={bucketItems.map((b) => ({
+                value: b.key,
+                label: b.countKey ? `${b.label} (${counts[b.countKey] ?? 0})` : b.label,
+              }))}
             />
-          </Card>
-        )}
+          ) : (
+            <Card size="small" className="bucket-sider bis-theme-panel" styles={{ body: { padding: 8 } }}>
+              <Menu
+                mode="inline"
+                selectedKeys={[bucket]}
+                items={menuItems}
+                onClick={({ key }) => {
+                  applyBucket(key as Bucket)
+                }}
+              />
+            </Card>
+          )}
+          <div className="documents-detail-filters">
+            {filterSelects}
+          </div>
+        </div>
 
         <Space direction="vertical" size={8} className="documents-main">
-          <div className="filter-toolbar">
-            <Space wrap size={6}>
+          <div className="documents-quick-toolbar">
+            <Space wrap size={6} className="documents-quick-presets">
               <Typography.Text type="secondary">My queue</Typography.Text>
               <Button size="small" type={queuePreset === 'mine' ? 'primary' : 'default'} onClick={() => applyPreset('mine')}>
                 Assigned to me
@@ -715,13 +722,12 @@ export function ManageDocumentsPage() {
             <Input.Search
               allowClear
               placeholder="Search file, client, or assignee"
-              className="filter-field-lg"
+              className="documents-search filter-field-lg"
               onSearch={(value) => {
                 setPage(1)
                 setSearch(value)
               }}
             />
-            {filterSelects}
           </div>
 
           {isMobile ? (
