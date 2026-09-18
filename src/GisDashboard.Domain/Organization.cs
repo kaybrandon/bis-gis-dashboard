@@ -14,7 +14,7 @@ public sealed class Organization
     public int? ParcelTotalRealAccounts { get; set; }
     public int? ParcelWithOwnership { get; set; }
 
-    /// <summary>When true, client Viewers (and org Admins as a team view) can open time report cards for this organization.</summary>
+    /// <summary>When true, client Viewers and Uploaders (and org Admins as a team view) can open time report cards for this organization.</summary>
     public bool TimeReportCardsVisible { get; set; }
 
     public ICollection<UserOrganization> Members { get; set; } = new List<UserOrganization>();

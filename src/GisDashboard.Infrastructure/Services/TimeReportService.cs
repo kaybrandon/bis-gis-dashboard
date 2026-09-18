@@ -60,7 +60,7 @@ public sealed class TimeReportService : ITimeReportService
 
         var role = _currentUser.Role;
         var canViewTeam = _currentUser.IsGlobalAdmin
-            || (role is Roles.Administrator or Roles.Viewer && visibleOrgIds.Count > 0);
+            || ((role is Roles.Administrator || Roles.IsOrgScopedClient(role)) && visibleOrgIds.Count > 0);
         var canViewOwn = _currentUser.IsGlobalAdmin || role is Roles.Editor or Roles.Administrator;
         if (!canViewOwn && !canViewTeam)
         {

@@ -8,7 +8,7 @@ namespace GisDashboard.Tests;
 
 /// <summary>
 /// QC01 — Admin and Editor can reassign organization Assigned tech(s).
-/// Viewer (upload-capable client) cannot. Multi-tech is preserved.
+/// Viewer and Uploader cannot. Multi-tech is preserved.
 /// Changing org techs does not force-reassign existing work-item Assigned To.
 /// </summary>
 public sealed class Qc01AssignedTechTests : IClassFixture<ApiFactory>

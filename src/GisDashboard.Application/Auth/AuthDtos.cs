@@ -27,7 +27,9 @@ public sealed record AuthUser(
     string? UserName = null,
     bool CanSeePresence = false,
     bool CanSeeConnections = false,
-    bool CanManageConnections = false);
+    bool CanManageConnections = false,
+    bool CanPostComments = false,
+    bool CanSeeDashboardAssignee = false);
 
 public sealed record UpdateProfileRequest(
     string? UserName,

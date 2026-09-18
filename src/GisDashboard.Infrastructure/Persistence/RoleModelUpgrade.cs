@@ -6,6 +6,7 @@ namespace GisDashboard.Infrastructure.Persistence;
 
 /// <summary>
 /// Moves Phase 1 Administrator (all-orgs) → GlobalAdministrator and Client → org Administrator.
+/// QC04 adds Uploader if missing. Does not migrate existing Viewers.
 /// Safe to run on every startup.
 /// </summary>
 public static class RoleModelUpgrade
@@ -29,6 +30,7 @@ public static class RoleModelUpgrade
         var client = roles.FirstOrDefault(x => x.Name == Roles.LegacyClient);
         var orgAdmin = roles.FirstOrDefault(x => x.Name == Roles.Administrator);
         var global = roles.FirstOrDefault(x => x.Name == Roles.GlobalAdministrator);
+        var uploader = roles.FirstOrDefault(x => x.Name == Roles.Uploader);
 
         if (global is null)
         {
@@ -51,6 +53,17 @@ public static class RoleModelUpgrade
                 ConcurrencyStamp = Guid.NewGuid().ToString()
             };
             db.Roles.Add(orgAdmin);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        if (uploader is null)
+        {
+            db.Roles.Add(new IdentityRole<Guid>(Roles.Uploader)
+            {
+                Id = Guid.NewGuid(),
+                NormalizedName = Roles.Uploader.ToUpperInvariant(),
+                ConcurrencyStamp = Guid.NewGuid().ToString()
+            });
             await db.SaveChangesAsync(cancellationToken);
         }
 

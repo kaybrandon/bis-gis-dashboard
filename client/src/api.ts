@@ -7,7 +7,7 @@ export type AuthUser = {
   fullName?: string | null
   workPhone?: string | null
   hasAvatar?: boolean
-  role: 'GlobalAdministrator' | 'Administrator' | 'Editor' | 'Viewer'
+  role: 'GlobalAdministrator' | 'Administrator' | 'Editor' | 'Uploader' | 'Viewer'
   roleDisplayName: string
   organizations: OrgOption[]
   canSeeInternalNotes: boolean
@@ -25,6 +25,8 @@ export type AuthUser = {
   canSeePresence?: boolean
   canSeeConnections?: boolean
   canManageConnections?: boolean
+  canPostComments?: boolean
+  canSeeDashboardAssignee?: boolean
 }
 
 export type NamedCount = { id: string; name: string; color?: string | null; count: number }

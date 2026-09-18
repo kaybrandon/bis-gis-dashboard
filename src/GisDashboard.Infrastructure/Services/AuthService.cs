@@ -236,7 +236,7 @@ public sealed class AuthService : IAuthService
             || role is Roles.Editor or Roles.Administrator
             || clientCardsVisible;
         var canViewTeamTimeReport = Roles.IsGlobalAdmin(role)
-            || (role is Roles.Administrator or Roles.Viewer && clientCardsVisible);
+            || ((role is Roles.Administrator || Roles.IsOrgScopedClient(role)) && clientCardsVisible);
 
         return new AuthUser(
             user.Id,
@@ -263,7 +263,9 @@ public sealed class AuthService : IAuthService
             user.UserName,
             Roles.CanSeePresence(role),
             Roles.CanSeeConnections(role),
-            Roles.CanManageConnections(role));
+            Roles.CanManageConnections(role),
+            Roles.CanPostComments(role),
+            Roles.CanSeeDashboardAssignee(role));
     }
 
     private async Task<ApplicationUser?> FindByUsernameOrEmailAsync(string identifier)

@@ -81,9 +81,17 @@ public sealed class UploadOrgTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Viewer_cannot_upload_to_other_client()
+    public async Task Viewer_cannot_upload()
     {
         var client = await _factory.LoginAsync("viewer@bisconsultants.local");
+        var response = await UploadAsync(client, SeedIds.DemoClient.ToString(), "Demo Client", SeedIds.TypeDeed.ToString(), "Deed", "nope.pdf");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Uploader_cannot_upload_to_other_client()
+    {
+        var client = await _factory.LoginAsync("uploader@bisconsultants.local");
         var response = await UploadAsync(client, SeedIds.OtherClient.ToString(), "Other Client", SeedIds.TypeDeed.ToString(), "Deed", "nope.pdf");
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await response.ReadJsonAsync()).GetProperty("message").GetString().Should().Be("Organization was not found.");

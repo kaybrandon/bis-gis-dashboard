@@ -209,6 +209,7 @@ public sealed class WorkflowCommsService : IWorkflowComms
     private async Task<IReadOnlyList<string>> ClientContactEmailsAsync(Guid organizationId, CancellationToken cancellationToken)
     {
         var viewerRole = Roles.Viewer;
+        var uploaderRole = Roles.Uploader;
         var adminRole = Roles.Administrator;
         var rows = await (
             from member in _db.UserOrganizations.AsNoTracking()
@@ -220,7 +221,7 @@ public sealed class WorkflowCommsService : IWorkflowComms
                   && user.Id != SeedIds.TokenUploadUser
                   && user.Email != null
                   && user.Email != ""
-                  && (role.Name == viewerRole || role.Name == adminRole)
+                  && (role.Name == viewerRole || role.Name == uploaderRole || role.Name == adminRole)
             select user.Email
         ).ToListAsync(cancellationToken);
 

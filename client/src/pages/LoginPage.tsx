@@ -58,6 +58,7 @@ export function LoginPage() {
           <div><code>admin2</code> / <code>admin@democlient.local</code> Administrator / Demo Client</div>
           <div><code>arivera</code> / <code>editor@bisconsultants.local</code> Editor / Demo Client</div>
           <div><code>jhale</code> / <code>viewer@bisconsultants.local</code> Viewer / Demo Client</div>
+          <div><code>rpatel</code> / <code>uploader@bisconsultants.local</code> Uploader / Demo Client</div>
           <div>Password: <code>Demo!Gis2026</code></div>
         </div>
       </Card>

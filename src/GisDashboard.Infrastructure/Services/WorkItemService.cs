@@ -1107,7 +1107,8 @@ public sealed class WorkItemService : IWorkItemService
             .Join(_db.Roles, ur => ur.RoleId, r => r.Id, (_, r) => r.Name)
             .ToListAsync(cancellationToken);
 
-        if (roles.Contains(Roles.Viewer) || !roles.Any(role => role is not null && Roles.CanBeAssignedWork(role)))
+        if (roles.Any(role => role is not null && Roles.IsOrgScopedClient(role))
+            || !roles.Any(role => role is not null && Roles.CanBeAssignedWork(role)))
         {
             throw new ValidationException("Work items can only be assigned to Administrators or Editors.");
         }

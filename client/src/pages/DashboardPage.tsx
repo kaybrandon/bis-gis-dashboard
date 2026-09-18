@@ -50,16 +50,22 @@ export function DashboardPage() {
   const [sending, setSending] = useState(false)
   const [emailForm] = Form.useForm<{ userIds: string[]; extra: string }>()
 
+  const showAssignee = user?.canSeeDashboardAssignee ?? user?.role !== 'Uploader'
+
   const loadLookups = useCallback(async () => {
     try {
-      const [o, s, a] = await Promise.all([api.organizations(), api.statuses(), api.assignees()])
+      const [o, s, a] = await Promise.all([
+        api.organizations(),
+        api.statuses(),
+        showAssignee ? api.assignees() : Promise.resolve([] as AssignableUser[]),
+      ])
       setOrgs(o)
       setStatuses(s)
       setAssignees(a)
     } catch {
       /* keep empty */
     }
-  }, [])
+  }, [showAssignee])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,7 +83,7 @@ export function DashboardPage() {
   const dashboardQuery = (): DashboardQuery => ({
     organizationId: orgId,
     statusId,
-    assignedToUserId: assignedTo,
+    assignedToUserId: showAssignee ? assignedTo : undefined,
     from: range[0].startOf('day').toISOString(),
     to: range[1].endOf('day').toISOString(),
   })
@@ -94,7 +100,7 @@ export function DashboardPage() {
   const filters = {
     organizationId: orgId,
     statusId,
-    assignedToUserId: assignedTo,
+    assignedToUserId: showAssignee ? assignedTo : undefined,
     from: range[0].startOf('day').toISOString(),
     to: range[1].endOf('day').toISOString(),
   }
@@ -120,7 +126,7 @@ export function DashboardPage() {
     openDocuments({
       organizationId: orgId,
       statusId,
-      assignedToUserId: assignedTo,
+      assignedToUserId: showAssignee ? assignedTo : undefined,
       bucket: 'completed',
       workedFrom: range[0].startOf('day').toISOString(),
       workedTo: range[1].endOf('day').toISOString(),
@@ -209,14 +215,16 @@ export function DashboardPage() {
           onChange={setStatusId}
           options={statuses.map((s) => ({ value: s.id, label: s.name }))}
         />
-        <Select
-          allowClear
-          placeholder="Assignee"
-          className="filter-field"
-          value={assignedTo}
-          onChange={setAssignedTo}
-          options={assignees.map((a) => ({ value: a.id, label: a.displayName }))}
-        />
+        {showAssignee && (
+          <Select
+            allowClear
+            placeholder="Assignee"
+            className="filter-field"
+            value={assignedTo}
+            onChange={setAssignedTo}
+            options={assignees.map((a) => ({ value: a.id, label: a.displayName }))}
+          />
+        )}
         <DatePicker.RangePicker
           allowClear={false}
           value={range}

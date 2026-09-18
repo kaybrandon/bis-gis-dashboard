@@ -6,7 +6,7 @@ Client organizations upload plats, surveys, deeds, and related files. Editors as
 
 Phase 1 covers auth/roles/orgs, Manage Documents (server-side search/filter/sort/page + DateTimeOffset), Blob/local file upload, and the split PDF/image viewer with filtered next/prev.
 
-Phase 2 adds **time logging** on work items, first-class **Internal Notes** (with lightweight history of the same field), and the locked **two-axis role model**: one Global Administrator plus organization-scoped Administrator / Editor / Viewer. There is no Client *role* — a client is an organization.
+Phase 2 adds **time logging** on work items, first-class **Internal Notes** (with lightweight history of the same field), and the locked **two-axis role model**: one Global Administrator plus organization-scoped Administrator / Editor / Uploader / Viewer. There is no Client *role* — a client is an organization.
 
 The Dashboard date range (default last 30 days) filters KPIs and charts. **Download PDF** and **Send report** use the same organization / status / assignee / date filters. Send asks for confirmation and fails closed when email is not configured.
 
@@ -18,7 +18,7 @@ Phone layout (~390px) keeps the desktop grid dense and switches the app shell, D
 
 Phase 3.1 adds **dashboard charts** (status volume, uploads vs completions over 30 days, hours by assignee and by client), **edit** for Organizations and Users (not only Add), a **per-organization tokenized upload URL** so someone can upload files into that client without signing in, **per-client GIS Maintenance Reports** in **monthly** or **annual** cadence (parcel status on monthly; year totals + multi-page completed items on annual; PDF/CSV, versioned history, and email), **technician time report cards** (hours already logged on GIS work items, summarized by person, period, and client), a **floating time clock** so technicians can start/stop or add hours on a GIS work item from any signed-in screen, and **in-app priority work** so a client can flag an item (or the upload link) instead of emailing a technician. Assigned technicians see a Priority badge and bucket, a Dashboard KPI, and a header notification (polled). Regenerating an upload token invalidates the previous link. The URL is for uploads only — not booking. KPI cards and chart segments are clickable — they open Manage Documents with the matching bucket, status, assignee, client, or day filter. On Organizations, the client name (or row) opens that client's details; each row has a **Reports** button to GIS Maintenance Reports filtered to that `organizationId`.
 
-**Upload Documents** is its own left-nav page (`/upload-documents`). Manage Documents **+ Upload** redirects there. Viewers upload to their organization (type and priority are set later by BIS staff). Global Administrator, Administrator, and Editor pick the client; new items auto-assign to that organization’s BIS editor (Assigned tech). Both the signed-in form and the public `/upload/{token}` page show the Assigned technician as **FirstName L.** (primary Assigned tech when set) and accept optional **Client notes**, which become a client-visible comment on each file in the batch. Document types are **Deed, Plat, Survey, Subdivision, Other**. Status is a dropdown: **Active, Pending, Complete, On-Hold, Needs Review, Cancelled**. Manage Documents shows **Review** yes/no instead of Hours; the work-item form has **Reviewed** next to Priority. **Needs Review** is a status, not Reviewed Yes/No — changing status does not change Reviewed.
+**Upload Documents** is its own left-nav page (`/upload-documents`). Manage Documents **+ Upload** redirects there. Uploaders upload to their assigned organization(s) (type and priority are set later by BIS staff). Viewers do not upload. Global Administrator, Administrator, and Editor pick the client; new items auto-assign to that organization’s BIS editor (Assigned tech). Both the signed-in form and the public `/upload/{token}` page show the Assigned technician as **FirstName L.** (primary Assigned tech when set) and accept optional **Client notes**, which become a client-visible comment on each file in the batch. Document types are **Deed, Plat, Survey, Subdivision, Other**. Status is a dropdown: **Active, Pending, Complete, On-Hold, Needs Review, Cancelled**. Manage Documents shows **Review** yes/no instead of Hours; the work-item form has **Reviewed** next to Priority. **Needs Review** is a status, not Reviewed Yes/No — changing status does not change Reviewed.
 
 **Mass upload:** Upload Documents and the public `/upload/{token}` page accept **multiple PDF, Word (.doc, .docx), Excel (.xls, .xlsx), or image files** (multi-select and drag-drop, up to 200 files). Each successful file becomes its own work item. Word and Excel are upload + download only (no Office preview). Document type, assignment, and priority note apply to the whole batch when the signed-in user can set them. The browser queues **3 files at a time**. A sticky bar shows **Uploading N of M**, a percent, running tallies (done / failed / skipped / remaining), and **Keep this window open until finished.** Closing the tab while files are still uploading prompts a browser warning. When the batch finishes, a dismissible summary stays on the page with the per-file list (completed rows can be collapsed). The default **per-file limit is 50 MB** (`Uploads:MaxFileBytes` = 52,428,800). A file over the limit is skipped with a clear message; the rest of the batch continues.
 
@@ -66,6 +66,7 @@ Demo seed (local / `Seed__Enabled=true` only):
 | `admin2` | `admin@democlient.local` | — | Administrator | Demo Client |
 | `arivera` | `editor@bisconsultants.local` | Alex Rivera | Editor | Demo Client |
 | `jhale` | `viewer@bisconsultants.local` | Jordan Hale | Viewer | Demo Client |
+| `rpatel` | `uploader@bisconsultants.local` | Riley Patel | Uploader | Demo Client |
 | `admin3` | `admin@otherclient.local` | — | Administrator | Other Client |
 | `cnguyen` | `editor.other@bisconsultants.local` | Casey Nguyen | Editor | Other Client |
 
@@ -79,36 +80,39 @@ Password for all demo users: `Demo!Gis2026`
 dotnet test GisDashboard.slnx
 ```
 
-The suite covers unauthenticated 401s, Viewer org-scoped 404s (IDOR), staff all-organization document access, Viewer upload to own org, Global Administrator environment status (live DB/storage, 403 for other roles), Internal Notes visibility and history (staff only — Viewers cannot read notes), time-log CRUD/role gates, directory scoping, org-upload resolution (id / name / stale seed id), dashboard KPIs and chart series, bucket/export APIs, comments (Viewers can post; client-visible comment email + @mention bells), status-change and public-upload-received emails (fail closed without SMTP), Phase 3 detail fields, organization/user edit authorization, tokenized public upload (happy path, bad token, cross-org), monthly report generation, history isolation by organization, report recipient authorization, time report cards (own hours vs team, per-org client toggle, IDOR, CSV), priority work (client flag + note + needed-by date, Viewer 403, Priority and Due this week buckets, Dashboard KPI, token-upload notify, IDOR, assigned technicians, primary assigned tech), mass upload (two files → two work items, per-file size rejection that does not block the next file), Cancelled status, Needs Review status (filter, charts/exports, Reviewed independence), document-type order, Reviewed flag, auto-assign to the organization’s primary Assigned tech then Editor, AI fill from PDF (fail closed when Azure OpenAI is unset, Viewer 403 / cross-org 404, image and empty-text rejection, configured fill does not persist), Global Administrator SMTP settings (role gate, write-only password, fail-closed test send, Dashboard Send report uses saved SMTP), forgot password (generic response, no enumeration, fail-closed without SMTP, 30-minute single-use token, rate limit), and presence (heartbeat upsert, 3-minute expiry, Viewer 403 on the list, Editor same-org scoping, Global Administrator sees all, Clocked in and work-item title).
+The suite covers unauthenticated 401s, Viewer/Uploader org-scoped 404s (IDOR), staff all-organization document access, Uploader upload to assigned org only, Viewer upload/comment 403s (QC04 — Viewer is not migrated to Uploader), Global Administrator environment status (live DB/storage, 403 for other roles), Internal Notes visibility and history (staff only — Viewers and Uploaders cannot read notes), time-log CRUD/role gates, directory scoping, org-upload resolution (id / name / stale seed id), dashboard KPIs and chart series, bucket/export APIs, comments (Uploaders can post client-visible comments that persist; Viewers can read but not post; comment email + @mention bells), status-change and public-upload-received emails (fail closed without SMTP), Phase 3 detail fields, organization/user edit authorization, tokenized public upload (happy path, bad token, cross-org), monthly report generation, history isolation by organization, report recipient authorization, time report cards (own hours vs team, per-org client toggle, IDOR, CSV), priority work (client flag + note + needed-by date, Viewer 403, Priority and Due this week buckets, Dashboard KPI, token-upload notify, IDOR, assigned technicians, primary assigned tech), mass upload (two files → two work items, per-file size rejection that does not block the next file), Cancelled status, Needs Review status (filter, charts/exports, Reviewed independence), document-type order, Reviewed flag, auto-assign to the organization’s primary Assigned tech then Editor, AI fill from PDF (fail closed when Azure OpenAI is unset, Viewer 403 / cross-org 404, image and empty-text rejection, configured fill does not persist), Global Administrator SMTP settings (role gate, write-only password, fail-closed test send, Dashboard Send report uses saved SMTP), forgot password (generic response, no enumeration, fail-closed without SMTP, 30-minute single-use token, rate limit), and presence (heartbeat upsert, 3-minute expiry, Viewer 403 on the list, Editor same-org scoping, Global Administrator sees all, Clocked in and work-item title).
 
 ## Roles and permissions
 
-Two axes: **scope** (all organizations vs assigned client orgs) and **org permission** (Administrator / Editor / Viewer). There is no Client role and no “BIS” / “God Rights” role label.
+Two axes: **scope** (all organizations vs assigned client orgs) and **org permission** (Administrator / Editor / Uploader / Viewer). There is no Client role and no “BIS” / “God Rights” role label.
 
-| Capability | Global Administrator | Administrator | Editor | Viewer |
-| --- | --- | --- | --- | --- |
-| Organization scope (documents) | All orgs | All orgs | All orgs | Assigned org(s) |
-| Upload | Yes | Yes | Yes | Yes (own org) |
-| Change status / assignment / title | Yes | Yes | Yes | No |
-| Internal Notes (staff only) | Edit | Edit | Edit | No |
-| Time logs | Manage all | Manage all in org | Own entries | Read |
-| Floating time clock | Yes | Yes | Yes | No |
-| Comments (client visible) | Post | Post | Post | Post |
-| Users | All users | Users in assigned orgs | No | No |
-| Create organizations | Yes | No | No | No |
-| View monthly reports | All orgs | All orgs | All orgs | Assigned org(s) |
-| Generate / email reports | Yes | All orgs | All orgs | No |
-| Time report card (own hours) | Yes | Own hours always | Own hours always | Only if that org’s client toggle is on |
-| Time report card (team hours) | Always | Only if that org’s client toggle is on | No | Only if that org’s client toggle is on |
-| Turn on client time report cards | Yes (per org) | No | No | No |
-| Mark work item priority | Yes | Yes | Yes | Badge only |
-| Clear / acknowledge priority | Yes | Yes | Yes | No |
-| Assign organization technicians | Yes | Yes | Yes | No |
-| Who’s online (presence) | All signed-in users | Same-org users + Global Admins + self | Same-org users + Global Admins + self | No |
+| Capability | Global Administrator | Administrator | Editor | Uploader | Viewer |
+| --- | --- | --- | --- | --- | --- |
+| Organization scope (documents) | All orgs | All orgs | All orgs | Assigned org(s) | Assigned org(s) |
+| Upload | Yes | Yes | Yes | Yes (assigned org(s) only) | No |
+| Change status / assignment / title | Yes | Yes | Yes | No | No |
+| Internal Notes (staff only) | Edit | Edit | Edit | No | No |
+| Time logs | Manage all | Manage all in org | Own entries | Read | Read |
+| Floating time clock | Yes | Yes | Yes | No | No |
+| Comments (client visible) | Post | Post | Post | Post | Read only |
+| Users | All users | Users in assigned orgs | No | No | No |
+| Create organizations | Yes | No | No | No | No |
+| View monthly reports | All orgs | All orgs | All orgs | Assigned org(s) | Assigned org(s) |
+| Generate / email reports | Yes | All orgs | All orgs | No | No |
+| Time report card (own hours) | Yes | Own hours always | Own hours always | Only if that org’s client toggle is on | Only if that org’s client toggle is on |
+| Time report card (team hours) | Always | Only if that org’s client toggle is on | No | Only if that org’s client toggle is on | Only if that org’s client toggle is on |
+| Turn on client time report cards | Yes (per org) | No | No | No | No |
+| Mark work item priority | Yes | Yes | Yes | Badge only | Badge only |
+| Clear / acknowledge priority | Yes | Yes | Yes | No | No |
+| Assign organization technicians | Yes | Yes | Yes | No | No |
+| Who’s online (presence) | All signed-in users | Same-org users + Global Admins + self | Same-org users + Global Admins + self | No | No |
+| Dashboard Assignee filter | Yes | Yes | Yes | Hidden (QC08 preview) | Yes |
 
-Claim values: `GlobalAdministrator`, `Administrator`, `Editor`, `Viewer`. UI shows **Global Administrator** (never “BIS admin”).
+Claim values: `GlobalAdministrator`, `Administrator`, `Editor`, `Uploader`, `Viewer`. UI shows **Global Administrator** (never “BIS admin”).
 
-**Comments** are client-visible. Viewers can post. A new comment emails the assignee and Assigned tech(s) when SMTP is configured. `@username` in a comment notifies that person in the bell.
+**QC04 — Uploader:** Admin/Editor (directory managers) can create Uploader and assign one or more orgs; the role persists. Uploader sees Viewer-accessible pages/info and can upload to assigned org(s) only. Uploader posts **client-visible Comments** (not Internal Notes). No staff rights: Internal Notes, doc editing, tech assignment, user management. Existing Viewers are **not** migrated to Uploader. Viewer stays upload/comment-free.
+
+**Comments** are client-visible. Uploaders and staff can post. Viewers can read the thread but cannot post. A new comment emails the assignee and Assigned tech(s) when SMTP is configured. `@username` in a comment notifies that person in the bell.
 
 **Internal Notes** are staff-only (Global Administrator, Administrator, Editor). Viewers cannot read or edit them. Edits append a lightweight history (who/when/body). Time logs use hours + minutes. The Assigned To **user id** is never shown as a grid *column* — Editors change assignee with a name dropdown.
 
@@ -133,6 +137,7 @@ On startup, `RoleModelUpgrade` maps the old four-role model:
 - Old all-orgs `Administrator` → `GlobalAdministrator`
 - Old `Client` → org-scoped `Administrator` (same assigned organization)
 - `Editor` and `Viewer` unchanged
+- QC04 adds `Uploader` if missing. Existing Viewers are **not** migrated to Uploader.
 - The `Client` role is removed and is no longer assignable
 
 Local/demo seed also remaps `client@democlient.local` → `admin@democlient.local` and `client@otherclient.local` → `admin@otherclient.local`. Production (`Seed__Enabled=false`) keeps existing emails and only remaps role claims.

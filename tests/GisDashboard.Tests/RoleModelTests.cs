@@ -101,6 +101,22 @@ public sealed class RoleModelTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Uploader_role_is_assignable()
+    {
+        var client = await _factory.LoginAsync("admin@bisconsultants.local");
+        var response = await client.PostAsJsonAsync("/api/admin/users", new
+        {
+            email = "rolemodel.uploader@democlient.local",
+            password = "Demo!Gis2026",
+            displayName = "Lee Brooks",
+            role = "Uploader",
+            organizationIds = new[] { SeedIds.DemoClient }
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        (await response.ReadJsonAsync()).GetProperty("role").GetString().Should().Be("Uploader");
+    }
+
+    [Fact]
     public async Task Client_role_is_not_assignable()
     {
         var client = await _factory.LoginAsync("admin@bisconsultants.local");

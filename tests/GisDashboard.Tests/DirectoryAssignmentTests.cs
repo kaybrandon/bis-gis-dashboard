@@ -104,6 +104,10 @@ public sealed class DirectoryAssignmentTests : IClassFixture<ApiFactory>
             .Should().Contain(x => x.GetProperty("id").GetGuid() == SeedIds.ViewerDemo);
         demo.GetProperty("assignedTechs").EnumerateArray()
             .Should().NotContain(x => x.GetProperty("id").GetGuid() == SeedIds.ViewerDemo);
+        demo.GetProperty("members").EnumerateArray()
+            .Should().Contain(x => x.GetProperty("id").GetGuid() == SeedIds.UploaderDemo);
+        demo.GetProperty("assignedTechs").EnumerateArray()
+            .Should().NotContain(x => x.GetProperty("id").GetGuid() == SeedIds.UploaderDemo);
         demo.GetProperty("assignedTechs").EnumerateArray()
             .Should().Contain(x => x.GetProperty("id").GetGuid() == SeedIds.OrgAdminDemo);
     }
@@ -115,7 +119,7 @@ public sealed class DirectoryAssignmentTests : IClassFixture<ApiFactory>
         var orgs = await (await ga.GetAsync("/api/admin/organizations")).ReadJsonAsync();
         var demo = orgs.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == SeedIds.DemoClient);
         demo.GetProperty("members").EnumerateArray().Select(x => x.GetProperty("id").GetGuid())
-            .Should().BeEquivalentTo(new[] { SeedIds.EditorDemo, SeedIds.ViewerDemo, SeedIds.OrgAdminDemo });
+            .Should().BeEquivalentTo(new[] { SeedIds.EditorDemo, SeedIds.ViewerDemo, SeedIds.UploaderDemo, SeedIds.OrgAdminDemo });
         demo.GetProperty("assignedTechs").EnumerateArray().Select(x => x.GetProperty("id").GetGuid())
             .Should().BeEquivalentTo(new[] { SeedIds.EditorDemo, SeedIds.OrgAdminDemo });
     }

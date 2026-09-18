@@ -9,7 +9,7 @@ public static class UserIdentity
     private static readonly HashSet<string> RoleOrSystemWords = new(StringComparer.OrdinalIgnoreCase)
     {
         "administrator", "global", "client", "demo", "token", "upload",
-        "editor", "viewer", "admin", "system", "bis"
+        "uploader", "editor", "viewer", "admin", "system", "bis"
     };
 
     /// <summary>

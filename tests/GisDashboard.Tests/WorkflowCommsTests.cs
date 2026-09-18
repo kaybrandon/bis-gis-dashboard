@@ -48,15 +48,31 @@ public sealed class WorkflowCommsTests : IClassFixture<WorkflowCommsFactory>
     }
 
     [Fact]
-    public async Task Viewer_can_post_client_visible_comment_and_cannot_see_internal_notes()
+    public async Task Viewer_cannot_post_comments_and_cannot_see_internal_notes()
     {
         var viewer = await _factory.LoginAsync("viewer@bisconsultants.local");
         var detail = await (await viewer.GetAsync($"/api/work-items/{SeedIds.DemoPlat}")).ReadJsonAsync();
         detail.GetProperty("canSeeInternalNotes").GetBoolean().Should().BeFalse();
-        detail.GetProperty("canPostComments").GetBoolean().Should().BeTrue();
+        detail.GetProperty("canPostComments").GetBoolean().Should().BeFalse();
         detail.GetProperty("internalNotes").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
 
         var created = await viewer.PostAsJsonAsync($"/api/work-items/{SeedIds.DemoPlat}/comments", new
+        {
+            body = "Viewer should stay comment-free."
+        });
+        created.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Uploader_can_post_client_visible_comment_and_cannot_see_internal_notes()
+    {
+        var uploader = await _factory.LoginAsync("uploader@bisconsultants.local");
+        var detail = await (await uploader.GetAsync($"/api/work-items/{SeedIds.DemoPlat}")).ReadJsonAsync();
+        detail.GetProperty("canSeeInternalNotes").GetBoolean().Should().BeFalse();
+        detail.GetProperty("canPostComments").GetBoolean().Should().BeTrue();
+        detail.GetProperty("internalNotes").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+
+        var created = await uploader.PostAsJsonAsync($"/api/work-items/{SeedIds.DemoPlat}/comments", new
         {
             body = "Client can see this. @arivera please confirm the west line."
         });

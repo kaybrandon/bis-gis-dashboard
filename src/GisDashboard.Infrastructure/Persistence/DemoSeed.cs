@@ -124,6 +124,12 @@ public sealed class DemoSeed
             Roles.Viewer,
             [SeedIds.DemoClient]);
         await EnsureUserAsync(
+            SeedIds.UploaderDemo,
+            "uploader@bisconsultants.local",
+            "Riley Patel",
+            Roles.Uploader,
+            [SeedIds.DemoClient]);
+        await EnsureUserAsync(
             SeedIds.OrgAdminDemo,
             "admin@democlient.local",
             "Demo Client Administrator",

@@ -32,15 +32,16 @@ public sealed class WishListTests : IClassFixture<ApiFactory>
         var viewer = await _factory.LoginAsync("viewer@bisconsultants.local");
         var viewerMe = await (await viewer.GetAsync("/api/auth/me")).ReadJsonAsync();
         viewerMe.GetProperty("canSeeAllOrganizations").GetBoolean().Should().BeFalse();
-        viewerMe.GetProperty("canUpload").GetBoolean().Should().BeTrue();
+        viewerMe.GetProperty("canUpload").GetBoolean().Should().BeFalse();
+        viewerMe.GetProperty("canPostComments").GetBoolean().Should().BeFalse();
         (await viewer.GetAsync($"/api/work-items/{SeedIds.OtherPlat}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task Viewer_can_upload_to_own_org_and_not_the_other()
+    public async Task Uploader_can_upload_to_own_org_and_not_the_other()
     {
-        var viewer = await _factory.LoginAsync("viewer@bisconsultants.local");
-        var own = await UploadAsync(viewer, SeedIds.DemoClient.ToString(), "Demo Client", "", "", "viewer-supply.pdf");
+        var uploader = await _factory.LoginAsync("uploader@bisconsultants.local");
+        var own = await UploadAsync(uploader, SeedIds.DemoClient.ToString(), "Demo Client", "", "", "uploader-supply.pdf");
         own.StatusCode.Should().Be(HttpStatusCode.OK, await own.Content.ReadAsStringAsync());
         var created = await own.ReadJsonAsync();
         created.GetProperty("organizationName").GetString().Should().Be("Demo Client");
@@ -48,8 +49,10 @@ public sealed class WishListTests : IClassFixture<ApiFactory>
         created.GetProperty("assignedToName").GetString().Should().Be("Alex Rivera");
         created.GetProperty("isPriority").GetBoolean().Should().BeFalse();
         created.GetProperty("canMutate").GetBoolean().Should().BeFalse();
+        created.GetProperty("canPostComments").GetBoolean().Should().BeTrue();
+        created.GetProperty("canSeeInternalNotes").GetBoolean().Should().BeFalse();
 
-        var other = await UploadAsync(viewer, SeedIds.OtherClient.ToString(), "Other Client", "", "", "viewer-cross.pdf");
+        var other = await UploadAsync(uploader, SeedIds.OtherClient.ToString(), "Other Client", "", "", "uploader-cross.pdf");
         other.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
