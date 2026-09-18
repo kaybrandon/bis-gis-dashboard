@@ -1,4 +1,5 @@
 using GisDashboard.Application.Abstractions;
+using GisDashboard.Application.AiFill;
 using GisDashboard.Application.Directory;
 using GisDashboard.Application.Exceptions;
 using GisDashboard.Application.Notifications;
@@ -20,6 +21,7 @@ public sealed class WorkItemService : IWorkItemService
     private readonly IFileStorage _storage;
     private readonly INotificationService _notifications;
     private readonly IWorkflowComms _comms;
+    private readonly IWorkItemAutoAiScanScheduler _aiScan;
     private readonly UploadOptions _uploads;
 
     public WorkItemService(
@@ -29,6 +31,7 @@ public sealed class WorkItemService : IWorkItemService
         IFileStorage storage,
         INotificationService notifications,
         IWorkflowComms comms,
+        IWorkItemAutoAiScanScheduler aiScan,
         IOptions<UploadOptions> uploads)
     {
         _db = db;
@@ -37,6 +40,7 @@ public sealed class WorkItemService : IWorkItemService
         _storage = storage;
         _notifications = notifications;
         _comms = comms;
+        _aiScan = aiScan;
         _uploads = uploads.Value;
     }
 
@@ -252,12 +256,23 @@ public sealed class WorkItemService : IWorkItemService
 
         _db.WorkItems.Add(item);
         AddClientNotesComment(item.Id, request.ClientNotes, _currentUser.UserId);
+        var enqueueScan = false;
+        try
+        {
+            enqueueScan = _aiScan.PrepareNewUpload(item);
+        }
+        catch
+        {
+            enqueueScan = false;
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
         if (becamePriority)
         {
             await _notifications.NotifyPriorityAsync(item, _currentUser.UserId, cancellationToken);
         }
 
+        TryEnqueueAiScan(item.Id, enqueueScan);
         return MapDetail(await LoadScopedAsync(item.Id, cancellationToken));
     }
 
@@ -860,12 +875,23 @@ public sealed class WorkItemService : IWorkItemService
 
         _db.WorkItems.Add(item);
         AddClientNotesComment(item.Id, request.ClientNotes, SeedIds.TokenUploadUser);
+        var enqueueScan = false;
+        try
+        {
+            enqueueScan = _aiScan.PrepareNewUpload(item);
+        }
+        catch
+        {
+            enqueueScan = false;
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
         if (becamePriority)
         {
             await _notifications.NotifyPriorityAsync(item, SeedIds.TokenUploadUser, cancellationToken);
         }
 
+        TryEnqueueAiScan(item.Id, enqueueScan);
         return new PublicUploadResult(item.Id, item.FileName, org.Name, "Pending");
     }
 
@@ -1486,7 +1512,31 @@ public sealed class WorkItemService : IWorkItemService
             _currentUser.CanMutateWorkItems,
             item.IsReviewed,
             item.PriorityNeededBy,
-            DocumentDifficulty.FromStored(item.DifficultyBand, item.DifficultyWhy, item.DifficultyOverridden, item.AiDifficultyBand));
+            DocumentDifficulty.FromStored(item.DifficultyBand, item.DifficultyWhy, item.DifficultyOverridden, item.AiDifficultyBand),
+            WorkItemAiScanJson.FromStored(
+                item.AiScanStatus,
+                item.AiScanMessage,
+                item.AiScanStartedAt,
+                item.AiScanCompletedAt,
+                item.AiScanResultJson,
+                item.AiScanBaselineJson));
+    }
+
+    private void TryEnqueueAiScan(Guid workItemId, bool enqueue)
+    {
+        if (!enqueue)
+        {
+            return;
+        }
+
+        try
+        {
+            _aiScan.Enqueue(workItemId);
+        }
+        catch
+        {
+            // Upload already committed — staff can retry with AI fill from PDF.
+        }
     }
 
     private async Task<Guid> ResolveDocumentTypeAsync(

@@ -103,6 +103,8 @@ public static class DependencyInjection
         services.AddScoped<IDashboardReportService, DashboardReportService>();
         services.AddScoped<IWorkItemAiFillService, WorkItemAiFillService>();
         services.AddSingleton<IAzureOpenAiCompletions, AzureOpenAiCompletions>();
+        services.AddSingleton<IWorkItemAutoAiScanScheduler, WorkItemAutoAiScanScheduler>();
+        services.AddHostedService<WorkItemAutoAiScanWorker>();
         services.AddScoped<ITimeEntryService, TimeEntryService>();
         services.AddScoped<ICommentService, CommentService>();
         services.AddScoped<IDirectoryService, DirectoryService>();

@@ -69,6 +69,13 @@ public sealed class WorkItem
     public DateTimeOffset? DifficultyOverriddenAt { get; set; }
     public Guid? DifficultyOverriddenByUserId { get; set; }
 
+    public string? AiScanStatus { get; set; }
+    public string? AiScanMessage { get; set; }
+    public DateTimeOffset? AiScanStartedAt { get; set; }
+    public DateTimeOffset? AiScanCompletedAt { get; set; }
+    public string? AiScanResultJson { get; set; }
+    public string? AiScanBaselineJson { get; set; }
+
     public void TouchDates(DateTimeOffset uploadedAt, DateTimeOffset updatedAt)
     {
         UploadedAt = uploadedAt;

@@ -252,6 +252,7 @@ export type WorkItemDetail = WorkItemListItem & {
   priorityRequestedByName?: string | null
   canSetPriority?: boolean
   priorityNeededBy?: string | null
+  aiScan?: WorkItemAiScan | null
 }
 
 export type TimeEntry = {
@@ -307,6 +308,28 @@ export type AiFillResponse = {
     platCount: AiFillIntField
     workedOn: AiFillDateField
   }
+}
+
+export type WorkItemAiScanStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'unconfigured' | 'skipped' | string
+
+export type WorkItemAiScanBaseline = {
+  title: string
+  documentTypeId: string
+  propertyIds?: string | null
+  annexationCount: number
+  correctionCount: number
+  deedCount: number
+  platCount: number
+  workedOn?: string | null
+}
+
+export type WorkItemAiScan = {
+  status: WorkItemAiScanStatus
+  message?: string | null
+  startedAt?: string | null
+  completedAt?: string | null
+  result?: AiFillResponse | null
+  baseline?: WorkItemAiScanBaseline | null
 }
 
 export type LookupItem = { id: string; name: string; color?: string | null; sortOrder: number }

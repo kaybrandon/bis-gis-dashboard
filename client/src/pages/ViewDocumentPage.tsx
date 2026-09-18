@@ -1,10 +1,19 @@
 import { DownloadOutlined, ExportOutlined, LeftOutlined, RightOutlined, ThunderboltOutlined } from '@ant-design/icons'
-import { Button, Card, Checkbox, Col, DatePicker, Dropdown, Input, InputNumber, Modal, Row, Select, Space, Spin, Tag, Tooltip, Typography, message } from 'antd'
+import { Alert, Button, Card, Checkbox, Col, DatePicker, Dropdown, Input, InputNumber, Modal, Row, Select, Space, Spin, Tag, Tooltip, Typography, message } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { AiFillResponse, AssignableUser, DocumentDifficultyBand, LookupItem, StatusActions, WorkItemDetail, WorkItemQuery } from '../api'
 import { api, authorizedBlob } from '../api'
+import {
+  applyAiFill as applyAiFillFields,
+  applyAutoAiScan,
+  isAiScanFailed,
+  isAiScanInFlight,
+  type AiFieldKey,
+  type AiFillDraft,
+  type AiHint,
+} from '../aiScan'
 import { CommentsPanel } from '../components/CommentsPanel'
 import { LoadError } from '../components/LoadError'
 import { DocumentViewer } from '../components/DocumentViewer'
@@ -43,18 +52,6 @@ type Draft = {
   platCount: number
   propertyIds: string
 }
-
-type AiFieldKey =
-  | 'title'
-  | 'documentTypeId'
-  | 'propertyIds'
-  | 'annexationCount'
-  | 'correctionCount'
-  | 'deedCount'
-  | 'platCount'
-  | 'workedOn'
-
-type AiHint = { confidence: number; approved: boolean }
 
 function toDraft(item: WorkItemDetail): Draft {
   return {
@@ -99,45 +96,36 @@ async function downloadFile(id: string, fileName: string) {
   URL.revokeObjectURL(url)
 }
 
+function toAiDraft(draft: Draft): AiFillDraft {
+  return {
+    title: draft.title,
+    documentTypeId: draft.documentTypeId,
+    propertyIds: draft.propertyIds,
+    annexationCount: draft.annexationCount,
+    correctionCount: draft.correctionCount,
+    deedCount: draft.deedCount,
+    platCount: draft.platCount,
+    workedOn: draft.workedOn ? draft.workedOn.format('YYYY-MM-DD') : null,
+  }
+}
+
+function mergeAiDraft(current: Draft, next: AiFillDraft): Draft {
+  return {
+    ...current,
+    title: next.title,
+    documentTypeId: next.documentTypeId,
+    propertyIds: next.propertyIds,
+    annexationCount: next.annexationCount,
+    correctionCount: next.correctionCount,
+    deedCount: next.deedCount,
+    platCount: next.platCount,
+    workedOn: next.workedOn ? dayjs(next.workedOn) : null,
+  }
+}
+
 function applyAiFill(current: Draft, result: AiFillResponse): { next: Draft; hints: Partial<Record<AiFieldKey, AiHint>> } {
-  const hints: Partial<Record<AiFieldKey, AiHint>> = {}
-  const next = { ...current }
-  const { fields } = result
-
-  if (fields.title.present && fields.title.value) {
-    next.title = fields.title.value
-    hints.title = { confidence: fields.title.confidence, approved: false }
-  }
-  if (fields.type.present && fields.type.documentTypeId) {
-    next.documentTypeId = fields.type.documentTypeId
-    hints.documentTypeId = { confidence: fields.type.confidence, approved: false }
-  }
-  if (fields.propertyIds.present && fields.propertyIds.value != null) {
-    next.propertyIds = fields.propertyIds.value
-    hints.propertyIds = { confidence: fields.propertyIds.confidence, approved: false }
-  }
-  if (fields.annexationCount.present && fields.annexationCount.value != null) {
-    next.annexationCount = fields.annexationCount.value
-    hints.annexationCount = { confidence: fields.annexationCount.confidence, approved: false }
-  }
-  if (fields.correctionCount.present && fields.correctionCount.value != null) {
-    next.correctionCount = fields.correctionCount.value
-    hints.correctionCount = { confidence: fields.correctionCount.confidence, approved: false }
-  }
-  if (fields.deedCount.present && fields.deedCount.value != null) {
-    next.deedCount = fields.deedCount.value
-    hints.deedCount = { confidence: fields.deedCount.confidence, approved: false }
-  }
-  if (fields.platCount.present && fields.platCount.value != null) {
-    next.platCount = fields.platCount.value
-    hints.platCount = { confidence: fields.platCount.confidence, approved: false }
-  }
-  if (fields.workedOn.present && fields.workedOn.value) {
-    next.workedOn = dayjs(fields.workedOn.value)
-    hints.workedOn = { confidence: fields.workedOn.confidence, approved: false }
-  }
-
-  return { next, hints }
+  const applied = applyAiFillFields(toAiDraft(current), result)
+  return { next: mergeAiDraft(current, applied.next), hints: applied.hints }
 }
 
 function AiField({
@@ -183,6 +171,7 @@ export function ViewDocumentPage() {
   const [filling, setFilling] = useState(false)
   const [aiHints, setAiHints] = useState<Partial<Record<AiFieldKey, AiHint>>>({})
   const [aiOverall, setAiOverall] = useState<number | null>(null)
+  const [appliedScanKey, setAppliedScanKey] = useState<string | null>(null)
 
   const query: WorkItemQuery = {
     search: params.get('search') ?? undefined,
@@ -201,6 +190,7 @@ export function ViewDocumentPage() {
     setError(null)
     setAiHints({})
     setAiOverall(null)
+    setAppliedScanKey(null)
     Promise.all([
       api.workItem(id),
       api.neighbors(id, query),
@@ -221,6 +211,45 @@ export function ViewDocumentPage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Document was not found.'))
   }, [id, params, reloadNonce])
+
+  useEffect(() => {
+    if (!id || !item || !isAiScanInFlight(item.aiScan?.status)) return
+    const timer = window.setInterval(() => {
+      api.workItem(id)
+        .then((fresh) => {
+          setItem((current) => {
+            if (!current) return fresh
+            return {
+              ...fresh,
+              // Keep in-form difficulty if a local fill already set it.
+              difficulty: fresh.difficulty ?? current.difficulty,
+            }
+          })
+        })
+        .catch(() => undefined)
+    }, 2000)
+    return () => window.clearInterval(timer)
+  }, [id, item?.aiScan?.status])
+
+  useEffect(() => {
+    if (!item?.canMutate || !draft || !item.aiScan || item.aiScan.status !== 'succeeded' || !item.aiScan.result) {
+      return
+    }
+    const key = `${item.id}:${item.aiScan.completedAt ?? 'done'}`
+    if (appliedScanKey === key) return
+    const applied = applyAutoAiScan(toAiDraft(draft), item.aiScan.result, item.aiScan.baseline)
+    setAppliedScanKey(key)
+    setAiOverall(item.aiScan.result.overallConfidence)
+    if (item.aiScan.result.difficulty) {
+      setItem((current) => (current ? { ...current, difficulty: item.aiScan?.result?.difficulty ?? current.difficulty } : current))
+    }
+    if (Object.keys(applied.hints).length === 0) {
+      return
+    }
+    setAiHints((current) => ({ ...current, ...applied.hints }))
+    setDraft(mergeAiDraft(draft, applied.next))
+    message.success('AI scan applied to the form. Review amber fields, then Save. Difficulty is saved from this pass; field fill still needs Save.')
+  }, [appliedScanKey, draft, item])
 
   const dirty = useMemo(() => !!draft && !!saved && !sameDraft(draft, saved), [draft, saved])
   const pendingAi = useMemo(
@@ -516,6 +545,22 @@ export function ViewDocumentPage() {
             )}
           >
             {priorityStrip}
+            {isAiScanInFlight(item.aiScan?.status) && (
+              <Alert
+                className="ai-scan-banner"
+                type="info"
+                showIcon
+                message={item.aiScan?.message || 'AI scan pending.'}
+              />
+            )}
+            {isAiScanFailed(item.aiScan?.status) && (
+              <Alert
+                className="ai-scan-banner"
+                type="warning"
+                showIcon
+                message={item.aiScan?.message || 'AI scan failed. Use AI fill from PDF to retry.'}
+              />
+            )}
             <div className="document-difficulty-panel">
               <div className="detail-field-label">Difficulty</div>
               {item.difficulty?.band ? (
@@ -548,9 +593,13 @@ export function ViewDocumentPage() {
                 </>
               ) : (
                 <Typography.Text type="secondary">
-                  {item.canMutate
-                    ? 'Run AI fill from PDF to score Easy / Medium / Hard from this extract.'
-                    : 'Not scored yet.'}
+                  {isAiScanInFlight(item.aiScan?.status)
+                    ? 'AI scan pending… Easy / Medium / Hard will appear on this same pass.'
+                    : isAiScanFailed(item.aiScan?.status)
+                      ? 'AI scan failed. Use AI fill from PDF to retry Easy / Medium / Hard.'
+                      : item.canMutate
+                        ? 'Run AI fill from PDF to score Easy / Medium / Hard from this extract.'
+                        : 'Not scored yet.'}
                 </Typography.Text>
               )}
             </div>
