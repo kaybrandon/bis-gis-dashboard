@@ -2,6 +2,7 @@ import { Card, Empty, Spin, Tag, Typography } from 'antd'
 import dayjs from 'dayjs'
 import type { WorkItemListItem } from '../api'
 import { isNeededByOverdue, neededByLabel } from '../neededBy'
+import { WorkPresenceMarks } from './PresencePeople'
 import { reviewLabel, statusLabel } from '../statusLabels'
 
 type Props = {
@@ -53,6 +54,7 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
           </div>
           <Typography.Text type="secondary" className="work-item-card-line">
             Assigned to {item.assignedToName ?? '—'}
+            <WorkPresenceMarks workItemId={item.id} assignedToUserId={item.assignedToUserId} />
           </Typography.Text>
           <Typography.Text type="secondary" className="work-item-card-line">
             {showUploadDate ? `Uploaded ${dayjs(item.uploadedAt).format('YYYY-MM-DD')}` : null}

@@ -9,6 +9,7 @@ import { useAuth } from '../auth'
 import { DashboardCharts } from '../components/DashboardCharts'
 import { TitleWithHelp } from '../components/HelpTip'
 import { LoadError } from '../components/LoadError'
+import { WorkPresenceMarks } from '../components/PresencePeople'
 import { WorkItemCards } from '../components/WorkItemCards'
 import { documentsHref, type DocumentsHrefQuery } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
@@ -297,7 +298,17 @@ export function DashboardPage() {
               { title: 'File name', dataIndex: 'fileName', ellipsis: true },
               { title: 'Client name', dataIndex: 'organizationName', width: 180 },
               { title: 'Status', dataIndex: 'statusName', width: 120 },
-              { title: 'Assigned to', dataIndex: 'assignedToName', width: 160, render: (v: string | null) => v ?? '—' },
+              {
+                title: 'Assigned to',
+                dataIndex: 'assignedToName',
+                width: 180,
+                render: (v: string | null, row) => (
+                  <span>
+                    {v ?? '—'}
+                    <WorkPresenceMarks workItemId={row.id} assignedToUserId={row.assignedToUserId} />
+                  </span>
+                ),
+              },
               {
                 title: 'Worked date',
                 dataIndex: 'workedOn',

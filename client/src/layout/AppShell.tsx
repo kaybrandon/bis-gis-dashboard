@@ -23,9 +23,11 @@ import { authorizedBlob } from '../api'
 import { useAuth } from '../auth'
 import { FloatingTimeClock } from '../components/FloatingTimeClock'
 import { HeaderGreeting } from '../components/HeaderGreeting'
+import { HelpMessageSheet } from '../components/HelpMessageSheet'
 import { NotificationBell } from '../components/NotificationBell'
 import { PoweredByFooter } from '../components/PoweredByFooter'
 import { PresencePopover, WhoIsOnlineSider } from '../components/WhoIsOnline'
+import { PresenceProvider } from '../presence'
 import { usePresenceHeartbeat } from '../usePresenceHeartbeat'
 
 const { Header, Sider, Content, Footer } = Layout
@@ -133,6 +135,7 @@ export function AppShell() {
   }
 
   return (
+    <PresenceProvider enabled={canSeePresence} selfUserId={user?.id}>
     <Layout className="app-shell" style={{ minHeight: '100vh' }}>
       {!isMobile && (
         <Sider
@@ -226,6 +229,8 @@ export function AppShell() {
         {menu}
         {user && <WhoIsOnlineSider enabled={canSeePresence} userId={user.id} />}
       </Drawer>
+      <HelpMessageSheet />
     </Layout>
+    </PresenceProvider>
   )
 }
