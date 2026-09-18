@@ -63,15 +63,16 @@ describe('GIS-UI-02 app-wide Manage Documents theme', () => {
     assert.match(css, /\.content-wrap \.conn-card[\s\S]*border-top:\s*8px solid var\(--bis-navy\)/)
   })
 
-  it('themes Dashboard chart panels and Recently completed (Figure 2) without changing bar colors', () => {
+  it('themes Dashboard chart panels and Recently completed (Figure 2) and keeps UI-03 bar colors', () => {
     assert.match(dashboard, /Recently completed/)
     assert.match(dashboard, /<Table/)
     assert.match(dashboard, /className="kpi-card bis-theme-panel"/)
     assert.match(charts, /className="chart-card bis-theme-panel"/)
-    assert.match(charts, /color="#2f54eb"/)
-    assert.match(charts, /color="#fa8c16"/)
-    assert.match(charts, /color="#1890ff"/)
-    assert.match(charts, /color="#13c2c2"/)
+    assert.match(charts, /dashboardCategoryBarPlot/)
+    assert.match(charts, /from '\.\.\/dashboardBarPalette'/)
+    assert.doesNotMatch(charts, /color="#2f54eb"/)
+    assert.doesNotMatch(charts, /color="#fa8c16"/)
+    assert.doesNotMatch(charts, /color="#13c2c2"/)
     assert.match(css, /\.content-wrap \.kpi-card \.ant-statistic-title/)
   })
 
@@ -91,11 +92,11 @@ describe('GIS-UI-02 app-wide Manage Documents theme', () => {
     assert.deepEqual(extras, [], `new page(s) need GIS-UI-02 theme coverage: ${extras.join(', ')}`)
   })
 
-  it('does not restyle filter-toolbar layout (GIS-UI-01) or invent chart bar colors (GIS-UI-03)', () => {
+  it('does not restyle filter-toolbar layout (GIS-UI-01) or overwrite UI-03 bar colors', () => {
     const index = readFileSync(join(here, '../index.css'), 'utf8')
     assert.match(index, /\.filter-toolbar \{/)
     assert.doesNotMatch(css, /\.filter-toolbar \{/)
-    assert.doesNotMatch(css, /color:\s*#2f54eb/)
-    assert.doesNotMatch(css, /color:\s*#fa8c16/)
+    assert.match(charts, /\{\.\.\.dashboardCategoryBarPlot\(/)
+    assert.doesNotMatch(css, /DASHBOARD_BAR_PALETTE/)
   })
 })
