@@ -1,5 +1,5 @@
-import type { StatusActions } from './api'
-import { statusLabel } from './statusLabels'
+import type { StatusActions } from './api.ts'
+import { statusLabel } from './statusLabels.ts'
 
 export function statusSelectOptions(
   actions: StatusActions,

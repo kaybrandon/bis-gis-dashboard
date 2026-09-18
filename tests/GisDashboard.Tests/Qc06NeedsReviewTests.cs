@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text;
 using FluentAssertions;
 using GisDashboard.Domain;
+using GisDashboard.Infrastructure.AiFill;
 using GisDashboard.Infrastructure.Persistence;
 
 namespace GisDashboard.Tests;
@@ -136,7 +137,11 @@ public sealed class Qc06NeedsReviewTests : IClassFixture<ApiFactory>
 
         var pdf = await editor.GetAsync($"/api/dashboard/pdf?statusId={SeedIds.StatusNeedsReview}");
         pdf.StatusCode.Should().Be(HttpStatusCode.OK);
-        Encoding.UTF8.GetString(await pdf.Content.ReadAsByteArrayAsync()).Should().Contain("Needs Review");
+        pdf.Content.Headers.ContentType!.MediaType.Should().Be("application/pdf");
+        var pdfBytes = await pdf.Content.ReadAsByteArrayAsync();
+        pdfBytes.Length.Should().BeGreaterThan(200);
+        Encoding.ASCII.GetString(pdfBytes[..4]).Should().Be("%PDF");
+        PdfTextExtractor.Extract(new MemoryStream(pdfBytes)).Should().Contain("Needs Review");
     }
 
     [Fact]
