@@ -21,6 +21,72 @@ public sealed class HelpMessageService : IHelpMessageService
         _presence = presence;
     }
 
+    public async Task<HelpInboxResponse> ListInboxAsync(CancellationToken cancellationToken = default)
+    {
+        EnsureStaff();
+        var me = _currentUser.UserId;
+        var rows = await _db.HelpMessages.AsNoTracking()
+            .Where(x => x.FromUserId == me || x.ToUserId == me)
+            .OrderByDescending(x => x.CreatedAtSort)
+            .Take(500)
+            .ToListAsync(cancellationToken);
+
+        var grouped = rows
+            .Select(row => (Row: row, Other: row.FromUserId == me ? row.ToUserId : row.FromUserId))
+            .Where(x => x.Other != Guid.Empty && x.Other != me)
+            .GroupBy(x => x.Other)
+            .ToList();
+
+        var otherIds = grouped.Select(g => g.Key).ToList();
+        var visible = await _presence.FilterVisiblePresenceUsersAsync(otherIds, cancellationToken);
+        if (visible.Count == 0)
+        {
+            return new HelpInboxResponse(0, []);
+        }
+
+        var users = await _db.Users.AsNoTracking()
+            .Where(x => visible.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+        var presences = await _db.UserPresences.AsNoTracking()
+            .Where(x => visible.Contains(x.UserId))
+            .ToDictionaryAsync(x => x.UserId, cancellationToken);
+        var unreadCounts = await _db.HelpMessages.AsNoTracking()
+            .Where(x => x.ToUserId == me && x.ReadAt == null && visible.Contains(x.FromUserId))
+            .GroupBy(x => x.FromUserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count, cancellationToken);
+
+        var items = grouped
+            .Where(g => visible.Contains(g.Key))
+            .Select(g =>
+            {
+                var latest = g.First().Row;
+                unreadCounts.TryGetValue(g.Key, out var unread);
+                users.TryGetValue(g.Key, out var user);
+                presences.TryGetValue(g.Key, out var presence);
+                var status = PresenceService.StatusOf(presence) ?? "Offline";
+                var online = status == "Online";
+                return new HelpInboxThreadDto(
+                    g.Key,
+                    user is null
+                        ? "Someone"
+                        : UserIdentity.PublicName(user.FullName, user.DisplayName, user.UserName, user.Email),
+                    status,
+                    online,
+                    online ? null : HelpChips.OfflineMessage,
+                    Preview(latest.Body),
+                    latest.CreatedAt,
+                    unread > 0,
+                    unread);
+            })
+            .OrderByDescending(x => x.Unread)
+            .ThenByDescending(x => x.LastAt)
+            .Take(30)
+            .ToList();
+
+        return new HelpInboxResponse(items.Count(x => x.Unread), items);
+    }
+
     public async Task<HelpThreadResponse> ListThreadAsync(Guid withUserId, CancellationToken cancellationToken = default)
     {
         EnsureStaff();
@@ -159,4 +225,15 @@ public sealed class HelpMessageService : IHelpMessageService
             row.Body,
             row.CreatedAt,
             row.FromUserId == _currentUser.UserId);
+
+    internal static string Preview(string? body, int max = 80)
+    {
+        var text = string.Join(' ', (body ?? string.Empty).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        if (text.Length <= max)
+        {
+            return text;
+        }
+
+        return text[..(max - 1)].TrimEnd() + "…";
+    }
 }

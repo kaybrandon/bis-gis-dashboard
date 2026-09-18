@@ -484,6 +484,40 @@ body,
   background: #bae7ff;
 }
 
+.help-inbox-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.help-inbox-unread {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #EAB308;
+  flex-shrink: 0;
+}
+
+.help-inbox-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.help-inbox-preview {
+  min-width: 0;
+}
+
+.help-inbox-time {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
 .presence-panel {
   width: min(400px, calc(100vw - 24px));
 }

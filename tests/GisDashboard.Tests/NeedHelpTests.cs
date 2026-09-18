@@ -82,12 +82,20 @@ public sealed class NeedHelpTests : IClassFixture<ApiFactory>
         (await viewer.PostAsJsonAsync("/api/presence", Heartbeat("/"))).EnsureSuccessStatusCode();
         (await viewer.GetAsync("/api/presence")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await viewer.GetAsync($"/api/help-messages?withUserId={SeedIds.EditorDemo}")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await viewer.GetAsync("/api/help-messages/inbox")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await viewer.PostAsJsonAsync("/api/help-messages", new
         {
             toUserId = SeedIds.EditorDemo,
             chip = "need-help",
             body = (string?)null
         })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Uploader_cannot_list_inbox()
+    {
+        var uploader = await _factory.LoginAsync("uploader@bisconsultants.local");
+        (await uploader.GetAsync("/api/help-messages/inbox")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -196,6 +204,115 @@ public sealed class NeedHelpTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Inbox_lists_waiting_thread_with_preview_and_unread()
+    {
+        var editor = await _factory.LoginAsync("editor@bisconsultants.local");
+        (await editor.PostAsJsonAsync("/api/presence", Heartbeat("/"))).EnsureSuccessStatusCode();
+        var admin = await _factory.LoginAsync("admin@bisconsultants.local");
+        (await admin.PostAsJsonAsync("/api/presence", Heartbeat("/status"))).EnsureSuccessStatusCode();
+
+        (await editor.PostAsJsonAsync("/api/help-messages", new
+        {
+            toUserId = SeedIds.Admin,
+            chip = "need-help"
+        })).EnsureSuccessStatusCode();
+
+        var inbox = await (await admin.GetAsync("/api/help-messages/inbox")).ReadJsonAsync();
+        inbox.GetProperty("unreadCount").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        var thread = InboxItem(inbox, SeedIds.EditorDemo);
+        thread.GetProperty("withDisplayName").GetString().Should().Be("Alex Rivera");
+        thread.GetProperty("preview").GetString().Should().Be("Need help?");
+        thread.GetProperty("unread").GetBoolean().Should().BeTrue();
+        thread.GetProperty("unreadCount").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        thread.TryGetProperty("lastAt", out var lastAt).Should().BeTrue();
+        lastAt.GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Opening_thread_marks_inbox_read_and_keeps_it_listed()
+    {
+        var editor = await _factory.LoginAsync("editor@bisconsultants.local");
+        (await editor.PostAsJsonAsync("/api/presence", Heartbeat("/"))).EnsureSuccessStatusCode();
+        var admin = await _factory.LoginAsync("admin@bisconsultants.local");
+        (await admin.PostAsJsonAsync("/api/presence", Heartbeat("/status"))).EnsureSuccessStatusCode();
+
+        (await editor.PostAsJsonAsync("/api/help-messages", new
+        {
+            toUserId = SeedIds.Admin,
+            body = "Northridge plat"
+        })).EnsureSuccessStatusCode();
+
+        var before = await (await admin.GetAsync("/api/help-messages/inbox")).ReadJsonAsync();
+        var beforeUnread = before.GetProperty("unreadCount").GetInt32();
+        InboxItem(before, SeedIds.EditorDemo).GetProperty("unread").GetBoolean().Should().BeTrue();
+        beforeUnread.Should().BeGreaterThanOrEqualTo(1);
+
+        (await admin.GetAsync($"/api/help-messages?withUserId={SeedIds.EditorDemo}")).EnsureSuccessStatusCode();
+
+        var after = await (await admin.GetAsync("/api/help-messages/inbox")).ReadJsonAsync();
+        InboxItem(after, SeedIds.EditorDemo).GetProperty("unread").GetBoolean().Should().BeFalse();
+        after.GetProperty("unreadCount").GetInt32().Should().BeLessThan(beforeUnread);
+        InboxItem(after, SeedIds.EditorDemo).GetProperty("preview").GetString().Should().Be("Northridge plat");
+    }
+
+    [Fact]
+    public async Task Inbox_still_lists_offline_sender_and_compose_stays_disabled()
+    {
+        var editor = await _factory.LoginAsync("editor@bisconsultants.local");
+        (await editor.PostAsJsonAsync("/api/presence", Heartbeat("/"))).EnsureSuccessStatusCode();
+        var admin = await _factory.LoginAsync("admin@bisconsultants.local");
+        (await admin.PostAsJsonAsync("/api/presence", Heartbeat("/status"))).EnsureSuccessStatusCode();
+
+        (await editor.PostAsJsonAsync("/api/help-messages", new
+        {
+            toUserId = SeedIds.Admin,
+            chip = "take-a-look"
+        })).EnsureSuccessStatusCode();
+
+        await SetLastSeenAsync(SeedIds.EditorDemo, TimeSpan.FromMinutes(4));
+
+        var inbox = await (await admin.GetAsync("/api/help-messages/inbox")).ReadJsonAsync();
+        var thread = InboxItem(inbox, SeedIds.EditorDemo);
+        thread.GetProperty("unread").GetBoolean().Should().BeTrue();
+        thread.GetProperty("presenceStatus").GetString().Should().Be("Offline");
+        thread.GetProperty("canCompose").GetBoolean().Should().BeFalse();
+        thread.GetProperty("composeDisabledReason").GetString().Should().Be("Offline — try when they're back.");
+        thread.GetProperty("preview").GetString().Should().Be("Can you take a look?");
+
+        var opened = await (await admin.GetAsync($"/api/help-messages?withUserId={SeedIds.EditorDemo}")).ReadJsonAsync();
+        opened.GetProperty("canCompose").GetBoolean().Should().BeFalse();
+        opened.GetProperty("composeDisabledReason").GetString().Should().Be("Offline — try when they're back.");
+    }
+
+    [Fact]
+    public async Task Inbox_hides_users_outside_whos_online_visibility()
+    {
+        var editor = await _factory.LoginAsync("editor@bisconsultants.local");
+        (await editor.PostAsJsonAsync("/api/presence", Heartbeat("/"))).EnsureSuccessStatusCode();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.HelpMessages.Add(new GisDashboard.Domain.HelpMessage
+            {
+                Id = Guid.NewGuid(),
+                FromUserId = SeedIds.TokenUploadUser,
+                ToUserId = SeedIds.EditorDemo,
+                Chip = "need-help",
+                Body = "Need help?",
+                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedAtSort = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var inbox = await (await editor.GetAsync("/api/help-messages/inbox")).ReadJsonAsync();
+        inbox.GetProperty("items").EnumerateArray()
+            .Select(x => Guid.Parse(x.GetProperty("withUserId").GetString()!))
+            .Should().NotContain(SeedIds.TokenUploadUser);
+    }
+
+    [Fact]
     public async Task Away_is_treated_as_offline_for_compose()
     {
         var editor = await _factory.LoginAsync("editor@bisconsultants.local");
@@ -241,4 +358,8 @@ public sealed class NeedHelpTests : IClassFixture<ApiFactory>
     private static System.Text.Json.JsonElement Item(System.Text.Json.JsonElement json, Guid userId) =>
         json.GetProperty("items").EnumerateArray()
             .Single(x => Guid.Parse(x.GetProperty("userId").GetString()!) == userId);
+
+    private static System.Text.Json.JsonElement InboxItem(System.Text.Json.JsonElement json, Guid userId) =>
+        json.GetProperty("items").EnumerateArray()
+            .Single(x => Guid.Parse(x.GetProperty("withUserId").GetString()!) == userId);
 }

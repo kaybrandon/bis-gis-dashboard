@@ -16,6 +16,10 @@ public sealed class HelpMessagesController : ControllerBase
         _help = help;
     }
 
+    [HttpGet("inbox")]
+    public Task<HelpInboxResponse> Inbox(CancellationToken cancellationToken) =>
+        _help.ListInboxAsync(cancellationToken);
+
     [HttpGet]
     public Task<HelpThreadResponse> Thread([FromQuery] Guid withUserId, CancellationToken cancellationToken) =>
         _help.ListThreadAsync(withUserId, cancellationToken);

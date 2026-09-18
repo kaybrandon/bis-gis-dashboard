@@ -23,6 +23,7 @@ import { authorizedBlob } from '../api'
 import { useAuth } from '../auth'
 import { FloatingTimeClock } from '../components/FloatingTimeClock'
 import { HeaderGreeting } from '../components/HeaderGreeting'
+import { HelpInbox } from '../components/HelpInbox'
 import { HelpMessageSheet } from '../components/HelpMessageSheet'
 import { NotificationBell } from '../components/NotificationBell'
 import { PoweredByFooter } from '../components/PoweredByFooter'
@@ -180,6 +181,7 @@ export function AppShell() {
           </div>
           <div className="app-header-right">
             {user && <PresencePopover enabled={canSeePresence} />}
+            {user && <HelpInbox enabled={canSeePresence} />}
             {user && <NotificationBell open={notifyOpen} onOpenChange={setNotifyOpen} />}
             <Dropdown
               trigger={['click']}

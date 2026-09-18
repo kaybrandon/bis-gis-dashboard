@@ -759,6 +759,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ needsHelp }),
     }),
+  helpInbox: () => request<HelpInbox>('/api/help-messages/inbox'),
   helpThread: (withUserId: string) =>
     request<HelpThread>(`/api/help-messages?withUserId=${encodeURIComponent(withUserId)}`),
   sendHelpMessage: (body: { toUserId: string; chip?: string | null; body?: string | null }) =>
@@ -867,6 +868,23 @@ export type HelpThread = {
   canCompose: boolean
   composeDisabledReason?: string | null
   items: HelpMessage[]
+}
+
+export type HelpInboxThread = {
+  withUserId: string
+  withDisplayName: string
+  presenceStatus: string
+  canCompose: boolean
+  composeDisabledReason?: string | null
+  preview: string
+  lastAt: string
+  unread: boolean
+  unreadCount: number
+}
+
+export type HelpInbox = {
+  unreadCount: number
+  items: HelpInboxThread[]
 }
 
 export type FolderCheckResult = { ok: boolean; result: 'Pass' | 'Fail' | string; message: string; kind: string }
