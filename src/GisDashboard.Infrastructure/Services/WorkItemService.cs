@@ -41,6 +41,7 @@ public sealed class WorkItemService : IWorkItemService
 
     public async Task<WorkItemListResponse> ListAsync(WorkItemQuery query, CancellationToken cancellationToken = default)
     {
+        await EnsureOrganizationFilterAsync(query.OrganizationId, cancellationToken);
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
         var scoped = ApplyFilters(BaseQuery(allowed), query);
         var buckets = await ComputeBucketsAsync(scoped, cancellationToken);
@@ -148,6 +149,7 @@ public sealed class WorkItemService : IWorkItemService
     public async Task<WorkItemNeighbors> GetNeighborsAsync(Guid id, WorkItemQuery query, CancellationToken cancellationToken = default)
     {
         await LoadScopedAsync(id, cancellationToken);
+        await EnsureOrganizationFilterAsync(query.OrganizationId, cancellationToken);
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
         var ids = await ApplySort(ApplyBucket(ApplyFilters(BaseQuery(allowed), query), query.Bucket), query)
             .Select(x => x.Id)
@@ -515,6 +517,12 @@ public sealed class WorkItemService : IWorkItemService
 
     public async Task<DashboardResponse> GetDashboardAsync(DashboardQuery query, CancellationToken cancellationToken = default)
     {
+        await EnsureOrganizationFilterAsync(query.OrganizationId, cancellationToken);
+        if (!Roles.CanSeeDashboardAssignee(_currentUser.Role))
+        {
+            query.AssignedToUserId = null;
+        }
+
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
         var items = BaseQuery(allowed);
         if (query.OrganizationId is { } orgId)
@@ -751,6 +759,7 @@ public sealed class WorkItemService : IWorkItemService
 
     public async Task<ExcelExport> ExportAsync(WorkItemQuery query, CancellationToken cancellationToken = default)
     {
+        await EnsureOrganizationFilterAsync(query.OrganizationId, cancellationToken);
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
         var filtered = ApplyBucket(ApplyFilters(BaseQuery(allowed), query), query.Bucket);
         var rows = await ApplySort(filtered, query)
@@ -898,6 +907,11 @@ public sealed class WorkItemService : IWorkItemService
             .Take(8)
             .ToList();
     }
+
+    private Task EnsureOrganizationFilterAsync(Guid? organizationId, CancellationToken cancellationToken) =>
+        organizationId is { } orgId
+            ? _orgScope.EnsureCanAccessOrganizationAsync(orgId, cancellationToken)
+            : Task.CompletedTask;
 
     private IQueryable<WorkItem> BaseQuery(IReadOnlyCollection<Guid> allowed) =>
         _db.WorkItems.AsNoTracking().Where(x => allowed.Contains(x.OrganizationId));

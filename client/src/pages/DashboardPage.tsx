@@ -13,6 +13,7 @@ import { WorkPresenceMarks } from '../components/PresencePeople'
 import { WorkItemCards } from '../components/WorkItemCards'
 import { documentsHref, type DocumentsHrefQuery } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
+import { canSeeDashboardAssignee } from '../roles'
 
 const kpiIcon: Record<string, ReactNode> = {
   active: <ThunderboltOutlined />,
@@ -50,7 +51,7 @@ export function DashboardPage() {
   const [sending, setSending] = useState(false)
   const [emailForm] = Form.useForm<{ userIds: string[]; extra: string }>()
 
-  const showAssignee = user?.canSeeDashboardAssignee ?? user?.role !== 'Uploader'
+  const showAssignee = canSeeDashboardAssignee(user)
 
   const loadLookups = useCallback(async () => {
     try {

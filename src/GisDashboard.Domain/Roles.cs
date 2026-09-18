@@ -102,7 +102,10 @@ public static class Roles
     public static bool CanManageConnections(string role) =>
         role is GlobalAdministrator or Administrator;
 
-    /// <summary>QC04 / QC08 preview — Dashboard Assignee filter is hidden for Uploader.</summary>
+    /// <summary>
+    /// QC08 — Dashboard Assignee filter is staff-only. Viewer and Uploader never see it.
+    /// Hidden control is not isolation; dashboard and lookup APIs stay assigned-org.
+    /// </summary>
     public static bool CanSeeDashboardAssignee(string role) =>
-        role is not Uploader;
+        role is GlobalAdministrator or Administrator or Editor;
 }

@@ -399,16 +399,24 @@ public sealed class DirectoryService : IDirectoryService
 
     public async Task<IReadOnlyList<AssignableUser>> ListScopedAssigneesAsync(CancellationToken cancellationToken = default)
     {
+        if (!Roles.CanSeeDashboardAssignee(_currentUser.Role))
+        {
+            return [];
+        }
+
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
         var globalRoleId = await _db.Roles.Where(x => x.Name == Roles.GlobalAdministrator).Select(x => x.Id).FirstAsync(cancellationToken);
         var adminRoleId = await _db.Roles.Where(x => x.Name == Roles.Administrator).Select(x => x.Id).FirstAsync(cancellationToken);
         var editorRoleId = await _db.Roles.Where(x => x.Name == Roles.Editor).Select(x => x.Id).FirstAsync(cancellationToken);
 
-        _ = allowed;
         return await _db.Users.AsNoTracking()
-            .Where(u => u.IsActive && _db.UserRoles.Any(ur =>
-                ur.UserId == u.Id &&
-                (ur.RoleId == globalRoleId || ur.RoleId == adminRoleId || ur.RoleId == editorRoleId)))
+            .Where(u => u.IsActive &&
+                _db.UserRoles.Any(ur =>
+                    ur.UserId == u.Id &&
+                    (ur.RoleId == globalRoleId || ur.RoleId == adminRoleId || ur.RoleId == editorRoleId)) &&
+                (_currentUser.CanSeeAllOrganizations ||
+                 _db.UserOrganizations.Any(m => m.UserId == u.Id && allowed.Contains(m.OrganizationId)) ||
+                 _db.UserRoles.Any(ur => ur.UserId == u.Id && ur.RoleId == globalRoleId)))
             .OrderBy(u => u.FullName ?? u.DisplayName)
             .Select(u => new AssignableUser(
                 u.Id,
