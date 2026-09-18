@@ -248,6 +248,25 @@ cd publish && zip -r ../artifacts/gisdashboard-phase3.1.zip .
 
 Zip root must be the site content (`GisDashboard.Api.dll`, `web.config`, `wwwroot/`), not a nested `publish/` folder.
 
+### Deploy holding page (`app_offline.htm`)
+
+Azure App Service / IIS serves `app_offline.htm` from the **site root** (next to `GisDashboard.Api.dll` and `web.config`, not under the SPA `wwwroot/`) and unloads the app. Visitors get the coffee page instead of a blank or 500 while zipdeploy extracts.
+
+**Place** for a pack zip / prod push to `appgisdashboard`:
+
+```bash
+cp deploy/app_offline.htm publish/app_offline.htm
+```
+
+Then zip `publish/` as usual so the file is at the zip root. Source of truth: `deploy/app_offline.htm` (do not rewrite the locked copy).
+
+**Remove** after the new bits are healthy — delete the site-root file so the app comes back:
+
+- Kudu VFS: `DELETE /api/vfs/site/wwwroot/app_offline.htm`
+- Kudu console / FTP: remove `D:\home\site\wwwroot\app_offline.htm`
+
+Do not leave `app_offline.htm` in the site root after a healthy deploy.
+
 Portal / Kudu zipdeploy onto Windows App Service `appgisdashboard`. Do not set `WEBSITE_RUN_FROM_PACKAGE=1` unless SQL + Blob settings are in place — that mount is read-only and local SQLite/`workfiles` cannot be written.
 
 ## Later v1 phases (not cuts)
