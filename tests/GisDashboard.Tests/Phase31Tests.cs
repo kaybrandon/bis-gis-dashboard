@@ -26,7 +26,7 @@ public sealed class Phase31Tests : IClassFixture<ApiFactory>
         var completed = await (await client.GetAsync(
             $"/api/work-items?bucket=completed&pageSize=100&workedFrom=2020-01-01T00:00:00Z")).ReadJsonAsync();
         completed.GetProperty("items").EnumerateArray().Should().OnlyContain(x =>
-            x.GetProperty("statusName").GetString() == "Worked" || x.GetProperty("statusName").GetString() == "QC'd");
+            x.GetProperty("statusName").GetString() == "Complete" || x.GetProperty("statusName").GetString() == "QC'd");
     }
 
     [Fact]

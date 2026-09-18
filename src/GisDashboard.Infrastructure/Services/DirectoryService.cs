@@ -387,11 +387,15 @@ public sealed class DirectoryService : IDirectoryService
             .Select(x => new LookupItem(x.Id, x.Name, null, x.SortOrder))
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<LookupItem>> ListStatusesAsync(CancellationToken cancellationToken = default) =>
-        await _db.WorkItemStatuses.AsNoTracking()
+    public async Task<IReadOnlyList<LookupItem>> ListStatusesAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await _db.WorkItemStatuses.AsNoTracking().ToListAsync(cancellationToken);
+        return rows
+            .Where(x => SeedIds.CanonicalStatusIds.Contains(x.Id))
+            .Select(x => new LookupItem(x.Id, StatusDisplay.Label(x.Name), x.Color, StatusDisplay.CanonicalOrder(x.Name)))
             .OrderBy(x => x.SortOrder)
-            .Select(x => new LookupItem(x.Id, x.Name, x.Color, x.SortOrder))
-            .ToListAsync(cancellationToken);
+            .ToList();
+    }
 
     public async Task<IReadOnlyList<OrgOption>> ListAccessibleOrganizationsAsync(CancellationToken cancellationToken = default)
     {
