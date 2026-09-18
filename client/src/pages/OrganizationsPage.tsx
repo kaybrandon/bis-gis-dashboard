@@ -14,9 +14,9 @@ type AssignedTech = { id: string; displayName: string; isPrimary?: boolean }
 type UserRow = {
   id: string
   displayName: string
-  role: string
-  isActive: boolean
-  organizations: Array<{ organizationId: string }>
+  role?: string
+  isActive?: boolean
+  organizations?: Array<{ organizationId: string }>
 }
 
 type OrgRow = {
@@ -34,8 +34,14 @@ type OrgRow = {
 }
 
 function canAssignAsTech(user: UserRow) {
-  if (!user.isActive) return false
+  if (user.isActive === false) return false
+  if (!user.role) return true
   return user.role === 'GlobalAdministrator' || user.role === 'Editor' || user.role === 'Administrator'
+}
+
+function techOptionLabel(user: UserRow) {
+  if (!user.role) return user.displayName
+  return `${user.displayName} (${user.role === 'GlobalAdministrator' ? 'Global Administrator' : user.role})`
 }
 
 function names(people?: AssignedTech[]) {
@@ -64,13 +70,21 @@ export function OrganizationsPage() {
   const [editForm] = Form.useForm()
   const assignedTechIds = Form.useWatch('assignedTechIds', editForm) as string[] | undefined
   const canGlobal = !!user?.canManageGlobalDirectory
+  const canDirectory = !!user?.canManageDirectory
+  const canAssignTechs = !!(user?.canManageAssignedTechs ?? user?.canManageDirectory)
 
   const load = () => {
     const jobs: Promise<unknown>[] = [
       api.adminOrgs().then((data) => setRows(data as OrgRow[])),
     ]
-    if (canGlobal) {
+    if (canDirectory) {
       jobs.push(api.adminUsers().then((data) => setUsers(data as UserRow[])))
+    } else if (canAssignTechs) {
+      jobs.push(api.assignees().then((data) => setUsers(data.map((row) => ({
+        id: row.id,
+        displayName: row.displayName,
+        isActive: true,
+      })))))
     }
     Promise.all(jobs)
       .then(() => setError(null))
@@ -154,18 +168,6 @@ export function OrganizationsPage() {
           },
           { title: 'Created', dataIndex: 'createdAt', render: (value: string) => dayjs(value).format('YYYY-MM-DD') },
           {
-            title: 'Time report cards',
-            dataIndex: 'timeReportCardsVisible',
-            render: (value: boolean) => (
-              <Tag color={value ? 'blue' : 'default'}>{value ? 'Client can view' : 'Staff only'}</Tag>
-            ),
-          },
-          {
-            title: 'Members',
-            key: 'members',
-            render: (_: unknown, row: OrgRow) => names(row.members),
-          },
-          {
             title: 'Assigned tech(s)',
             key: 'assignedTechs',
             render: (_: unknown, row: OrgRow) => names(row.assignedTechs),
@@ -182,9 +184,11 @@ export function OrganizationsPage() {
                   <Button size="small" onClick={() => openEdit(row)}>
                     Edit
                   </Button>
-                  <Button size="small" icon={<LinkOutlined />} onClick={() => void openLink(row)}>
-                    Upload link
-                  </Button>
+                  {canDirectory ? (
+                    <Button size="small" icon={<LinkOutlined />} onClick={() => void openLink(row)}>
+                      Upload link
+                    </Button>
+                  ) : null}
                 </Space>
               </div>
             ),
@@ -235,9 +239,11 @@ export function OrganizationsPage() {
           <Space wrap>
             <Button onClick={() => setViewing(null)}>Close</Button>
             <Button icon={<FileTextOutlined />} onClick={() => openReports(viewing)}>Reports</Button>
-            <Button icon={<LinkOutlined />} onClick={() => { const row = viewing; setViewing(null); void openLink(row) }}>
-              Upload link
-            </Button>
+            {canDirectory ? (
+              <Button icon={<LinkOutlined />} onClick={() => { const row = viewing; setViewing(null); void openLink(row) }}>
+                Upload link
+              </Button>
+            ) : null}
             <Button type="primary" onClick={() => openEdit(viewing)}>Edit</Button>
           </Space>
         ) : null}
@@ -283,11 +289,11 @@ export function OrganizationsPage() {
                 name: values.name,
                 code: canGlobal ? values.code : undefined,
                 isActive: canGlobal ? values.isActive : undefined,
-                parcelTotalRealAccounts: values.parcelTotalRealAccounts ?? null,
-                parcelWithOwnership: values.parcelWithOwnership ?? null,
+                parcelTotalRealAccounts: canDirectory ? values.parcelTotalRealAccounts ?? null : undefined,
+                parcelWithOwnership: canDirectory ? values.parcelWithOwnership ?? null : undefined,
                 timeReportCardsVisible: canGlobal ? !!values.timeReportCardsVisible : undefined,
-                assignedTechIds: canGlobal ? values.assignedTechIds ?? [] : undefined,
-                primaryAssignedTechId: canGlobal ? values.primaryAssignedTechId ?? null : undefined,
+                assignedTechIds: canAssignTechs ? values.assignedTechIds ?? [] : undefined,
+                primaryAssignedTechId: canAssignTechs ? values.primaryAssignedTechId ?? null : undefined,
               })
               message.success('Organization saved.')
               setEditing(null)
@@ -299,7 +305,7 @@ export function OrganizationsPage() {
         >
           <Row gutter={[12, 0]}>
             <Col xs={24} sm={14}>
-              <Form.Item name="name" label="Organization Name" rules={[{ required: true }]}><Input /></Form.Item>
+              <Form.Item name="name" label="Organization Name" rules={[{ required: canDirectory }]}><Input disabled={!canDirectory} /></Form.Item>
             </Col>
             <Col xs={24} sm={10}>
               <Form.Item
@@ -332,16 +338,16 @@ export function OrganizationsPage() {
                 label="Total real accounts"
                 tooltip="Optional parcel inventory. Not a live extract yet."
               >
-                <InputNumber min={0} style={{ width: '100%' }} />
+                <InputNumber min={0} style={{ width: '100%' }} disabled={!canDirectory} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="parcelWithOwnership" label="Parcels with ownership">
-                <InputNumber min={0} style={{ width: '100%' }} />
+                <InputNumber min={0} style={{ width: '100%' }} disabled={!canDirectory} />
               </Form.Item>
             </Col>
           </Row>
-          {canGlobal ? (
+          {canAssignTechs ? (
             <Form.Item
               name="assignedTechIds"
               label="Assigned tech(s)"
@@ -356,12 +362,12 @@ export function OrganizationsPage() {
                   .filter((row) => canAssignAsTech(row))
                   .map((row) => ({
                     value: row.id,
-                    label: `${row.displayName} (${row.role === 'GlobalAdministrator' ? 'Global Administrator' : row.role})`,
+                    label: techOptionLabel(row),
                   }))}
               />
             </Form.Item>
           ) : null}
-          {canGlobal ? (
+          {canAssignTechs ? (
             <Form.Item
               name="primaryAssignedTechId"
               label="Primary assigned tech"
@@ -382,7 +388,7 @@ export function OrganizationsPage() {
           ) : (
             <Form.Item
               label="Assigned tech(s)"
-              tooltip="Primary GIS contact(s) for this client. A Global Administrator sets this on the organization."
+              tooltip="Primary GIS contact(s) for this client. An Administrator or Editor sets this on the organization."
             >
               <Typography.Text>
                 {editing?.assignedTechs?.length
@@ -393,7 +399,9 @@ export function OrganizationsPage() {
           )}
           {!canGlobal && (
             <Typography.Paragraph type="secondary">
-              Code, active status, assigned tech(s), and the time-report-card toggle can only be changed by a Global Administrator.
+              {canDirectory
+                ? 'Code, active status, and the time-report-card toggle can only be changed by a Global Administrator.'
+                : 'Name, code, active status, parcel counts, and the time-report-card toggle stay with a Global Administrator or Administrator.'}
             </Typography.Paragraph>
           )}
         </Form>

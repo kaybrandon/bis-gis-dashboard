@@ -18,6 +18,7 @@ export type AuthUser = {
   canMutateWorkItems: boolean
   canManageDirectory: boolean
   canManageGlobalDirectory: boolean
+  canManageAssignedTechs?: boolean
   canViewTimeReport: boolean
   canViewTeamTimeReport: boolean
   canSeeAllOrganizations: boolean

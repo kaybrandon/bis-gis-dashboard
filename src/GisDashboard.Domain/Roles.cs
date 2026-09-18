@@ -20,6 +20,9 @@ public static class Roles
 
     public const string DirectoryManagers = $"{GlobalAdministrator},{Administrator}";
 
+    /// <summary>QC01 — org Assigned tech(s) on Organizations → Edit.</summary>
+    public const string AssignedTechManagers = $"{GlobalAdministrator},{Administrator},{Editor}";
+
     public static string DisplayName(string role) => role switch
     {
         GlobalAdministrator => "Global Administrator",
@@ -62,6 +65,9 @@ public static class Roles
 
     public static bool CanManageGlobalDirectory(string role) =>
         role is GlobalAdministrator;
+
+    public static bool CanManageAssignedTechs(string role) =>
+        role is GlobalAdministrator or Administrator or Editor;
 
     public static bool CanManageTimeBroadly(string role) =>
         role is GlobalAdministrator or Administrator;

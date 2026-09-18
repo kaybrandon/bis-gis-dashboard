@@ -47,7 +47,7 @@ public sealed class DirectoryController : ControllerBase
     public Task<GisDashboard.Application.WorkItems.StatusActions> StatusActions(CancellationToken cancellationToken) =>
         _directory.GetStatusActionsAsync(cancellationToken);
 
-    [Authorize(Roles = Domain.Roles.DirectoryManagers)]
+    [Authorize(Roles = Domain.Roles.AssignedTechManagers)]
     [HttpGet("admin/organizations")]
     public Task<IReadOnlyList<OrganizationDto>> AdminOrganizations(CancellationToken cancellationToken) =>
         _directory.ListOrganizationsAsync(cancellationToken);
@@ -57,7 +57,7 @@ public sealed class DirectoryController : ControllerBase
     public Task<OrganizationDto> CreateOrganization([FromBody] CreateOrganizationRequest request, CancellationToken cancellationToken) =>
         _directory.CreateOrganizationAsync(request, cancellationToken);
 
-    [Authorize(Roles = Domain.Roles.DirectoryManagers)]
+    [Authorize(Roles = Domain.Roles.AssignedTechManagers)]
     [HttpPut("admin/organizations/{id:guid}")]
     public Task<OrganizationDto> UpdateOrganization(Guid id, [FromBody] UpdateOrganizationRequest request, CancellationToken cancellationToken) =>
         _directory.UpdateOrganizationAsync(id, request, cancellationToken);

@@ -17,6 +17,7 @@ public sealed record AuthUser(
     bool CanMutateWorkItems,
     bool CanManageDirectory,
     bool CanManageGlobalDirectory,
+    bool CanManageAssignedTechs,
     bool CanViewTimeReport,
     bool CanViewTeamTimeReport,
     bool CanSeeAllOrganizations,

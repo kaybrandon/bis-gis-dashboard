@@ -32,7 +32,7 @@ public sealed class DirectoryService : IDirectoryService
 
     public async Task<IReadOnlyList<OrganizationDto>> ListOrganizationsAsync(CancellationToken cancellationToken = default)
     {
-        EnsureDirectoryManager();
+        EnsureAssignedTechManager();
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
         var orgs = await _db.Organizations.AsNoTracking()
             .Include(x => x.AssignedTechs)
@@ -81,15 +81,22 @@ public sealed class DirectoryService : IDirectoryService
 
     public async Task<OrganizationDto> UpdateOrganizationAsync(Guid id, UpdateOrganizationRequest request, CancellationToken cancellationToken = default)
     {
-        EnsureDirectoryManager();
+        EnsureAssignedTechManager();
         var org = await LoadScopedOrganizationAsync(id, cancellationToken);
-        var name = (request.Name ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ValidationException("Organization name is required.");
-        }
 
-        org.Name = name;
+        // Directory managers keep existing org-field rights. Editors (QC01) may only
+        // change Assigned tech(s). Code / active / time-report cards stay Global Admin.
+        if (_currentUser.CanManageDirectory)
+        {
+            var name = (request.Name ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ValidationException("Organization name is required.");
+            }
+
+            org.Name = name;
+            ApplyParcelInventory(org, request.ParcelTotalRealAccounts, request.ParcelWithOwnership);
+        }
 
         if (_currentUser.CanManageGlobalDirectory)
         {
@@ -110,15 +117,14 @@ public sealed class DirectoryService : IDirectoryService
             }
         }
 
-        ApplyParcelInventory(org, request.ParcelTotalRealAccounts, request.ParcelWithOwnership);
-
         if (_currentUser.CanManageGlobalDirectory && request.TimeReportCardsVisible is { } visible)
         {
             org.TimeReportCardsVisible = visible;
         }
 
-        if (_currentUser.CanManageGlobalDirectory && request.AssignedTechIds is not null)
+        if (_currentUser.CanManageAssignedTechs && request.AssignedTechIds is not null)
         {
+            // Org mapping / future work only — does not rewrite existing work-item Assigned To.
             await ReplaceAssignedTechsAsync(org, request.AssignedTechIds, request.PrimaryAssignedTechId, cancellationToken);
         }
 
@@ -412,6 +418,7 @@ public sealed class DirectoryService : IDirectoryService
 
     public async Task<UploadLinkDto> GetUploadLinkAsync(Guid organizationId, CancellationToken cancellationToken = default)
     {
+        EnsureDirectoryManager();
         var org = await LoadScopedOrganizationAsync(organizationId, cancellationToken);
         if (string.IsNullOrWhiteSpace(org.UploadToken))
         {
@@ -425,6 +432,7 @@ public sealed class DirectoryService : IDirectoryService
 
     public async Task<UploadLinkDto> RegenerateUploadLinkAsync(Guid organizationId, CancellationToken cancellationToken = default)
     {
+        EnsureDirectoryManager();
         var org = await LoadScopedOrganizationAsync(organizationId, cancellationToken);
         org.UploadToken = UploadTokens.Create();
         org.UploadTokenCreatedAt = DateTimeOffset.UtcNow;
@@ -477,7 +485,7 @@ public sealed class DirectoryService : IDirectoryService
 
     private async Task<Organization> LoadScopedOrganizationAsync(Guid id, CancellationToken cancellationToken)
     {
-        EnsureDirectoryManager();
+        EnsureAssignedTechManager();
         var org = await _db.Organizations.FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NotFoundException("Organization was not found.");
         if (!_currentUser.IsGlobalAdmin)
@@ -524,6 +532,14 @@ public sealed class DirectoryService : IDirectoryService
         if (!_currentUser.CanManageDirectory)
         {
             throw new ForbiddenException("Your role cannot manage users and organizations.");
+        }
+    }
+
+    private void EnsureAssignedTechManager()
+    {
+        if (!_currentUser.CanManageAssignedTechs)
+        {
+            throw new ForbiddenException("Your role cannot manage organization technicians.");
         }
     }
 

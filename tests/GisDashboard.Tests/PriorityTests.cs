@@ -241,27 +241,18 @@ public sealed class PriorityTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Org_admin_cannot_change_assigned_techs()
+    public async Task Org_admin_can_change_assigned_techs()
     {
         var client = await _factory.LoginAsync("admin@democlient.local");
-        var before = (await (await client.GetAsync("/api/admin/organizations")).ReadJsonAsync())
-            .EnumerateArray()
-            .Single(x => x.GetProperty("id").GetGuid() == SeedIds.DemoClient)
-            .GetProperty("assignedTechs")
-            .EnumerateArray()
-            .Select(x => x.GetProperty("id").GetGuid())
-            .ToArray();
-
-        var response = await client.PutAsJsonAsync($"/api/admin/organizations/{SeedIds.DemoClient}", new
+        var response = await client.PutAsJsonAsync($"/api/admin/organizations/{SeedIds.OtherClient}", new
         {
-            name = "Demo Client",
-            assignedTechIds = new[] { SeedIds.OrgAdminDemo }
+            name = "Other Client",
+            assignedTechIds = new[] { SeedIds.EditorOther, SeedIds.OrgAdminOther }
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.ReadJsonAsync()).GetProperty("assignedTechs").EnumerateArray()
             .Select(x => x.GetProperty("id").GetGuid())
-            .Should().BeEquivalentTo(before)
-            .And.Contain(SeedIds.EditorDemo);
+            .Should().BeEquivalentTo(new[] { SeedIds.EditorOther, SeedIds.OrgAdminOther });
     }
 
     [Fact]

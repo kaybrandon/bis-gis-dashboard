@@ -94,11 +94,12 @@ public sealed class Phase31Tests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Editor_cannot_edit_organization_or_user()
+    public async Task Editor_cannot_edit_unrelated_org_fields_or_user()
     {
         var client = await _factory.LoginAsync("editor@bisconsultants.local");
-        (await client.PutAsJsonAsync($"/api/admin/organizations/{SeedIds.DemoClient}", new { name = "X" }))
-            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var response = await client.PutAsJsonAsync($"/api/admin/organizations/{SeedIds.DemoClient}", new { name = "X" });
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.ReadJsonAsync()).GetProperty("name").GetString().Should().Be("Demo Client");
         (await client.PutAsJsonAsync($"/api/admin/users/{SeedIds.ViewerDemo}", new
         {
             displayName = "X",

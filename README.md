@@ -103,7 +103,7 @@ Two axes: **scope** (all organizations vs assigned client orgs) and **org permis
 | Turn on client time report cards | Yes (per org) | No | No | No |
 | Mark work item priority | Yes | Yes | Yes | Badge only |
 | Clear / acknowledge priority | Yes | Yes | Yes | No |
-| Assign organization technicians | Yes | No | No | No |
+| Assign organization technicians | Yes | Yes | Yes | No |
 | Who’s online (presence) | All signed-in users | Same-org users + Global Admins + self | Same-org users + Global Admins + self | No |
 
 Claim values: `GlobalAdministrator`, `Administrator`, `Editor`, `Viewer`. UI shows **Global Administrator** (never “BIS admin”).
@@ -119,6 +119,8 @@ Claim values: `GlobalAdministrator`, `Administrator`, `Editor`, `Viewer`. UI sho
 **Needed by** is a date on Priority work. The grid and detail show a chip; overdue items are marked. Due this week is a My queue / bucket filter. Priority alerts include the needed-by date.
 
 Each organization can mark a **Primary assigned tech**. New uploads prefer that person, then an Editor.
+
+The **app header** shows a time-of-day greeting in America/Chicago — **Good morning / Good afternoon / Good evening, {FirstName}** plus a rotating quoted morale tagline on the same line (first token of signed-in Full name; never email, username, or a hardcoded person). Utility chrome such as **BIS Consultants · All organizations** does not replace that greeting.
 
 **Who’s online:** while signed in, the browser sends a heartbeat about every 45 seconds and on each route change (current page, work item when on `/documents/{id}`, and whether the floating clock is running). Staff see a people icon in the header and a collapsible **Who’s online** panel on the left sider, directly under **Status** (default closed; open/closed persists). Need help raise-hand sits on that same sider panel when it ships. There is no header / menu-bar strip and no Dashboard body card. Global Administrators also have a detailed list on **Status**. Global Administrators see everyone; Editors and organization Administrators see people who share an organization (plus themselves and Global Administrators). Client Viewers do not get the list. Offline after about three minutes without a heartbeat. There is no chat or screen share.
 
@@ -324,7 +326,7 @@ The floating clock uses the existing work-item time-entry APIs (`POST /api/work-
 
 Clients (org Administrator / Editor) mark a GIS work item **Priority** on the work-item page, on signed-in upload, or on the no-login upload link, with an optional short note (“needed by Friday”). Viewers see the badge only. Technicians see a red Priority tag on Manage Documents and work-item cards, a **Priority** bucket and Dashboard KPI, and an in-app header notification (20s poll; no Outlook ingest). Clearing the Priority checkbox acknowledges the item.
 
-A Global Administrator sets **Assigned tech(s)** on Organizations → Edit — the primary GIS contact(s) for that client. Staff org membership on Users and Assigned tech(s) stay in sync: assigning a person to a client on either screen updates the other. Viewers appear under **Members** only. Notifications go to those techs, the work-item Assigned To when set, and every Global Administrator — not a blast to every technician. Saving a work item with Priority on creates or updates the bell row (not only client or token upload).
+A Global Administrator, Administrator, or Editor sets **Assigned tech(s)** on Organizations → Edit — the primary GIS contact(s) for that client. Changing that list updates org mapping for future work only; it does not force-reassign existing document **Assigned To** values. Staff org membership on Users and Assigned tech(s) stay in sync: assigning a person to a client on either screen updates the other. Viewers appear under **Members** only. Notifications go to those techs, the work-item Assigned To when set, and every Global Administrator — not a blast to every technician. Saving a work item with Priority on creates or updates the bell row (not only client or token upload).
 
 **Notify rule**
 
@@ -341,6 +343,6 @@ A Global Administrator sets **Assigned tech(s)** on Organizations → Edit — t
 | GET | `/api/notifications` | Signed-in — current user’s alerts |
 | POST | `/api/notifications/{id}/read` | same |
 | POST | `/api/notifications/read-all` | same |
-| PUT | `/api/admin/organizations/{id}` | Global Admin may set `assignedTechIds` |
+| PUT | `/api/admin/organizations/{id}` | Global Admin, Administrator, or Editor may set `assignedTechIds` |
 
 Published zip: `artifacts/gisdashboard-phase3.1.zip`.

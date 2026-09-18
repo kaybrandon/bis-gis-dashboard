@@ -129,6 +129,21 @@ body,
   white-space: nowrap;
 }
 
+.app-header-greeting {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.app-header-greeting .app-header-hello,
+.app-header-greeting .app-header-tagline {
+  white-space: nowrap;
+}
+
+.app-header-tagline {
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.65);
+}
+
 .app-header-scope {
   min-width: 0;
   max-width: 280px;

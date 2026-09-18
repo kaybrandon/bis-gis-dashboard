@@ -46,6 +46,7 @@ public sealed class HttpCurrentUser : ICurrentUser
     public bool CanMutateWorkItems => Roles.CanMutateWorkItems(Role);
     public bool CanManageDirectory => Roles.CanManageDirectory(Role);
     public bool CanManageGlobalDirectory => Roles.CanManageGlobalDirectory(Role);
+    public bool CanManageAssignedTechs => Roles.CanManageAssignedTechs(Role);
     public bool CanSeePresence => Roles.CanSeePresence(Role);
     public bool CanSeeConnections => Roles.CanSeeConnections(Role);
     public bool CanManageConnections => Roles.CanManageConnections(Role);
