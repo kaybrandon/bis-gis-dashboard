@@ -10,6 +10,7 @@ const orgsPage = readFileSync(join(here, 'pages/OrganizationsPage.tsx'), 'utf8')
 const dashboard = readFileSync(join(here, 'pages/DashboardPage.tsx'), 'utf8')
 const upload = readFileSync(join(here, 'pages/UploadDocumentsPage.tsx'), 'utf8')
 const users = readFileSync(join(here, 'pages/UsersPage.tsx'), 'utf8')
+const toggle = readFileSync(join(here, 'components/ShowArchivedSwitch.tsx'), 'utf8')
 
 describe('org archive display', () => {
   it('keeps the live name and adds an archived suffix once', () => {
@@ -31,7 +32,8 @@ describe('org archive display', () => {
 
 describe('GIS-UI-09 archive organizations UI', () => {
   it('Organizations grid has Archive, Show archived, and gray archived rows', () => {
-    assert.match(orgsPage, /Show archived/)
+    assert.match(toggle, /Show archived/)
+    assert.match(orgsPage, /ShowArchivedSwitch/)
     assert.match(orgsPage, /confirmArchive/)
     assert.match(orgsPage, /archiveOrg/)
     assert.match(orgsPage, /restoreOrg/)
@@ -40,9 +42,9 @@ describe('GIS-UI-09 archive organizations UI', () => {
   })
 
   it('Dashboard and Upload pickers have a Show archived path', () => {
-    assert.match(dashboard, /Show archived/)
+    assert.match(dashboard, /ShowArchivedSwitch/)
     assert.match(dashboard, /api\.organizations\(showArchived\)/)
-    assert.match(upload, /Show archived/)
+    assert.match(upload, /ShowArchivedSwitch/)
     assert.match(upload, /api\.organizations\(showArchived\)/)
   })
 

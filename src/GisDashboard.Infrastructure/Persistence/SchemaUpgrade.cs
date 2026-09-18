@@ -105,6 +105,8 @@ public static class SchemaUpgrade
         await RoleModelUpgrade.ApplyAsync(db, cancellationToken);
         await Phase33Schema.ApplyAsync(db, cancellationToken);
         await Phase35Schema.ApplyAsync(db, cancellationToken);
+        // Phase31 loads Organization via EF (SELECT IsArchived/ArchivedAt).
+        await Phase53Schema.ApplyAsync(db, cancellationToken);
         await Phase31Schema.ApplyAsync(db, cancellationToken);
         await Phase32Schema.ApplyAsync(db, cancellationToken);
         await Phase34Schema.ApplyAsync(db, cancellationToken);
@@ -127,6 +129,5 @@ public static class SchemaUpgrade
         await Phase49Schema.ApplyAsync(db, cancellationToken);
         await Phase50Schema.ApplyAsync(db, cancellationToken);
         await Phase52Schema.ApplyAsync(db, cancellationToken);
-        await Phase53Schema.ApplyAsync(db, cancellationToken);
     }
 }

@@ -20,8 +20,12 @@ public sealed class SchemaUpgradeTests
         phase51.Should().BeLessThan(phase42, "Phase51 ALTERs AspNetUsers before Phase42 SELECTs Users");
         source.Split("await Phase51Schema.ApplyAsync", StringSplitOptions.None).Length.Should().Be(2);
         source.IndexOf("await Phase52Schema.ApplyAsync", StringComparison.Ordinal).Should().BeGreaterThan(phase42);
-        source.IndexOf("await Phase53Schema.ApplyAsync", StringComparison.Ordinal).Should().BeGreaterThan(
-            source.IndexOf("await Phase52Schema.ApplyAsync", StringComparison.Ordinal));
+        var phase53 = source.IndexOf("await Phase53Schema.ApplyAsync", StringComparison.Ordinal);
+        var phase31 = source.IndexOf("await Phase31Schema.ApplyAsync", StringComparison.Ordinal);
+        phase53.Should().BeGreaterThan(-1, "Phase53 must still run");
+        phase31.Should().BeGreaterThan(-1, "Phase31 must still run");
+        phase53.Should().BeLessThan(phase31, "Phase53 ALTERs Organizations before Phase31 SELECTs orgs");
+        source.Split("await Phase53Schema.ApplyAsync", StringSplitOptions.None).Length.Should().Be(2);
     }
 
     [Fact]
