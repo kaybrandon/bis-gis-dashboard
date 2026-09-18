@@ -136,6 +136,14 @@ public static class DashboardPdf
 
             col.Item().PaddingTop(8).Row(row =>
             {
+                row.RelativeItem().PaddingRight(6).Element(left =>
+                    CountTable(left, DocumentVolume.CadTitle, data.OrganizationCounts));
+                row.RelativeItem().Element(right =>
+                    CountTable(right, DocumentVolume.TechnicianTitle, data.AssigneeCounts));
+            });
+
+            col.Item().PaddingTop(8).Row(row =>
+            {
                 row.RelativeItem().PaddingRight(6).Element(left => HoursTable(left, "Hours by assignee", data.HoursByAssignee));
                 row.RelativeItem().Element(right => HoursTable(right, "Hours by client", data.HoursByClient));
             });
@@ -177,6 +185,41 @@ public static class DashboardPdf
                     Cell(table, item.AssignedToName ?? "—", bg, true);
                     Cell(table, item.WorkedOn?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "—", bg);
                     Cell(table, item.HoursLabel, bg);
+                }
+            });
+        });
+    }
+
+    private static void CountTable(IContainer container, string title, IReadOnlyList<NamedCount> rows)
+    {
+        container.Column(col =>
+        {
+            col.Item().Background(HeaderBar).Padding(6).Text(title).FontColor(Colors.White).Bold().FontSize(11);
+            col.Item().PaddingTop(4).Table(table =>
+            {
+                table.ColumnsDefinition(c =>
+                {
+                    c.RelativeColumn(2);
+                    c.RelativeColumn(1);
+                });
+                table.Header(h =>
+                {
+                    Head(h, "Name");
+                    Head(h, "Documents");
+                });
+                if (rows.Count == 0)
+                {
+                    Cell(table, "No documents uploaded in this range.", Colors.White, true);
+                    Cell(table, "0", Colors.White);
+                    return;
+                }
+
+                var i = 0;
+                foreach (var row in rows)
+                {
+                    var bg = i++ % 2 == 0 ? Colors.White : RowAlt;
+                    Cell(table, row.Name, bg, true);
+                    Cell(table, row.Count.ToString(CultureInfo.InvariantCulture), bg);
                 }
             });
         });

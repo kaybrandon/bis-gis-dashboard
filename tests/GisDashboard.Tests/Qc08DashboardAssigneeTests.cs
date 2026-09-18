@@ -174,6 +174,8 @@ public sealed class Qc08DashboardAssigneeTests : IClassFixture<ApiFactory>
         dash.GetProperty("assigneeCounts").EnumerateArray()
             .Select(x => x.GetProperty("id").GetGuid())
             .Should().NotContain(SeedIds.EditorOther);
+        ClientNames(dash.GetProperty("organizationCounts"))
+            .Should().OnlyContain(name => name == "Demo Client");
     }
 
     private static IReadOnlyList<string?> OrgNames(JsonElement counts) =>
