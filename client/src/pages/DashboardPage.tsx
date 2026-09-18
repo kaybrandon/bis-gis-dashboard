@@ -270,10 +270,11 @@ export function DashboardPage() {
                 size="small"
                 hoverable
                 className="kpi-card bis-theme-panel"
+                title={card?.label ?? kpiFallback[key]}
                 role="button"
                 tabIndex={0}
                 aria-label={`Open ${card?.label ?? kpiFallback[key]} work items`}
-                styles={{ body: { padding: isMobile ? '10px 8px' : 24 } }}
+                styles={{ body: { padding: isMobile ? '10px 8px' : 16 } }}
                 onClick={() => openKpi(key)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -283,7 +284,6 @@ export function DashboardPage() {
                 }}
               >
                 <Statistic
-                  title={card?.label ?? kpiFallback[key]}
                   value={card?.count ?? 0}
                   prefix={isMobile ? undefined : kpiIcon[key]}
                   valueStyle={card?.color ? { color: card.color } : undefined}

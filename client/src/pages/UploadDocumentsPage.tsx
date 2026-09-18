@@ -123,7 +123,7 @@ export function UploadDocumentsPage() {
           </TitleWithHelp>
         </Typography.Title>
       </div>
-      <Card className="form-panel compact-card bis-theme-panel">
+      <Card className="form-panel compact-card bis-theme-panel" title="Files">
         <Form
           form={form}
           layout="vertical"

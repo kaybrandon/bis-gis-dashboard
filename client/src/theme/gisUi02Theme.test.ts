@@ -59,6 +59,8 @@ describe('GIS-UI-02 app-wide Manage Documents theme', () => {
     assert.match(css, /\.content-wrap \.ant-card-head-title[\s\S]*color:\s*var\(--bis-text-on-navy\)/)
     assert.match(css, /--bis-text-on-navy:\s*#ffffff/)
     assert.match(css, /--bis-text-on-row:\s*#111827/)
+    assert.match(css, /border-top:\s*8px solid var\(--bis-navy\)/)
+    assert.match(css, /\.content-wrap \.conn-card[\s\S]*border-top:\s*8px solid var\(--bis-navy\)/)
   })
 
   it('themes Dashboard chart panels and Recently completed (Figure 2) without changing bar colors', () => {

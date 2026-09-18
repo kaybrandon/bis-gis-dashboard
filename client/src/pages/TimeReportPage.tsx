@@ -181,10 +181,10 @@ export function TimeReportPage() {
       {error && <LoadError message={error} onRetry={() => void load()} />}
 
       <div className="time-report-kpis">
-        <Card className="bis-theme-panel" loading={loading}><Statistic title="Hours" value={report.totalLabel} /></Card>
-        <Card className="bis-theme-panel" loading={loading}><Statistic title="People" value={report.peopleCount} /></Card>
-        <Card className="bis-theme-panel" loading={loading}><Statistic title="Clients" value={report.clientCount} /></Card>
-        <Card className="bis-theme-panel" loading={loading}><Statistic title="Work items" value={report.workItemCount} /></Card>
+        <Card className="bis-theme-panel" title="Hours" loading={loading}><Statistic value={report.totalLabel} /></Card>
+        <Card className="bis-theme-panel" title="People" loading={loading}><Statistic value={report.peopleCount} /></Card>
+        <Card className="bis-theme-panel" title="Clients" loading={loading}><Statistic value={report.clientCount} /></Card>
+        <Card className="bis-theme-panel" title="Work items" loading={loading}><Statistic value={report.workItemCount} /></Card>
       </div>
 
       {empty ? (

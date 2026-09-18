@@ -41,15 +41,16 @@
 .content-wrap .ant-card,
 .login-wrap .ant-card,
 .bis-theme-panel.ant-card {
-  border: 1px solid var(--bis-navy);
+  border: 1px solid var(--bis-navy) !important;
   background: #ffffff;
   color: var(--bis-text-on-row);
 }
 
+/* Untitled cards still get an MD header bar so they are not flat off-white. */
 .content-wrap .ant-card:not(:has(> .ant-card-head)),
 .login-wrap .ant-card:not(:has(> .ant-card-head)),
 .bis-theme-panel.ant-card:not(:has(> .ant-card-head)) {
-  border-top-width: 4px;
+  border-top: 8px solid var(--bis-navy) !important;
 }
 
 .content-wrap .ant-card > .ant-card-head,
@@ -100,15 +101,27 @@
 /* Custom boxes that are not Ant Cards */
 .content-wrap .conn-card,
 .content-wrap .conn-empty.ant-card {
-  border-color: var(--bis-navy);
+  border: 1px solid var(--bis-navy) !important;
   background: #ffffff;
 }
 
 .content-wrap .conn-card {
-  border-top-width: 4px;
+  border-top: 8px solid var(--bis-navy) !important;
 }
 
-.content-wrap .conn-card-title,
+.content-wrap .conn-card-title {
+  background: var(--bis-navy);
+  color: var(--bis-text-on-navy);
+  margin: -12px -14px 10px;
+  padding: 8px 14px;
+}
+
+.content-wrap .conn-card-title .conn-status,
+.content-wrap .conn-card-title .conn-agent-ver,
+.content-wrap .conn-card-title .conn-name {
+  color: var(--bis-text-on-navy);
+}
+
 .content-wrap .conn-section-title {
   color: var(--bis-navy);
 }
