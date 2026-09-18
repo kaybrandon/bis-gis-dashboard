@@ -53,4 +53,16 @@ public static class PdfTextExtractor
         var extracted = builder.ToString().Trim();
         return extracted.Length <= maxChars ? extracted : extracted[..maxChars];
     }
+
+    public static bool IsUsable(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        // Real text-layer titles can be short ("Demo Client Plat N-14-042").
+        // Only empty / punctuation-only / tiny OCR junk should fall through to vision.
+        return text.Count(char.IsLetter) >= 8;
+    }
 }

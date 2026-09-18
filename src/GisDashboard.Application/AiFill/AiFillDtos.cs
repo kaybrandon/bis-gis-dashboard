@@ -30,3 +30,5 @@ public sealed record AiFillTypeField(
     Guid? DocumentTypeId,
     string? DocumentTypeName,
     double Confidence);
+
+public sealed record AiFillVisionImage(byte[] Bytes, string MediaType, int PageNumber);

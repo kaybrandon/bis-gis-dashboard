@@ -42,5 +42,7 @@ describe('GIS-UI-10 document difficulty surfaces', () => {
     assert.doesNotMatch(review, /documentIntelligence|DocumentIntelligence|formrecognizer/i)
     assert.doesNotMatch(api, /AzureOpenAI__ApiKey|sk-[a-zA-Z0-9]|api-key\s*:/)
     assert.doesNotMatch(review, /AzureOpenAI__ApiKey/)
+    assert.doesNotMatch(review, /no extractable text|cannot be AI-filled/i)
+    assert.match(review, /scanned \/ image-only|page images/)
   })
 })
