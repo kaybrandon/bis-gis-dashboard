@@ -8,7 +8,7 @@ import {
   ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { App, Button, Card, DatePicker, Flex, Input, Menu, Pagination, Select, Space, Table, Tag, Typography } from 'antd'
+import { App, Button, Card, ConfigProvider, DatePicker, Flex, Input, Menu, Pagination, Select, Space, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
@@ -25,6 +25,8 @@ import { useIsMobile } from '../layout/useIsMobile'
 import { isNeededByOverdue, neededByLabel } from '../neededBy'
 import { statusSelectOptions } from '../statusSelectOptions'
 import { reviewLabel, statusLabel } from '../statusLabels'
+import { manageDocumentsRowClassName, manageDocumentsTableTheme } from '../theme/bisManageDocuments'
+import '../theme/bisManageDocuments.css'
 
 type Bucket = 'all' | 'pending' | 'mine' | 'hold' | 'completed' | 'firstdeadline' | 'finaldeadline' | 'priority' | 'duethisweek'
 type QueuePreset = 'mine' | 'priority' | 'duethisweek' | ''
@@ -153,6 +155,7 @@ export function ManageDocumentsPage() {
   const [actions, setActions] = useState<StatusActions | null>(null)
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const ignoreRowClick = useRef(false)
 
   const swallowRowClick = useCallback(() => {
@@ -338,9 +341,13 @@ export function ManageDocumentsPage() {
               disabled={savingId === row.id}
               onClick={stopRowClick}
               onMouseDown={stopRowClick}
-              onDropdownVisibleChange={swallowRowClick}
+              onDropdownVisibleChange={(open) => {
+                swallowRowClick()
+                if (open) setSelectedId(row.id)
+              }}
               onChange={(value) => {
                 swallowRowClick()
+                setSelectedId(row.id)
                 const next = statuses.find((s) => s.id === value)
                 void patchRow(row, { statusId: value }, {
                   statusId: value,
@@ -381,10 +388,14 @@ export function ManageDocumentsPage() {
               disabled={savingId === row.id}
               onClick={stopRowClick}
               onMouseDown={stopRowClick}
-              onDropdownVisibleChange={swallowRowClick}
+              onDropdownVisibleChange={(open) => {
+                swallowRowClick()
+                if (open) setSelectedId(row.id)
+              }}
               options={assignees.map((a) => ({ value: a.id, label: a.displayName }))}
               onChange={(value) => {
                 swallowRowClick()
+                setSelectedId(row.id)
                 const next = assignees.find((a) => a.id === value)
                 void patchRow(row, {
                   assignedToUserId: value ?? null,
@@ -646,12 +657,16 @@ export function ManageDocumentsPage() {
               />
             </>
           ) : (
+            <div className="manage-documents-grid">
+            <ConfigProvider theme={manageDocumentsTableTheme}>
             <Table<WorkItemListItem>
               rowKey="id"
+              className="manage-documents-grid"
               loading={loading}
               dataSource={items}
               columns={columns}
               scroll={{ x: 980 }}
+              rowClassName={(row, index) => manageDocumentsRowClassName(index, selectedId === row.id)}
               pagination={{
                 current: page,
                 pageSize,
@@ -670,14 +685,19 @@ export function ManageDocumentsPage() {
                 }
               }}
               onRow={(row) => ({
+                tabIndex: 0,
                 onClick: () => {
                   if (ignoreRowClick.current) return
+                  setSelectedId(row.id)
                   navigate(`/documents/${row.id}`)
                 },
+                onFocus: () => setSelectedId(row.id),
                 style: { cursor: 'pointer' },
               })}
               locale={{ emptyText: 'No work items in this bucket.' }}
             />
+            </ConfigProvider>
+            </div>
           )}
         </Space>
       </Flex>
