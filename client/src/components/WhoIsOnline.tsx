@@ -235,23 +235,21 @@ export function WhoIsOnlineSider({
 
   return (
     <div className="who-online-sider" role="region" aria-label="Who’s online" data-testid="who-online-sider">
-      <div className="who-online-sider-bar">
-        <button
-          type="button"
-          className="who-online-sider-toggle"
-          aria-expanded={open}
-          aria-controls="who-online-sider-body"
-          onClick={toggle}
-        >
-          <DownOutlined className={open ? 'who-online-chevron is-open' : 'who-online-chevron'} />
-          <TeamOutlined />
-          <span className="who-online-sider-title">Who’s online</span>
-          {needsHelpCount > 0 && <NeedHelpMark compact />}
-          <span className="who-online-sider-count">{onlineCount}</span>
-        </button>
-        <div className="who-online-sider-actions">
-          <NeedHelpToggle />
-        </div>
+      <button
+        type="button"
+        className="who-online-sider-toggle"
+        aria-expanded={open}
+        aria-controls="who-online-sider-body"
+        onClick={toggle}
+      >
+        <DownOutlined className={open ? 'who-online-chevron is-open' : 'who-online-chevron'} />
+        <TeamOutlined />
+        <span className="who-online-sider-title">Who’s online</span>
+        {needsHelpCount > 0 && <NeedHelpMark compact />}
+        <span className="who-online-sider-count">{onlineCount}</span>
+      </button>
+      <div className="who-online-sider-actions">
+        <NeedHelpToggle />
       </div>
       {open && (
         <div id="who-online-sider-body" className="who-online-sider-body">
