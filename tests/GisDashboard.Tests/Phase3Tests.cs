@@ -178,7 +178,12 @@ public sealed class Phase3Tests : IClassFixture<ApiFactory>
 
         var viewer = await _factory.LoginAsync("viewer@bisconsultants.local");
         (await viewer.GetAsync($"/api/work-items/{SeedIds.DemoPlat}/comments")).StatusCode.Should().Be(HttpStatusCode.OK);
-        var posted = await viewer.PostAsJsonAsync($"/api/work-items/{SeedIds.DemoPlat}/comments", new { body = "Client-visible comment from Jordan." });
+        (await viewer.PostAsJsonAsync($"/api/work-items/{SeedIds.DemoPlat}/comments", new { body = "Viewer stays comment-free." }))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var uploader = await _factory.LoginAsync("uploader@bisconsultants.local");
+        (await uploader.GetAsync($"/api/work-items/{SeedIds.DemoPlat}/comments")).StatusCode.Should().Be(HttpStatusCode.OK);
+        var posted = await uploader.PostAsJsonAsync($"/api/work-items/{SeedIds.DemoPlat}/comments", new { body = "Client-visible comment from Riley." });
         posted.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var orgAdmin = await _factory.LoginAsync("admin@democlient.local");
