@@ -94,13 +94,13 @@ public sealed class DemoSeed
         if (!await _db.WorkItemStatuses.AnyAsync(cancellationToken))
         {
             _db.WorkItemStatuses.AddRange(
-                new WorkItemStatus { Id = SeedIds.StatusPending, Name = "Pending", Color = "#faad14", SortOrder = 1 },
-                new WorkItemStatus { Id = SeedIds.StatusInProgress, Name = "In Progress", Color = "#1890ff", SortOrder = 2 },
-                new WorkItemStatus { Id = SeedIds.StatusHeld, Name = "Held", Color = "#fa8c16", SortOrder = 3 },
-                new WorkItemStatus { Id = SeedIds.StatusNeedsReview, Name = "Needs Review", Color = "#eb2f96", SortOrder = 4 },
-                new WorkItemStatus { Id = SeedIds.StatusWorked, Name = "Worked", Color = "#52c41a", SortOrder = 5 },
-                new WorkItemStatus { Id = SeedIds.StatusQcd, Name = "QC'd", Color = "#722ed1", SortOrder = 6 },
-                new WorkItemStatus { Id = SeedIds.StatusCancelled, Name = "Cancelled", Color = "#8c8c8c", SortOrder = 7 });
+                new WorkItemStatus { Id = SeedIds.StatusInProgress, Name = StatusDisplay.Active, Color = "#1890ff", SortOrder = 1 },
+                new WorkItemStatus { Id = SeedIds.StatusPending, Name = StatusDisplay.Pending, Color = "#faad14", SortOrder = 2 },
+                new WorkItemStatus { Id = SeedIds.StatusWorked, Name = StatusDisplay.Complete, Color = "#52c41a", SortOrder = 3 },
+                new WorkItemStatus { Id = SeedIds.StatusHeld, Name = StatusDisplay.OnHold, Color = "#fa8c16", SortOrder = 4 },
+                new WorkItemStatus { Id = SeedIds.StatusCancelled, Name = StatusDisplay.Cancelled, Color = "#8c8c8c", SortOrder = 5 },
+                new WorkItemStatus { Id = SeedIds.StatusNeedsReview, Name = StatusDisplay.NeedsReview, Color = "#eb2f96", SortOrder = 6 },
+                new WorkItemStatus { Id = SeedIds.StatusQcd, Name = "QC'd", Color = "#722ed1", SortOrder = 7 });
         }
 
         await _db.SaveChangesAsync(cancellationToken);

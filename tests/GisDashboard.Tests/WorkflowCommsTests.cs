@@ -24,7 +24,7 @@ public sealed class WorkflowCommsTests : IClassFixture<WorkflowCommsFactory>
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var sent = LastEmail("In Progress → Pending");
+        var sent = LastEmail("Active → Pending");
         sent.Subject.Should().Contain("[Demo Client]");
         sent.Subject.Should().Contain("Northridge Addition, Block 4");
         sent.To.Should().Contain("admin@democlient.local");

@@ -19,6 +19,7 @@ public sealed class SchemaUpgradeTests
         phase42.Should().BeGreaterThan(-1, "Phase42 must still run");
         phase51.Should().BeLessThan(phase42, "Phase51 ALTERs AspNetUsers before Phase42 SELECTs Users");
         source.Split("await Phase51Schema.ApplyAsync", StringSplitOptions.None).Length.Should().Be(2);
+        source.IndexOf("await Phase52Schema.ApplyAsync", StringComparison.Ordinal).Should().BeGreaterThan(phase42);
     }
 
     [Fact]

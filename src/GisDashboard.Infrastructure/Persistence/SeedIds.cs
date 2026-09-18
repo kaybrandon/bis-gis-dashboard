@@ -19,6 +19,25 @@ public static class SeedIds
     public static readonly Guid StatusCancelled = Guid.Parse("cccccccc-0000-0000-0000-000000000006");
     public static readonly Guid StatusNeedsReview = Guid.Parse("cccccccc-0000-0000-0000-000000000007");
 
+    /// <summary>CR11 canonical statuses. QC'd is stored data, not in this set until Brandon maps it.</summary>
+    public static readonly Guid[] CanonicalStatusIds =
+    [
+        StatusInProgress,
+        StatusPending,
+        StatusWorked,
+        StatusHeld,
+        StatusCancelled,
+        StatusNeedsReview
+    ];
+
+    public static bool IsCanonicalStatus(Guid id) =>
+        id == StatusInProgress ||
+        id == StatusPending ||
+        id == StatusWorked ||
+        id == StatusHeld ||
+        id == StatusCancelled ||
+        id == StatusNeedsReview;
+
     public static readonly Guid Admin = Guid.Parse("dddddddd-0000-0000-0000-000000000001");
     public static readonly Guid EditorDemo = Guid.Parse("dddddddd-0000-0000-0000-000000000002");
     public static readonly Guid ViewerDemo = Guid.Parse("dddddddd-0000-0000-0000-000000000003");

@@ -115,7 +115,7 @@ public sealed class WorkItemService : IWorkItemService
             x.DocumentTypeId,
             x.DocumentTypeName,
             x.StatusId,
-            x.StatusName,
+            StatusDisplay.Label(x.StatusName),
             x.StatusColor,
             UserIdentity.WithArchivedSuffix(x.AssignedToName, x.AssignedToIsArchived),
             x.AssignedToUserId,
@@ -139,7 +139,7 @@ public sealed class WorkItemService : IWorkItemService
             total,
             page,
             pageSize,
-            statusCounts.Select(x => new NamedCount(x.StatusId, x.Name, x.Color, x.Count)).ToList(),
+            statusCounts.Select(x => new NamedCount(x.StatusId, StatusDisplay.Label(x.Name), x.Color, x.Count)).ToList(),
             typeCounts.Select(x => new NamedCount(x.DocumentTypeId, x.Name, null, x.Count)).ToList(),
             buckets);
     }
@@ -298,8 +298,8 @@ public sealed class WorkItemService : IWorkItemService
 
             if (item.StatusId != statusId)
             {
-                previousStatusName = item.Status.Name;
-                nextStatusName = nextStatusRow.Name;
+                previousStatusName = StatusDisplay.Label(item.Status.Name);
+                nextStatusName = StatusDisplay.Label(nextStatusRow.Name);
             }
 
             item.StatusId = statusId;
@@ -700,12 +700,15 @@ public sealed class WorkItemService : IWorkItemService
                 new DashboardKpi("completed", "Completed", completed, "#52c41a"),
                 new DashboardKpi("priority", "Priority", priority, "#f5222d")
             ],
-            statusCounts.Select(x => new NamedCount(x.StatusId, x.Name, x.Color, x.Count)).ToList(),
+            statusCounts
+                .Where(x => SeedIds.IsCanonicalStatus(x.StatusId))
+                .Select(x => new NamedCount(x.StatusId, StatusDisplay.Label(x.Name), x.Color, x.Count))
+                .ToList(),
             technicianCounts,
             orgCounts.Select(x => new NamedCount(x.OrganizationId, x.Name, null, x.Count)).ToList(),
             recentRows.Select(x => new WorkItemListItem(
                 x.Id, x.FileName, x.Title, x.OrganizationId, x.OrganizationName, x.DocumentTypeId, x.DocumentTypeName,
-                x.StatusId, x.StatusName, x.StatusColor, UserIdentity.WithArchivedSuffix(x.AssignedToName, x.AssignedToIsArchived), x.AssignedToUserId, x.PriorityNeededBy,
+                x.StatusId, StatusDisplay.Label(x.StatusName), x.StatusColor, UserIdentity.WithArchivedSuffix(x.AssignedToName, x.AssignedToIsArchived), x.AssignedToUserId, x.PriorityNeededBy,
                 x.UploadedAt, UserIdentity.WithArchivedSuffix(x.UploadedByName, x.UploadedByIsArchived), x.UpdatedAt,
                 x.WorkedOn, TimeDurations.ToHours(x.Minutes), TimeDurations.Format(x.Minutes), x.FirstDeadline, x.FinalDeadline,
                 x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed)).ToList(),
@@ -873,7 +876,7 @@ public sealed class WorkItemService : IWorkItemService
 
         var items = rows.Select(x => new WorkItemListItem(
             x.Id, x.FileName, x.Title, x.OrganizationId, x.OrganizationName, x.DocumentTypeId, x.DocumentTypeName,
-            x.StatusId, x.StatusName, x.StatusColor, UserIdentity.WithArchivedSuffix(x.AssignedToName, x.AssignedToIsArchived), x.AssignedToUserId, x.PriorityNeededBy,
+            x.StatusId, StatusDisplay.Label(x.StatusName), x.StatusColor, UserIdentity.WithArchivedSuffix(x.AssignedToName, x.AssignedToIsArchived), x.AssignedToUserId, x.PriorityNeededBy,
             x.UploadedAt, UserIdentity.WithArchivedSuffix(x.UploadedByName, x.UploadedByIsArchived), x.UpdatedAt,
             x.WorkedOn, TimeDurations.ToHours(x.Minutes), TimeDurations.Format(x.Minutes), x.FirstDeadline, x.FinalDeadline,
             x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed)).ToList();
@@ -1044,12 +1047,14 @@ public sealed class WorkItemService : IWorkItemService
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
             var term = filter.Search.Trim();
+            var statusNames = StatusDisplay.NamesMatchingSearch(term);
             query = query.Where(x =>
                 x.FileName.Contains(term) ||
                 x.Title.Contains(term) ||
                 x.Organization.Name.Contains(term) ||
                 x.DocumentType.Name.Contains(term) ||
                 x.Status.Name.Contains(term) ||
+                statusNames.Contains(x.Status.Name) ||
                 (x.AssignedToUser != null && (
                     x.AssignedToUser.DisplayName.Contains(term) ||
                     (x.AssignedToUser.FullName != null && x.AssignedToUser.FullName.Contains(term)))));
@@ -1339,7 +1344,7 @@ public sealed class WorkItemService : IWorkItemService
             item.DocumentTypeId,
             item.DocumentType.Name,
             item.StatusId,
-            item.Status.Name,
+            StatusDisplay.Label(item.Status.Name),
             item.Status.Color,
             item.AssignedToUserId,
             item.AssignedToUser is null

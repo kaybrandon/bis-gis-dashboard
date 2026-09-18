@@ -13,6 +13,7 @@ import {
 import type { DocumentsHrefQuery } from '../documentsHref'
 import { endOfDayIso, startOfDayIso } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
+import { chartStatusCounts, statusLabel } from '../statusLabels'
 
 type Props = {
   data: DashboardResponse | null
@@ -36,8 +37,8 @@ function plotDatum(event: { type?: string; data?: unknown }): Record<string, unk
 export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
   const isMobile = useIsMobile()
   const height = isMobile ? 220 : 260
-  const status = (data?.statusCounts ?? []).filter((x) => x.count > 0).map((x) => ({
-    type: x.name,
+  const status = chartStatusCounts(data?.statusCounts ?? []).map((x) => ({
+    type: statusLabel(x.name),
     value: x.count,
     color: x.color ?? undefined,
     id: x.id,

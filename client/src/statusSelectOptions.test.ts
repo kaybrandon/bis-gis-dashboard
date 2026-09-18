@@ -15,7 +15,7 @@ const actions = {
 describe('status select options', () => {
   it('includes exact Needs Review for roles that can change status', () => {
     const labels = statusSelectOptions(actions).map((option) => option.label)
-    assert.deepEqual(labels, ['Active', 'Pending', 'Complete', 'On-Hold', 'Needs Review', 'Cancelled'])
+    assert.deepEqual(labels, ['Active', 'Pending', 'Complete', 'On-Hold', 'Cancelled', 'Needs Review'])
     assert.equal(statusSelectOptions(actions).find((option) => option.value === 'needs-review')?.label, 'Needs Review')
   })
 

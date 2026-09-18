@@ -15,6 +15,7 @@ import { WorkItemCards } from '../components/WorkItemCards'
 import { documentsHref, type DocumentsHrefQuery } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
 import { canSeeDashboardAssignee } from '../roles'
+import { statusLabel } from '../statusLabels'
 import { UNASSIGNED, activeDocumentsQuery, assigneeHrefValue, resolveAssigneeFilter } from '../staffQueue'
 
 const kpiIcon: Record<string, ReactNode> = {
@@ -122,7 +123,7 @@ export function DashboardPage() {
       return
     }
     if (key === 'active') {
-      const activeId = statuses.find((s) => s.name === 'In Progress')?.id
+      const activeId = statuses.find((s) => statusLabel(s.name) === 'Active')?.id
       openDocuments(activeDocumentsQuery({
         organizationId: orgId,
         assignedToUserId: assignedTo,
@@ -221,7 +222,7 @@ export function DashboardPage() {
           className="filter-field"
           value={statusId}
           onChange={setStatusId}
-          options={statuses.map((s) => ({ value: s.id, label: s.name }))}
+          options={statuses.map((s) => ({ value: s.id, label: statusLabel(s.name) }))}
         />
         {showAssignee && (
           <Select
@@ -317,7 +318,7 @@ export function DashboardPage() {
             columns={[
               { title: 'File name', dataIndex: 'fileName', ellipsis: true },
               { title: 'Client name', dataIndex: 'organizationName', width: 180 },
-              { title: 'Status', dataIndex: 'statusName', width: 120 },
+              { title: 'Status', dataIndex: 'statusName', width: 120, render: (name: string) => statusLabel(name) },
               {
                 title: <TitleWithHelp help={ASSIGNED_TO_HELP}>{ASSIGNED_TO_LABEL}</TitleWithHelp>,
                 dataIndex: 'assignedToName',

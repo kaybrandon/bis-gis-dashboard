@@ -10,8 +10,8 @@ export function statusSelectOptions(
     { value: actions.pendingId, label: 'Pending' },
     { value: actions.completeId, label: 'Complete' },
     { value: actions.onHoldId, label: 'On-Hold' },
-    { value: actions.needsReviewId, label: 'Needs Review' },
     { value: actions.cancelledId, label: 'Cancelled' },
+    { value: actions.needsReviewId, label: 'Needs Review' },
   ]
   const known = new Set(options.map((option) => option.value))
   if (current && !known.has(current.id)) {

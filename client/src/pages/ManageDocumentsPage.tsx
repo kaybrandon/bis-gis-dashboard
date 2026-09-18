@@ -58,8 +58,8 @@ const bucketItems: { key: Bucket; label: string; countKey: keyof ReturnType<type
   { key: 'unassigned', label: UNASSIGNED_LABEL, countKey: 'unassigned', icon: <InboxOutlined /> },
   { key: 'priority', label: 'Priority', countKey: 'priority', icon: <ThunderboltOutlined /> },
   { key: 'duethisweek', label: 'Due this week', countKey: 'dueThisWeek', icon: <ThunderboltOutlined /> },
-  { key: 'hold', label: 'On Hold', countKey: 'onHold', icon: <PauseCircleOutlined /> },
-  { key: 'completed', label: 'Completed', countKey: 'completed', icon: <CheckCircleOutlined /> },
+  { key: 'hold', label: 'On-Hold', countKey: 'onHold', icon: <PauseCircleOutlined /> },
+  { key: 'completed', label: 'Complete', countKey: 'completed', icon: <CheckCircleOutlined /> },
   { key: 'firstdeadline', label: 'First Deadline', countKey: 'firstDeadline', icon: <ThunderboltOutlined /> },
   { key: 'finaldeadline', label: 'Final Deadline', countKey: 'finalDeadline', icon: <FileOutlined /> },
 ]
