@@ -1,29 +1,32 @@
 import { DownOutlined, TeamOutlined } from '@ant-design/icons'
 import { Badge, Button, Card, Dropdown, Typography } from 'antd'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import type { PresenceUser } from '../api'
 import { usePresence } from '../presence'
 import { TitleWithHelp } from './HelpTip'
 import { LoadError } from './LoadError'
 import { NeedHelpMark } from './NeedHelpMark'
 import { PresenceChips, PresencePeople } from './PresencePeople'
 
-const STRIP_KEY = 'gis.whoIsOnlineOpen'
+const SIDER_OPEN_KEY = 'gis.whoIsOnlineOpen'
 
-function stripStorageKey(userId?: string) {
-  return userId ? `${STRIP_KEY}.${userId}` : STRIP_KEY
+function siderOpenStorageKey(userId?: string) {
+  return userId ? `${SIDER_OPEN_KEY}.${userId}` : SIDER_OPEN_KEY
 }
 
-function readStripOpen(userId?: string) {
+/** Default closed (2026-09-16 density). Only an explicit "1" opens. */
+function readSiderOpen(userId?: string) {
   try {
-    return localStorage.getItem(stripStorageKey(userId)) !== '0'
+    return localStorage.getItem(siderOpenStorageKey(userId)) === '1'
   } catch {
-    return true
+    return false
   }
 }
 
-function writeStripOpen(userId: string | undefined, open: boolean) {
+function writeSiderOpen(userId: string | undefined, open: boolean) {
   try {
-    localStorage.setItem(stripStorageKey(userId), open ? '1' : '0')
+    localStorage.setItem(siderOpenStorageKey(userId), open ? '1' : '0')
   } catch {
     /* ignore quota / private mode */
   }
@@ -91,7 +94,7 @@ export function WhoIsOnlineCard({ enabled, compact = false }: { enabled: boolean
   )
 }
 
-function NeedHelpToggle() {
+function NeedHelpToggle({ compact = false }: { compact?: boolean }) {
   const { selfNeedsHelp, setNeedsHelp } = usePresence()
   const [saving, setSaving] = useState(false)
 
@@ -111,57 +114,148 @@ function NeedHelpToggle() {
       className={selfNeedsHelp ? 'need-help-toggle is-on' : 'need-help-toggle'}
       data-slot="need-help-raise-hand"
       loading={saving}
+      aria-label={selfNeedsHelp ? 'Clear help' : 'Need help?'}
       onClick={(event) => {
         event.stopPropagation()
         void toggle()
       }}
     >
       {selfNeedsHelp ? <NeedHelpMark compact /> : null}
-      {selfNeedsHelp ? 'Clear help' : 'Need help?'}
+      {compact ? (selfNeedsHelp ? null : '!') : (selfNeedsHelp ? 'Clear help' : 'Need help?')}
     </Button>
   )
 }
 
-/** Collapsible strip immediately under the top menu bar. Raise-hand lives here. */
-export function WhoIsOnlineStrip({ enabled, userId }: { enabled: boolean; userId?: string }) {
+function SiderPresenceList({ items }: { items: PresenceUser[] }) {
+  const { selfUserId, openHelp } = usePresence()
+
+  if (items.length === 0) {
+    return <div className="who-online-sider-empty">Nobody else is signed in right now.</div>
+  }
+
+  return (
+    <ul className="who-online-sider-list">
+      {items.map((row) => {
+        const clickable = row.userId !== selfUserId
+        return (
+          <li key={row.userId}>
+            <button
+              type="button"
+              className={clickable ? 'who-online-sider-person is-clickable' : 'who-online-sider-person'}
+              data-testid="presence-sider-person"
+              data-user-id={row.userId}
+              disabled={!clickable}
+              title={clickable ? `Message ${row.displayName}` : undefined}
+              onClick={() => openHelp(row)}
+            >
+              <span className={`presence-dot is-${row.presenceStatus.toLowerCase()}`} />
+              <span className="who-online-sider-copy">
+                <span className="who-online-sider-name">
+                  {row.displayName}
+                  {row.needsHelp ? <NeedHelpMark compact /> : null}
+                  {row.clockedIn ? ' · Clocked in' : ''}
+                </span>
+                <span className="who-online-sider-page">
+                  {row.workItemTitle ? (
+                    <Link to={`/documents/${row.workItemId}`} onClick={(event) => event.stopPropagation()}>
+                      {row.workItemTitle}
+                    </Link>
+                  ) : (
+                    row.pageName
+                  )}
+                </span>
+              </span>
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/** Left sider under Status. Collapsible, default closed, persist. Raise-hand lives here. */
+export function WhoIsOnlineSider({
+  enabled,
+  userId,
+  collapsed = false,
+}: {
+  enabled: boolean
+  userId?: string
+  collapsed?: boolean
+}) {
   const { items, onlineCount, needsHelpCount, error, load } = usePresence()
-  const [open, setOpen] = useState(() => readStripOpen(userId))
+  const [open, setOpen] = useState(() => readSiderOpen(userId))
 
   useEffect(() => {
-    setOpen(readStripOpen(userId))
+    setOpen(readSiderOpen(userId))
   }, [userId])
 
   const toggle = () => {
     const next = !open
     setOpen(next)
-    writeStripOpen(userId, next)
+    writeSiderOpen(userId, next)
   }
 
   if (!enabled) return null
 
+  const list = error ? (
+    <LoadError message={error} onRetry={() => void load()} />
+  ) : (
+    <SiderPresenceList items={items} />
+  )
+
+  if (collapsed) {
+    return (
+      <div className="who-online-sider is-collapsed" role="region" aria-label="Who’s online" data-testid="who-online-sider">
+        <Dropdown
+          trigger={['click']}
+          placement="rightTop"
+          popupRender={() => (
+            <div className="notification-panel presence-panel">
+              <div className="notification-panel-head">
+                <Typography.Text strong>Who’s online</Typography.Text>
+                <Typography.Text type="secondary">{onlineCount} online</Typography.Text>
+              </div>
+              {error ? <LoadError message={error} onRetry={() => void load()} /> : <PresencePeople items={items} />}
+            </div>
+          )}
+        >
+          <button type="button" className="who-online-sider-toggle" aria-label="Who’s online">
+            <Badge count={needsHelpCount || onlineCount} size="small" overflowCount={99} color={needsHelpCount ? '#EAB308' : '#1890ff'}>
+              <TeamOutlined />
+            </Badge>
+          </button>
+        </Dropdown>
+        <div className="who-online-sider-actions">
+          <NeedHelpToggle compact />
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="who-online-strip" role="region" aria-label="Who’s online" data-testid="who-online-strip">
-      <div className="who-online-strip-bar">
+    <div className="who-online-sider" role="region" aria-label="Who’s online" data-testid="who-online-sider">
+      <div className="who-online-sider-bar">
         <button
           type="button"
-          className="who-online-strip-toggle"
+          className="who-online-sider-toggle"
           aria-expanded={open}
-          aria-controls="who-online-strip-body"
+          aria-controls="who-online-sider-body"
           onClick={toggle}
         >
           <DownOutlined className={open ? 'who-online-chevron is-open' : 'who-online-chevron'} />
           <TeamOutlined />
-          <Typography.Text strong>Who’s online</Typography.Text>
-          <Typography.Text type="secondary">{onlineCount} online</Typography.Text>
+          <span className="who-online-sider-title">Who’s online</span>
           {needsHelpCount > 0 && <NeedHelpMark compact />}
+          <span className="who-online-sider-count">{onlineCount}</span>
         </button>
-        <div className="who-online-strip-actions">
+        <div className="who-online-sider-actions">
           <NeedHelpToggle />
         </div>
       </div>
       {open && (
-        <div id="who-online-strip-body" className="who-online-strip-body">
-          {error ? <LoadError message={error} onRetry={() => void load()} /> : <PresenceChips items={items} />}
+        <div id="who-online-sider-body" className="who-online-sider-body">
+          {list}
         </div>
       )}
     </div>

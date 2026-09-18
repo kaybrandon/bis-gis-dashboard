@@ -26,7 +26,7 @@ import { HeaderGreeting } from '../components/HeaderGreeting'
 import { HelpMessageSheet } from '../components/HelpMessageSheet'
 import { NotificationBell } from '../components/NotificationBell'
 import { PoweredByFooter } from '../components/PoweredByFooter'
-import { PresencePopover, WhoIsOnlineStrip } from '../components/WhoIsOnline'
+import { PresencePopover, WhoIsOnlineSider } from '../components/WhoIsOnline'
 import { PresenceProvider } from '../presence'
 import { usePresenceHeartbeat } from '../usePresenceHeartbeat'
 
@@ -156,6 +156,7 @@ export function AppShell() {
             {!collapsed && <span>GIS Dashboard</span>}
           </div>
           {menu}
+          {user && <WhoIsOnlineSider enabled={canSeePresence} userId={user.id} collapsed={collapsed} />}
         </Sider>
       )}
       <Layout>
@@ -205,7 +206,6 @@ export function AppShell() {
             </Dropdown>
           </div>
         </Header>
-        {user && <WhoIsOnlineStrip enabled={canSeePresence} userId={user.id} />}
         <Content className="content-wrap">
           <Outlet />
         </Content>
@@ -227,6 +227,7 @@ export function AppShell() {
           <span>GIS Dashboard</span>
         </div>
         {menu}
+        {user && <WhoIsOnlineSider enabled={canSeePresence} userId={user.id} />}
       </Drawer>
       <HelpMessageSheet />
     </Layout>
