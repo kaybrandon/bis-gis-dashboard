@@ -11,9 +11,16 @@ import { DocumentViewer } from '../components/DocumentViewer'
 import { InternalNotesPanel } from '../components/InternalNotesPanel'
 import { WorkPresenceMarks } from '../components/PresencePeople'
 import { TimeLogPanel } from '../components/TimeLogPanel'
-import { isNeededByOverdue, neededByLabel } from '../neededBy'
+import { isNeededByOverdue } from '../neededBy'
 import { statusSelectOptions } from '../statusSelectOptions'
 import { statusLabel } from '../statusLabels'
+import {
+  NEEDED_BY_LABEL,
+  WORKED_LABEL,
+  changeNeededBy,
+  neededByBadgeText,
+  toDateSavePayload,
+} from '../workItemDates'
 
 type Draft = {
   title: string
@@ -304,7 +311,10 @@ export function ViewDocumentPage() {
   const neededBy = item.canMutate
     ? (draft.priorityNeededBy ? draft.priorityNeededBy.toISOString() : null)
     : item.priorityNeededBy
-  const neededLabel = neededByLabel(neededBy)
+  const workedForBadge = item.canMutate
+    ? (draft.workedOn ? draft.workedOn.toISOString() : null)
+    : item.workedOn
+  const neededLabel = neededByBadgeText({ neededBy, workedOn: workedForBadge })
   const priorityNote = item.canMutate ? draft.priorityNote : item.priorityNote
   const priorityStrip = priorityOn ? (
     <div className="detail-priority">
@@ -358,10 +368,10 @@ export function ViewDocumentPage() {
         isPriority: draft.isPriority,
         isReviewed: draft.isReviewed,
         priorityNote: draft.priorityNote,
-        priorityNeededBy: draft.priorityNeededBy ? draft.priorityNeededBy.startOf('day').toISOString() : null,
-        clearPriorityNeededBy: !draft.priorityNeededBy,
-        workedOn: draft.workedOn ? draft.workedOn.toISOString() : null,
-        clearWorkedOn: !draft.workedOn,
+        ...toDateSavePayload({
+          workedOn: draft.workedOn ? draft.workedOn.toISOString() : null,
+          priorityNeededBy: draft.priorityNeededBy ? draft.priorityNeededBy.startOf('day').toISOString() : null,
+        }),
         annexationCount: draft.annexationCount,
         correctionCount: draft.correctionCount,
         deedCount: draft.deedCount,
@@ -515,13 +525,15 @@ export function ViewDocumentPage() {
                 </Space>
                 {item.canSetPriority && draft.isPriority && (
                   <>
-                    <DatePicker
-                      size="small"
-                      style={{ width: '100%' }}
-                      value={draft.priorityNeededBy}
-                      onChange={(value) => setDraft({ ...draft, priorityNeededBy: value })}
-                      placeholder="Needed by"
-                    />
+                    <div>
+                      <div className="detail-field-label">{NEEDED_BY_LABEL}</div>
+                      <DatePicker
+                        size="small"
+                        style={{ width: '100%' }}
+                        value={draft.priorityNeededBy}
+                        onChange={(value) => setDraft((current) => (current ? changeNeededBy(current, value) : current))}
+                      />
+                    </div>
                     <Input
                       size="small"
                       value={draft.priorityNote}
@@ -532,13 +544,15 @@ export function ViewDocumentPage() {
                   </>
                 )}
                 <AiField field="workedOn" hints={aiHints} onApprove={approveField}>
-                  <DatePicker
-                    size="small"
-                    style={{ width: '100%' }}
-                    value={draft.workedOn}
-                    onChange={(value) => patchDraft({ workedOn: value }, 'workedOn')}
-                    placeholder="Worked date"
-                  />
+                  <div>
+                    <div className="detail-field-label">{WORKED_LABEL}</div>
+                    <DatePicker
+                      size="small"
+                      style={{ width: '100%' }}
+                      value={draft.workedOn}
+                      onChange={(value) => patchDraft({ workedOn: value }, 'workedOn')}
+                    />
+                  </div>
                 </AiField>
                 <Row gutter={[8, 8]}>
                   <Col span={12}>
@@ -589,8 +603,8 @@ export function ViewDocumentPage() {
                   Assigned to {item.assignedToName || 'Unassigned'}
                   <WorkPresenceMarks workItemId={item.id} assignedToUserId={item.assignedToUserId} />
                 </span>
-                {item.isPriority && neededByLabel(item.priorityNeededBy) ? (
-                  <span>{isNeededByOverdue(item.isPriority, item.priorityNeededBy) ? 'Overdue · ' : ''}{neededByLabel(item.priorityNeededBy)}</span>
+                {item.isPriority && neededByBadgeText({ neededBy: item.priorityNeededBy, workedOn: item.workedOn }) ? (
+                  <span>{isNeededByOverdue(item.isPriority, item.priorityNeededBy) ? 'Overdue · ' : ''}{neededByBadgeText({ neededBy: item.priorityNeededBy, workedOn: item.workedOn })}</span>
                 ) : null}
                 <span>
                   Split? {item.isSplit ? 'Yes' : 'No'} · Sketch? {item.isSketch ? 'Yes' : 'No'} · Reviewed {item.isReviewed ? 'Yes' : 'No'}

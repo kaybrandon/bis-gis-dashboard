@@ -1,7 +1,8 @@
 import { Card, Empty, Spin, Tag, Typography } from 'antd'
 import dayjs from 'dayjs'
 import type { WorkItemListItem } from '../api'
-import { isNeededByOverdue, neededByLabel } from '../neededBy'
+import { isNeededByOverdue } from '../neededBy'
+import { neededByBadgeText } from '../workItemDates'
 import { WorkPresenceMarks } from './PresencePeople'
 import { reviewLabel, statusLabel } from '../statusLabels'
 
@@ -29,7 +30,9 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
 
   return (
     <div className="work-item-cards">
-      {items.map((item) => (
+      {items.map((item) => {
+        const due = neededByBadgeText({ neededBy: item.priorityNeededBy, workedOn: item.workedOn })
+        return (
         <Card
           key={item.id}
           size="small"
@@ -44,11 +47,9 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
             <span>{item.organizationName}</span>
             <Tag color={item.statusColor} style={{ marginInlineEnd: 0 }}>{statusLabel(item.statusName)}</Tag>
             {item.isPriority && <Tag color="red">Priority</Tag>}
-            {item.isPriority && neededByLabel(item.priorityNeededBy) && (
+            {item.isPriority && due && (
               <Tag color={isNeededByOverdue(item.isPriority, item.priorityNeededBy) ? 'volcano' : 'gold'}>
-                {isNeededByOverdue(item.isPriority, item.priorityNeededBy)
-                  ? `Overdue · ${neededByLabel(item.priorityNeededBy)}`
-                  : neededByLabel(item.priorityNeededBy)}
+                {isNeededByOverdue(item.isPriority, item.priorityNeededBy) ? `Overdue · ${due}` : due}
               </Tag>
             )}
           </div>
@@ -64,7 +65,8 @@ export function WorkItemCards({ items, loading, emptyText, onOpen, showUploadDat
             {showReview ? `Review ${reviewLabel(item.isReviewed)}` : item.hoursLabel}
           </Typography.Text>
         </Card>
-      ))}
+        )
+      })}
     </div>
   )
 }
