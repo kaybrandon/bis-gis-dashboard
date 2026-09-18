@@ -1,6 +1,15 @@
 import { Column, Line, Pie } from '@ant-design/plots'
 import { Card, Col, Empty, Row } from 'antd'
 import type { DashboardResponse } from '../api'
+import { TitleWithHelp } from './HelpTip'
+import {
+  DOCUMENTS_BY_CAD_HELP,
+  DOCUMENTS_BY_CAD_TITLE,
+  DOCUMENTS_BY_TECHNICIAN_HELP,
+  DOCUMENTS_BY_TECHNICIAN_TITLE,
+  documentsByCadQuery,
+  documentsByTechnicianQuery,
+} from '../dashboardVolume'
 import type { DocumentsHrefQuery } from '../documentsHref'
 import { endOfDayIso, startOfDayIso } from '../documentsHref'
 import { useIsMobile } from '../layout/useIsMobile'
@@ -39,6 +48,8 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
   ])
   const hoursAssignee = (data?.hoursByAssignee ?? []).map((x) => ({ name: x.name, hours: x.hours, id: x.id }))
   const hoursClient = (data?.hoursByClient ?? []).map((x) => ({ name: x.name, hours: x.hours, id: x.id }))
+  const documentsByCad = (data?.organizationCounts ?? []).map((x) => ({ name: x.name, count: x.count, id: x.id }))
+  const documentsByTechnician = (data?.assigneeCounts ?? []).map((x) => ({ name: x.name, count: x.count, id: x.id }))
   const palette = status.map((x) => x.color).filter(Boolean) as string[]
 
   return (
@@ -101,6 +112,62 @@ export function DashboardCharts({ data, loading, filters, onOpen }: Props) {
               })
             }}
           />
+        </Card>
+      </Col>
+      <Col xs={24} lg={12}>
+        <Card
+          title={<TitleWithHelp help={DOCUMENTS_BY_CAD_HELP}>{DOCUMENTS_BY_CAD_TITLE}</TitleWithHelp>}
+          loading={loading}
+          size="small"
+          className="chart-card"
+        >
+          {documentsByCad.length === 0 ? (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No documents uploaded in this range." />
+          ) : (
+            <Column
+              data={documentsByCad}
+              xField="name"
+              yField="count"
+              height={height}
+              color="#2f54eb"
+              axis={{ x: { title: false, labelAutoRotate: isMobile }, y: { title: false } }}
+              tooltip={{ items: [{ field: 'count', name: 'Documents' }] }}
+              onEvent={(_chart, event) => {
+                const row = plotDatum(event)
+                const id = typeof row?.id === 'string' ? row.id : undefined
+                if (!id) return
+                onOpen(documentsByCadQuery(filters, id))
+              }}
+            />
+          )}
+        </Card>
+      </Col>
+      <Col xs={24} lg={12}>
+        <Card
+          title={<TitleWithHelp help={DOCUMENTS_BY_TECHNICIAN_HELP}>{DOCUMENTS_BY_TECHNICIAN_TITLE}</TitleWithHelp>}
+          loading={loading}
+          size="small"
+          className="chart-card"
+        >
+          {documentsByTechnician.length === 0 ? (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No documents uploaded in this range." />
+          ) : (
+            <Column
+              data={documentsByTechnician}
+              xField="name"
+              yField="count"
+              height={height}
+              color="#fa8c16"
+              axis={{ x: { title: false, labelAutoRotate: isMobile }, y: { title: false } }}
+              tooltip={{ items: [{ field: 'count', name: 'Documents' }] }}
+              onEvent={(_chart, event) => {
+                const row = plotDatum(event)
+                const id = typeof row?.id === 'string' ? row.id : undefined
+                if (id === undefined) return
+                onOpen(documentsByTechnicianQuery(filters, id))
+              }}
+            />
+          )}
         </Card>
       </Col>
       <Col xs={24} lg={12}>
