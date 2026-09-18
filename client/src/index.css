@@ -1357,13 +1357,14 @@ body,
   position: fixed;
   right: 16px;
   bottom: 16px;
-  z-index: 1100;
+  z-index: 900;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
   width: max-content;
-  max-width: min(380px, calc(100vw - 16px));
+  max-width: min(280px, calc(100vw - 32px));
+  pointer-events: none;
 }
 
 .floating-time-clock.is-left {
@@ -1374,6 +1375,11 @@ body,
   user-select: none;
 }
 
+.floating-time-clock-panel,
+.floating-time-clock-fab {
+  pointer-events: auto;
+}
+
 .floating-time-clock-fab {
   display: inline-flex;
   align-items: center;
@@ -1382,10 +1388,10 @@ body,
   background: #1890ff;
   color: #fff;
   border-radius: 20px;
-  min-height: 40px;
+  min-height: 36px;
   width: auto;
-  max-width: 148px;
-  padding: 0 14px;
+  max-width: 176px;
+  padding: 0 12px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
   cursor: grab;
   font-weight: 600;
@@ -1411,7 +1417,7 @@ body,
   position: absolute;
   right: 0;
   bottom: calc(100% + 8px);
-  width: min(380px, calc(100vw - 16px));
+  width: min(260px, calc(100vw - 32px));
   background: #fff;
   border: 1px solid #f0f0f0;
   border-radius: 2px;
@@ -1485,18 +1491,18 @@ body,
 
 @media (max-width: 575px) {
   .floating-time-clock {
-    max-width: min(380px, calc(100vw - 16px));
+    max-width: min(240px, calc(100vw - 32px));
   }
 
   .floating-time-clock-fab {
-    max-width: 128px;
-    min-height: 40px;
-    padding: 0 12px;
+    max-width: 152px;
+    min-height: 36px;
+    padding: 0 10px;
     justify-content: center;
   }
 
   .floating-time-clock-panel {
-    width: min(380px, calc(100vw - 16px));
+    width: min(240px, calc(100vw - 32px));
   }
 }
 

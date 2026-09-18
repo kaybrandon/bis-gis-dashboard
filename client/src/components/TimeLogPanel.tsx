@@ -160,7 +160,7 @@ export function TimeLogPanel({ item }: { item: WorkItemDetail }) {
           Time log
         </TitleWithHelp>
       )}
-      extra={<Typography.Text type="secondary">Total {totalLabel}</Typography.Text>}
+      extra={<Typography.Text type="secondary">Total time {totalLabel}</Typography.Text>}
     >
       {item.canLogTime && (
         <Form

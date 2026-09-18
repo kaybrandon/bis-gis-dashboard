@@ -1142,7 +1142,7 @@ public sealed class WorkItemService : IWorkItemService
                 : query.OrderBy(x => x.AssignedToUser != null ? x.AssignedToUser.DisplayName : string.Empty),
             "updatedat" => desc ? query.OrderByDescending(x => x.UpdatedAtSort) : query.OrderBy(x => x.UpdatedAtSort),
             "workedon" or "workedat" => desc ? query.OrderByDescending(x => x.WorkedOnSort) : query.OrderBy(x => x.WorkedOnSort),
-            "hours" => desc
+            "hours" or "totaltime" or "total" => desc
                 ? query.OrderByDescending(x => x.TimeEntries.Sum(t => t.Minutes))
                 : query.OrderBy(x => x.TimeEntries.Sum(t => t.Minutes)),
             "reviewed" or "review" => desc
@@ -1169,7 +1169,7 @@ public sealed class WorkItemService : IWorkItemService
                 : query.ThenBy(x => x.AssignedToUser != null ? x.AssignedToUser.DisplayName : string.Empty),
             "updatedat" => desc ? query.ThenByDescending(x => x.UpdatedAtSort) : query.ThenBy(x => x.UpdatedAtSort),
             "workedon" or "workedat" => desc ? query.ThenByDescending(x => x.WorkedOnSort) : query.ThenBy(x => x.WorkedOnSort),
-            "hours" => desc
+            "hours" or "totaltime" or "total" => desc
                 ? query.ThenByDescending(x => x.TimeEntries.Sum(t => t.Minutes))
                 : query.ThenBy(x => x.TimeEntries.Sum(t => t.Minutes)),
             "reviewed" or "review" => desc

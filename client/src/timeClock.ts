@@ -1,56 +1,49 @@
 export const TIME_LOGGED_EVENT = 'gis-time-logged'
 export const TIME_CLOCK_CHANGED = 'gis-time-clock-changed'
 export const TIME_CLOCK_STORAGE = 'gis.timeClock'
+export const ATTENDANCE_CLOCK_STORAGE = 'gis.attendanceClock'
 export const TIME_CLOCK_POS_STORAGE = 'gis.timeClock.pos'
 
-export type TimeClockTarget = {
-  id: string
-  fileName: string
-  organizationName: string
-  statusName?: string
-}
-
-export type TimeClockState = {
-  target: TimeClockTarget | null
+export type AttendanceClockState = {
   startedAt: number | null
-  note: string
 }
 
-export const emptyClock: TimeClockState = {
-  target: null,
+export const emptyClock: AttendanceClockState = {
   startedAt: null,
-  note: '',
 }
 
-export function loadClock(): TimeClockState {
+export function loadClock(): AttendanceClockState {
   try {
-    const raw = localStorage.getItem(TIME_CLOCK_STORAGE)
+    const raw = localStorage.getItem(ATTENDANCE_CLOCK_STORAGE)
     if (!raw) return emptyClock
-    const parsed = JSON.parse(raw) as TimeClockState
+    const parsed = JSON.parse(raw) as AttendanceClockState
     if (!parsed || typeof parsed !== 'object') return emptyClock
-    const target = parsed.target && typeof parsed.target.id === 'string' && parsed.target.id
-      ? parsed.target
-      : null
     return {
-      target,
-      startedAt: target && typeof parsed.startedAt === 'number' ? parsed.startedAt : null,
-      note: parsed.note ?? '',
+      startedAt: typeof parsed.startedAt === 'number' ? parsed.startedAt : null,
     }
   } catch {
     return emptyClock
   }
 }
 
-export function saveClock(state: TimeClockState) {
-  localStorage.setItem(TIME_CLOCK_STORAGE, JSON.stringify(state))
+export function saveClock(state: AttendanceClockState) {
+  localStorage.setItem(ATTENDANCE_CLOCK_STORAGE, JSON.stringify({
+    startedAt: state.startedAt,
+  }))
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(TIME_CLOCK_CHANGED))
   }
 }
 
-export function elapsedMinutes(startedAt: number, now = Date.now()) {
-  const minutes = Math.round((now - startedAt) / 60_000)
-  return Math.min(24 * 60, Math.max(1, minutes))
+export function isClockedIn(state: AttendanceClockState = loadClock()): boolean {
+  return state.startedAt != null
+}
+
+export function attendancePresence(state: AttendanceClockState = loadClock()) {
+  return {
+    clockedIn: isClockedIn(state),
+    clockWorkItemId: null as string | null,
+  }
 }
 
 export function formatElapsed(startedAt: number, now = Date.now()) {
@@ -72,7 +65,7 @@ export function clockPosKey(userId: string) {
   return `${TIME_CLOCK_POS_STORAGE}.${userId}`
 }
 
-export function defaultClockPos(fabWidth = 148, fabHeight = 40): ClockPosition {
+export function defaultClockPos(fabWidth = 132, fabHeight = 40): ClockPosition {
   if (typeof window === 'undefined') return { x: 16, y: 16 }
   return {
     x: Math.max(8, window.innerWidth - fabWidth - 16),

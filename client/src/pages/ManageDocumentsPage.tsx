@@ -479,6 +479,14 @@ export function ManageDocumentsPage() {
         width: 90,
         render: (value: boolean | undefined) => reviewLabel(value),
       },
+      {
+        title: 'Total time',
+        dataIndex: 'hoursLabel',
+        key: 'hours',
+        sorter: true,
+        width: 110,
+        render: (value: string | undefined) => value || '0m',
+      },
     ]
 
     if (!groupBy) return cols
@@ -689,6 +697,7 @@ export function ManageDocumentsPage() {
                 emptyText="No work items in this bucket."
                 showUploadDate
                 showReview
+                showTotalTime
                 onOpen={(id) => navigate(`/documents/${id}`)}
               />
               <Pagination
