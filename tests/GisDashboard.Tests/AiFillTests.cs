@@ -71,6 +71,7 @@ public sealed class AiFillTests : IClassFixture<ApiFactory>
         json.GetProperty("features").GetProperty("aiFillFromPdf").GetProperty("enabled").GetBoolean().Should().BeTrue();
         json.GetProperty("features").GetProperty("aiFillFromPdf").GetProperty("note").GetString().Should().Contain("Easy / Medium / Hard");
         json.GetProperty("features").GetProperty("aiFillFromPdf").GetProperty("note").GetString().Should().Contain("gpt-4.1-mini");
+        json.GetProperty("features").GetProperty("aiFillFromPdf").GetProperty("note").GetString().Should().Contain("scanned");
     }
 }
 
@@ -119,6 +120,8 @@ public sealed class AiFillConfiguredTests : IClassFixture<AiFillConfiguredFactor
         after.GetProperty("isReviewed").GetBoolean().Should().Be(before.GetProperty("isReviewed").GetBoolean());
         after.GetProperty("difficulty").GetProperty("band").GetString().Should().Be("Easy");
         after.GetProperty("difficulty").GetProperty("why").GetString().Should().Contain("Lot-and-block");
+        ScriptedOpenAiCompletions.VisionCalls.Should().Be(0);
+        ScriptedOpenAiCompletions.LastImageCount.Should().Be(0);
         var listed = await (await client.GetAsync("/api/work-items?pageSize=100")).ReadJsonAsync();
         listed.GetProperty("items").EnumerateArray()
             .Should().Contain(item =>
@@ -210,7 +213,7 @@ public sealed class AiFillConfiguredTests : IClassFixture<AiFillConfiguredFactor
     }
 
     [Fact]
-    public async Task Empty_text_pdf_is_rejected_before_model()
+    public async Task Empty_text_pdf_falls_through_to_vision_and_persists_difficulty()
     {
         var client = await _factory.LoginAsync("admin@bisconsultants.local");
         using var form = new MultipartFormDataContent();
@@ -224,11 +227,55 @@ public sealed class AiFillConfiguredTests : IClassFixture<AiFillConfiguredFactor
         uploaded.StatusCode.Should().Be(HttpStatusCode.OK);
         var id = (await uploaded.ReadJsonAsync()).GetProperty("id").GetGuid();
 
-        ScriptedOpenAiCompletions.Calls = 0;
+        ScriptedOpenAiCompletions.Reset();
         var response = await client.PostAsync($"/api/work-items/{id}/ai-fill", null);
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.ReadJsonAsync()).GetProperty("message").GetString().Should().Contain("no extractable text");
-        ScriptedOpenAiCompletions.Calls.Should().Be(0);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.ReadJsonAsync();
+        json.GetRawText().Should().NotContain("no extractable text");
+        json.GetRawText().Should().NotContain("cannot be AI-filled");
+        json.GetProperty("fields").GetProperty("title").GetProperty("value").GetString().Should().Be("N-14-042 Final Plat");
+        json.GetProperty("difficulty").GetProperty("band").GetString().Should().Be("Easy");
+        json.GetProperty("difficulty").GetProperty("why").GetString().Should().NotBeNullOrWhiteSpace();
+        ScriptedOpenAiCompletions.Calls.Should().Be(1);
+        ScriptedOpenAiCompletions.VisionCalls.Should().Be(1);
+        ScriptedOpenAiCompletions.LastImageCount.Should().BeGreaterThan(0);
+        ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("page images");
+        ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("difficulty");
+
+        var after = await (await client.GetAsync($"/api/work-items/{id}")).ReadJsonAsync();
+        after.GetProperty("difficulty").GetProperty("band").GetString().Should().Be("Easy");
+        after.GetProperty("title").GetString().Should().Be("Empty scan");
+    }
+
+    [Fact]
+    public async Task Image_only_pdf_uses_vision_and_scores_difficulty_on_same_pass()
+    {
+        var client = await _factory.LoginAsync("admin@bisconsultants.local");
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent(SeedIds.DemoClient.ToString()), "organizationId");
+        form.Add(new StringContent(SeedIds.TypeDeed.ToString()), "documentTypeId");
+        form.Add(new StringContent("Scanned deed"), "title");
+        var file = new ByteArrayContent(ImageOnlyPdf());
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        form.Add(file, "file", "scanned-deed.pdf");
+        var uploaded = await client.PostAsync("/api/work-items", form);
+        uploaded.StatusCode.Should().Be(HttpStatusCode.OK);
+        var id = (await uploaded.ReadJsonAsync()).GetProperty("id").GetGuid();
+
+        ScriptedOpenAiCompletions.Reset();
+        ScriptedOpenAiCompletions.ResponseJson = ScriptedOpenAiCompletions.JsonWithDifficulty("Hard", "Scanned metes-and-bounds deed.");
+        var response = await client.PostAsync($"/api/work-items/{id}/ai-fill", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.ReadJsonAsync();
+        json.GetProperty("fields").GetProperty("type").GetProperty("documentTypeId").GetGuid().Should().Be(SeedIds.TypePlat);
+        json.GetProperty("difficulty").GetProperty("band").GetString().Should().Be("Hard");
+        json.GetProperty("difficulty").GetProperty("why").GetString().Should().Contain("Scanned");
+        ScriptedOpenAiCompletions.VisionCalls.Should().Be(1);
+        ScriptedOpenAiCompletions.LastImageCount.Should().BeGreaterThan(0);
+
+        var after = await (await client.GetAsync($"/api/work-items/{id}")).ReadJsonAsync();
+        after.GetProperty("difficulty").GetProperty("band").GetString().Should().Be("Hard");
+        after.GetProperty("title").GetString().Should().Be("Scanned deed");
     }
 
     private static byte[] EmptyPagePdf()
@@ -256,6 +303,47 @@ public sealed class AiFillConfiguredTests : IClassFixture<AiFillConfiguredFactor
         sb.Append($"trailer << /Size {offsets.Count + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n");
         return Encoding.ASCII.GetBytes(sb.ToString());
     }
+
+    private static byte[] ImageOnlyPdf()
+    {
+        var pixels = new byte[8 * 8 * 3];
+        for (var i = 0; i < pixels.Length; i += 3)
+        {
+            pixels[i] = 0x20;
+            pixels[i + 1] = 0x20;
+            pixels[i + 2] = 0x20;
+        }
+
+        var content = "q 200 0 0 200 0 0 cm /Im0 Do Q";
+        var sb = new StringBuilder();
+        sb.Append("%PDF-1.4\n");
+        var offsets = new List<int>();
+        void Obj(string body)
+        {
+            offsets.Add(sb.Length);
+            sb.Append(body);
+            if (!body.EndsWith('\n')) sb.Append('\n');
+        }
+
+        Obj("1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n");
+        Obj("2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n");
+        Obj("3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >> endobj\n");
+        offsets.Add(sb.Length);
+        sb.Append($"4 0 obj << /Type /XObject /Subtype /Image /Width 8 /Height 8 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length {pixels.Length} >> stream\n");
+        sb.Append(Encoding.Latin1.GetString(pixels));
+        sb.Append("\nendstream endobj\n");
+        Obj($"5 0 obj << /Length {content.Length} >> stream\n{content}\nendstream endobj\n");
+
+        var xref = sb.Length;
+        sb.Append($"xref\n0 {offsets.Count + 1}\n0000000000 65535 f \n");
+        foreach (var offset in offsets)
+        {
+            sb.Append($"{offset:D10} 00000 n \n");
+        }
+
+        sb.Append($"trailer << /Size {offsets.Count + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n");
+        return Encoding.Latin1.GetBytes(sb.ToString());
+    }
 }
 
 public sealed class AiFillConfiguredFactory : ApiFactory
@@ -280,6 +368,9 @@ public sealed class AiFillConfiguredFactory : ApiFactory
 public sealed class ScriptedOpenAiCompletions : IAzureOpenAiCompletions
 {
     public static int Calls;
+    public static int VisionCalls;
+    public static int LastImageCount;
+    public static string? LastSystemPrompt;
     public static string ResponseJson = JsonWithDifficulty("Easy", "Lot-and-block plat with one parcel.");
 
     public bool IsConfigured => true;
@@ -288,12 +379,30 @@ public sealed class ScriptedOpenAiCompletions : IAzureOpenAiCompletions
     public static void Reset()
     {
         Calls = 0;
+        VisionCalls = 0;
+        LastImageCount = 0;
+        LastSystemPrompt = null;
         ResponseJson = JsonWithDifficulty("Easy", "Lot-and-block plat with one parcel.");
     }
 
-    public Task<string> CompleteJsonAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
+    public Task<string> CompleteJsonAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default) =>
+        CompleteJsonAsync(systemPrompt, userPrompt, [], cancellationToken);
+
+    public Task<string> CompleteJsonAsync(
+        string systemPrompt,
+        string userPrompt,
+        IReadOnlyList<AiFillVisionImage> images,
+        CancellationToken cancellationToken = default)
     {
         Interlocked.Increment(ref Calls);
+        LastSystemPrompt = systemPrompt;
+        LastImageCount = images.Count;
+        if (images.Count > 0)
+        {
+            Interlocked.Increment(ref VisionCalls);
+            images.Should().OnlyContain(image => image.Bytes.Length > 0);
+        }
+
         systemPrompt.Should().Contain("difficulty");
         systemPrompt.Should().Contain("lot-block");
         systemPrompt.Should().Contain("easements");

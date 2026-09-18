@@ -302,7 +302,7 @@ export function ViewDocumentPage() {
     if (dirty) {
       Modal.confirm({
         title: 'Replace unsaved edits?',
-        content: 'AI fill from PDF will overwrite Title, Type, Property IDs, counts, and Worked date when the PDF has them. Status, assignee, and flags stay as they are. Save is still required for those fields. A staff difficulty override is not wiped unless you confirm re-score.',
+        content: 'AI fill from PDF will overwrite Title, Type, Property IDs, counts, and Worked date when the PDF has them — including scanned or image-only files read from page images. Status, assignee, and flags stay as they are. Save is still required for those fields. A staff difficulty override is not wiped unless you confirm re-score.',
         okText: 'Fill from PDF',
         onOk: () => startAiFill(),
       })
@@ -437,7 +437,7 @@ export function ViewDocumentPage() {
   }
 
   const aiButton = item.canMutate ? (
-    <Tooltip title="Fills Title, Type, Property IDs, counts, and Worked date from the PDF text, and scores Easy / Medium / Hard on the same pass. Status, assignee, and flags are not changed. Field fill still needs Save. A staff difficulty override sticks unless you confirm re-score.">
+    <Tooltip title="Fills Title, Type, Property IDs, counts, and Worked date from the PDF text, or from page images when the file is scanned / image-only. Scores Easy / Medium / Hard on the same pass. Status, assignee, and flags are not changed. Field fill still needs Save. A staff difficulty override sticks unless you confirm re-score.">
       <Button
         size="small"
         icon={<ThunderboltOutlined />}

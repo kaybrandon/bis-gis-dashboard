@@ -53,4 +53,26 @@ public static class PdfTextExtractor
         var extracted = builder.ToString().Trim();
         return extracted.Length <= maxChars ? extracted : extracted[..maxChars];
     }
+
+    public static bool IsUsable(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        var trimmed = text.Trim();
+        if (trimmed.Length < 40)
+        {
+            return false;
+        }
+
+        var letters = trimmed.Count(char.IsLetter);
+        if (letters < 24)
+        {
+            return false;
+        }
+
+        return letters / (double)trimmed.Length >= 0.35;
+    }
 }

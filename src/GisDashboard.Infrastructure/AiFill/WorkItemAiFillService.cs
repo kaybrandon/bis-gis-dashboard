@@ -75,24 +75,54 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "PDF text extract failed for work item {WorkItemId}", workItemId);
-            throw new ValidationException("This file could not be read as a PDF. Replace it with a text PDF, or type the fields.");
-        }
-
-        if (string.IsNullOrWhiteSpace(extracted))
-        {
-            throw new ValidationException(
-                "This PDF has no extractable text. Scanned or image-only files cannot be AI-filled. Type the fields or replace the file with a text PDF.");
+            extracted = string.Empty;
         }
 
         var types = await _db.DocumentTypes.AsNoTracking()
             .OrderBy(x => x.SortOrder)
             .Select(x => new { x.Id, x.Name })
             .ToListAsync(cancellationToken);
+        var typeNames = types.Select(x => x.Name);
 
-        var raw = await _completions.CompleteJsonAsync(
-            SystemPrompt(types.Select(x => x.Name)),
-            UserPrompt(item, extracted),
-            cancellationToken);
+        string raw;
+        IReadOnlyList<AiFillVisionImage> pageImages = [];
+        var usedVision = false;
+        if (PdfTextExtractor.IsUsable(extracted))
+        {
+            raw = await _completions.CompleteJsonAsync(
+                SystemPrompt(typeNames),
+                UserPrompt(item, extracted),
+                cancellationToken);
+        }
+        else
+        {
+            buffer.Position = 0;
+            try
+            {
+                pageImages = PdfPageImageRenderer.Render(buffer);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "PDF page render failed for work item {WorkItemId}", workItemId);
+                throw new ValidationException("This file could not be read as a PDF. Replace it with a text PDF, or type the fields.");
+            }
+
+            if (pageImages.Count == 0)
+            {
+                throw new ValidationException("This PDF could not be converted to page images for AI fill. Try again, or type the fields.");
+            }
+
+            usedVision = true;
+            raw = await _completions.CompleteJsonAsync(
+                VisionSystemPrompt(typeNames),
+                VisionUserPrompt(item, extracted, pageImages.Count),
+                pageImages,
+                cancellationToken);
+            if (!PdfTextExtractor.IsUsable(extracted))
+            {
+                extracted = VisionExtractNote;
+            }
+        }
 
         AiFillResponse response;
         try
@@ -113,7 +143,7 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         }
 
         response = await PersistDifficultyAsync(workItemId, extracted, response, rescore, cancellationToken);
-        await TryWriteAuditAsync(workItemId, extracted, raw, response, cancellationToken);
+        await TryWriteAuditAsync(workItemId, extracted, raw, response, usedVision, pageImages.Count, cancellationToken);
         return response;
     }
 
@@ -127,24 +157,31 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         return item.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string SystemPrompt(IEnumerable<string> typeNames)
-    {
-        var allowed = string.Join(", ", typeNames);
-        return
-            "You extract GIS work-item fields from PDF text already extracted from the file.\n" +
-            "Return a single JSON object. No markdown.\n" +
-            "Never invent or return Status, Assignee, Split, Sketch, Priority, or Reviewed.\n" +
-            "Only set present=true when the text supports the value. Do not guess.\n" +
-            $"type.value must be one of: {allowed}.\n" +
-            "propertyIds is one identifier per line.\n" +
-            "Counts are non-negative integers.\n" +
-            "workedOn is YYYY-MM-DD only when a work, recording, or file date is obvious.\n" +
-            "Each field is { \"present\": bool, \"value\": ..., \"confidence\": number from 0 to 1 }.\n" +
-            "Also include overallConfidence from 0 to 1.\n" +
-            "On the same pass, score document difficulty from what this extract already sees — no extra OCR.\n" +
-            "Signals: scan readability; legal type/length (lot-block vs metes-and-bounds); parcel count; parties; easements/exceptions; extract gaps/conflicts.\n" +
-            "difficulty is { \"band\": \"Easy\"|\"Medium\"|\"Hard\", \"why\": string or 1-3 short bullets, \"reasons\": optional string array }.";
-    }
+    private const string VisionExtractNote =
+        "[Scanned or image-only PDF. Fields and difficulty scored from rendered page images on this pass.]";
+
+    private static string SharedJsonContract(string allowed) =>
+        "Return a single JSON object. No markdown.\n" +
+        "Never invent or return Status, Assignee, Split, Sketch, Priority, or Reviewed.\n" +
+        "Only set present=true when the document supports the value. Do not guess.\n" +
+        $"type.value must be one of: {allowed}.\n" +
+        "propertyIds is one identifier per line.\n" +
+        "Counts are non-negative integers.\n" +
+        "workedOn is YYYY-MM-DD only when a work, recording, or file date is obvious.\n" +
+        "Each field is { \"present\": bool, \"value\": ..., \"confidence\": number from 0 to 1 }.\n" +
+        "Also include overallConfidence from 0 to 1.\n" +
+        "On the same pass, score document difficulty from what this extract already sees — no extra OCR or Document Intelligence.\n" +
+        "Signals: scan readability; legal type/length (lot-block vs metes-and-bounds); parcel count; parties; easements/exceptions; extract gaps/conflicts.\n" +
+        "difficulty is { \"band\": \"Easy\"|\"Medium\"|\"Hard\", \"why\": string or 1-3 short bullets, \"reasons\": optional string array }.";
+
+    private static string SystemPrompt(IEnumerable<string> typeNames) =>
+        "You extract GIS work-item fields from PDF text already extracted from the file.\n" +
+        SharedJsonContract(string.Join(", ", typeNames));
+
+    private static string VisionSystemPrompt(IEnumerable<string> typeNames) =>
+        "You extract GIS work-item fields from scanned or image-only PDF page images.\n" +
+        "Read the attached page images. Do not require a text layer.\n" +
+        SharedJsonContract(string.Join(", ", typeNames));
 
     private static string UserPrompt(WorkItemDetail item, string extracted) =>
         $"""
@@ -155,6 +192,25 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         Extracted PDF text:
         {extracted}
         """;
+
+    private static string VisionUserPrompt(WorkItemDetail item, string extracted, int pageCount)
+    {
+        var leftover = string.IsNullOrWhiteSpace(extracted)
+            ? "None."
+            : extracted.Trim();
+        return
+            $"""
+            File name: {item.FileName}
+            Current title: {item.Title}
+            Current type: {item.DocumentTypeName}
+
+            This PDF has no usable text layer. {pageCount} page image(s) are attached in order.
+            Extract fields and difficulty from the page images on this same pass.
+
+            Unusable extracted text (ignore if the images disagree):
+            {leftover}
+            """;
+    }
 
     private AiFillResponse MapResponse(string raw, IReadOnlyDictionary<string, Guid> types, string extracted)
     {
@@ -516,6 +572,8 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         string extracted,
         string modelJson,
         AiFillResponse response,
+        bool usedVision,
+        int pageImageCount,
         CancellationToken cancellationToken)
     {
         try
@@ -526,6 +584,8 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
                 workItemId,
                 at = DateTimeOffset.UtcNow,
                 deployment = response.Deployment,
+                usedVision,
+                pageImageCount,
                 extractedChars = extracted.Length,
                 extractedPreview = extracted.Length <= 2000 ? extracted : extracted[..2000],
                 modelJson,

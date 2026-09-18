@@ -20,9 +20,16 @@ public sealed class AzureOpenAiCompletions : IAzureOpenAiCompletions
 
     public string Deployment => _options.EffectiveDeployment;
 
+    public Task<string> CompleteJsonAsync(
+        string systemPrompt,
+        string userPrompt,
+        CancellationToken cancellationToken = default) =>
+        CompleteJsonAsync(systemPrompt, userPrompt, [], cancellationToken);
+
     public async Task<string> CompleteJsonAsync(
         string systemPrompt,
         string userPrompt,
+        IReadOnlyList<AiFillVisionImage> images,
         CancellationToken cancellationToken = default)
     {
         if (!_options.IsConfigured
@@ -31,9 +38,10 @@ public sealed class AzureOpenAiCompletions : IAzureOpenAiCompletions
             throw new ServiceUnavailableException(AzureOpenAIOptions.UnconfiguredMessage);
         }
 
+        var timeoutSeconds = VisionTimeoutSeconds(images);
         var clientOptions = new AzureOpenAIClientOptions
         {
-            NetworkTimeout = TimeSpan.FromSeconds(_options.EffectiveTimeoutSeconds)
+            NetworkTimeout = TimeSpan.FromSeconds(timeoutSeconds)
         };
         var client = new AzureOpenAIClient(endpoint, new ApiKeyCredential(_options.ApiKey!.Trim()), clientOptions);
         var chat = client.GetChatClient(_options.EffectiveDeployment);
@@ -51,11 +59,11 @@ public sealed class AzureOpenAiCompletions : IAzureOpenAiCompletions
             try
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeout.CancelAfter(TimeSpan.FromSeconds(_options.EffectiveTimeoutSeconds));
+                timeout.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
                 ChatCompletion completion = await chat.CompleteChatAsync(
                     [
                         ChatMessage.CreateSystemMessage(systemPrompt),
-                        ChatMessage.CreateUserMessage(userPrompt)
+                        CreateUserMessage(userPrompt, images)
                     ],
                     completionOptions,
                     timeout.Token);
@@ -94,5 +102,37 @@ public sealed class AzureOpenAiCompletions : IAzureOpenAiCompletions
         throw last is ServiceUnavailableException unavailable
             ? unavailable
             : new ServiceUnavailableException("AI fill failed. Try again, or type the fields.");
+    }
+
+    private int VisionTimeoutSeconds(IReadOnlyList<AiFillVisionImage> images)
+    {
+        if (images.Count == 0)
+        {
+            return _options.EffectiveTimeoutSeconds;
+        }
+
+        return Math.Clamp(Math.Max(_options.EffectiveTimeoutSeconds, 90), 10, 120);
+    }
+
+    private static UserChatMessage CreateUserMessage(string userPrompt, IReadOnlyList<AiFillVisionImage> images)
+    {
+        if (images.Count == 0)
+        {
+            return ChatMessage.CreateUserMessage(userPrompt);
+        }
+
+        var parts = new List<ChatMessageContentPart>(images.Count + 1)
+        {
+            ChatMessageContentPart.CreateTextPart(userPrompt)
+        };
+        foreach (var image in images)
+        {
+            parts.Add(ChatMessageContentPart.CreateImagePart(
+                BinaryData.FromBytes(image.Bytes),
+                string.IsNullOrWhiteSpace(image.MediaType) ? "image/png" : image.MediaType,
+                ChatImageDetailLevel.High));
+        }
+
+        return ChatMessage.CreateUserMessage(parts);
     }
 }
