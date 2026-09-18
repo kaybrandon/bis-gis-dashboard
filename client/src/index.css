@@ -1103,8 +1103,15 @@ body,
   }
 }
 
-.viewer-pane .doc-viewer {
+.viewer-pane .doc-viewer,
+.viewer-pane .doc-viewer-stack {
   flex: 1;
+  min-height: 0;
+}
+
+.doc-viewer-stack {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 

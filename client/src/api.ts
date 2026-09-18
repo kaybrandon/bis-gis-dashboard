@@ -1035,11 +1035,21 @@ export const publicApi = {
     }),
 }
 
-export async function authorizedBlob(path: string) {
+export async function authorizedFile(path: string) {
   const token = getToken()
   const response = await fetch(path, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   })
   if (!response.ok) throw new Error(await readErrorMessage(response))
-  return response.blob()
+  const pageCount = Number(response.headers.get('X-Preview-Page-Count') || '1')
+  return {
+    blob: await response.blob(),
+    pageCount: Number.isFinite(pageCount) && pageCount > 0 ? pageCount : 1,
+    morePages: (response.headers.get('X-Preview-More-Pages') || '').toLowerCase() === 'true',
+    kind: response.headers.get('X-Preview-Kind'),
+  }
+}
+
+export async function authorizedBlob(path: string) {
+  return (await authorizedFile(path)).blob
 }

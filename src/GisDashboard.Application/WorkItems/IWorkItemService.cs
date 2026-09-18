@@ -8,6 +8,7 @@ public interface IWorkItemService
     Task<WorkItemDetail> UploadAsync(UploadWorkItemRequest request, CancellationToken cancellationToken = default);
     Task<WorkItemDetail> UpdateAsync(Guid id, UpdateWorkItemRequest request, CancellationToken cancellationToken = default);
     Task<FileDownload> OpenFileAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<FilePreview> OpenPreviewAsync(Guid id, CancellationToken cancellationToken = default);
     Task<DashboardResponse> GetDashboardAsync(DashboardQuery query, CancellationToken cancellationToken = default);
     Task<ExcelExport> ExportAsync(WorkItemQuery query, CancellationToken cancellationToken = default);
     Task<PublicUploadInfo> GetPublicUploadAsync(string token, CancellationToken cancellationToken = default);

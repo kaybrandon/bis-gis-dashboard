@@ -104,11 +104,13 @@ builder.Services.AddCors(options =>
     {
         if (corsOrigins.Length == 0)
         {
-            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()
+                .WithExposedHeaders("X-Preview-Page", "X-Preview-Page-Count", "X-Preview-More-Pages", "X-Preview-Kind");
         }
         else
         {
-            policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
+            policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()
+                .WithExposedHeaders("X-Preview-Page", "X-Preview-Page-Count", "X-Preview-More-Pages", "X-Preview-Kind");
         }
     });
 });
