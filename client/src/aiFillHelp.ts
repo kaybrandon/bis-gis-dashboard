@@ -6,14 +6,14 @@ export const AI_FILL_HELP_TIP_STORAGE_KEY = 'gis.aiFillHelpTip'
 
 export const AI_FILL_HELP_BULLETS = [
   'AI **assists** Review — it does **not** finalize the document for you.',
-  'After upload, a scan may run automatically. Status can show **pending**, **finished**, or **failed** (use **Retry** / **AI fill from PDF** if it fails). Upload still succeeds even if AI fails.',
-  '**Scanned / image-only PDFs** are supported — you do not need a selectable text layer for AI fill to run.',
+  'After upload, a scan may run automatically. Status can show **pending**, **finished**, or **failed** (use **Retry** / **AI fill** if it fails). Upload still succeeds even if AI fails.',
+  '**PDF, JPG/JPEG, PNG, TIFF/TIF, DOCX, and XLSX** (first sheet) are analyzed. **Scanned / image-only PDFs** and image uploads do not need a selectable text layer.',
   'Proposed fields show in **amber**. You must **Approve** (or edit) and **Save** before they count. AI never silent-commits alone.',
   '**Difficulty** (Easy / Medium / Hard) is a **hint** for triage — staff can override; it is not a grade of your work.',
   '**Property IDs** are **manual** only — type or paste them yourself. AI does **not** suggest, fill, or approve this field.',
   'On **CAD / web map** PDFs, parcel labels on the map are **not** copied into Property IDs.',
   'Property IDs appear **one per line**. Saved values stay after reopen or an AI re-run.',
-  'Manual **AI fill from PDF** remains available anytime for a re-run.',
+  'Manual **AI fill** remains available anytime for a re-run.',
 ] as const
 
 export type HelpEmphasisPart = { text: string; bold: boolean }

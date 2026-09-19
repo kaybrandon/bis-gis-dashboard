@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
+using DocumentFormat.OpenXml.Packaging;
 using GisDashboard.Application.Abstractions;
 using GisDashboard.Application.AiFill;
 using GisDashboard.Application.Exceptions;
@@ -9,6 +10,7 @@ using GisDashboard.Domain;
 using GisDashboard.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SixLabors.ImageSharp;
 
 namespace GisDashboard.Infrastructure.AiFill;
 
@@ -67,9 +69,9 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
             throw new ServiceUnavailableException(AzureOpenAIOptions.UnconfiguredMessage);
         }
 
-        if (!IsPdf(item.FileName, item.ContentType))
+        if (!AiFillSourceKinds.IsAnalyzable(item.FileName, item.ContentType))
         {
-            throw new ValidationException("AI fill only works on PDF files.");
+            throw new ValidationException(AiFillSourceKinds.UnsupportedMessage);
         }
 
         try
@@ -118,8 +120,14 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
                 return;
             }
 
-            if (!IsPdf(target.FileName, target.ContentType))
+            if (!AiFillSourceKinds.IsAnalyzable(target.FileName, target.ContentType))
             {
+                await TryMarkScanAsync(
+                    workItemId,
+                    WorkItemAiScanStatus.Skipped,
+                    WorkItemAiScanStatus.SkippedMessage,
+                    result: null,
+                    cancellationToken);
                 return;
             }
 
@@ -199,14 +207,15 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
             throw new ServiceUnavailableException(AzureOpenAIOptions.UnconfiguredMessage);
         }
 
-        if (!IsPdf(target.FileName, target.ContentType))
+        var kind = AiFillSourceKinds.Resolve(target.FileName, target.ContentType);
+        if (kind == AiFillSourceKind.Unsupported)
         {
-            throw new ValidationException("AI fill only works on PDF files.");
+            throw new ValidationException(AiFillSourceKinds.UnsupportedMessage);
         }
 
         if (string.IsNullOrWhiteSpace(target.BlobPath))
         {
-            throw new ValidationException("This file could not be read as a PDF. Replace it with a text PDF, or type the fields.");
+            throw new ValidationException(AiFillSourceKinds.UnreadableMessage);
         }
 
         await TryMarkScanAsync(
@@ -221,61 +230,35 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         await download.CopyToAsync(buffer, cancellationToken);
         buffer.Position = 0;
 
-        string extracted;
-        try
-        {
-            extracted = PdfTextExtractor.Extract(buffer);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "PDF text extract failed for work item {WorkItemId}", workItemId);
-            extracted = string.Empty;
-        }
-
         var types = await _db.DocumentTypes.AsNoTracking()
             .OrderBy(x => x.SortOrder)
             .Select(x => new { x.Id, x.Name })
             .ToListAsync(cancellationToken);
         var typeNames = types.Select(x => x.Name);
 
+        var prepared = PrepareContent(kind, buffer, workItemId);
         string raw;
-        IReadOnlyList<AiFillVisionImage> pageImages = [];
-        var usedVision = false;
-        if (PdfTextExtractor.IsUsable(extracted))
+        var extracted = prepared.Extracted;
+        var pageImages = prepared.PageImages;
+        var usedVision = prepared.UsedVision;
+        if (usedVision)
         {
             raw = await _completions.CompleteJsonAsync(
-                SystemPrompt(typeNames),
-                UserPrompt(target.FileName, target.Title, target.DocumentTypeName, extracted),
+                VisionSystemPrompt(typeNames, kind),
+                VisionUserPrompt(target.FileName, target.Title, target.DocumentTypeName, extracted, pageImages.Count, kind),
+                pageImages,
                 cancellationToken);
+            if (!HasUsableText(kind, extracted))
+            {
+                extracted = VisionExtractNote(kind);
+            }
         }
         else
         {
-            buffer.Position = 0;
-            try
-            {
-                pageImages = PdfPageImageRenderer.Render(buffer);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "PDF page render failed for work item {WorkItemId}", workItemId);
-                throw new ValidationException("This file could not be read as a PDF. Replace it with a text PDF, or type the fields.");
-            }
-
-            if (pageImages.Count == 0)
-            {
-                throw new ValidationException("This PDF could not be converted to page images for AI fill. Try again, or type the fields.");
-            }
-
-            usedVision = true;
             raw = await _completions.CompleteJsonAsync(
-                VisionSystemPrompt(typeNames),
-                VisionUserPrompt(target.FileName, target.Title, target.DocumentTypeName, extracted, pageImages.Count),
-                pageImages,
+                SystemPrompt(typeNames, kind),
+                UserPrompt(target.FileName, target.Title, target.DocumentTypeName, extracted, kind),
                 cancellationToken);
-            if (!PdfTextExtractor.IsUsable(extracted))
-            {
-                extracted = VisionExtractNote;
-            }
         }
 
         AiFillResponse response;
@@ -325,11 +308,155 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         string? AiScanStatus,
         string? AiScanResultJson);
 
-    private static bool IsPdf(string? fileName, string? contentType) =>
-        WorkItemAiScanStatus.IsPdf(fileName, contentType);
+    private PreparedContent PrepareContent(AiFillSourceKind kind, MemoryStream buffer, Guid workItemId)
+    {
+        return kind switch
+        {
+            AiFillSourceKind.Pdf => PreparePdf(buffer, workItemId),
+            AiFillSourceKind.Docx => PrepareOffice(buffer, office => OfficeTextExtractor.ExtractDocx(office), "DOCX"),
+            AiFillSourceKind.Xlsx => PrepareOffice(buffer, office => OfficeTextExtractor.ExtractXlsxFirstSheet(office), "XLSX"),
+            AiFillSourceKind.Image => PrepareImage(buffer, workItemId),
+            _ => throw new ValidationException(AiFillSourceKinds.UnsupportedMessage)
+        };
+    }
 
-    private const string VisionExtractNote =
-        "[Scanned or image-only PDF. Fields and difficulty scored from rendered page images on this pass.]";
+    private PreparedContent PreparePdf(MemoryStream buffer, Guid workItemId)
+    {
+        string extracted;
+        try
+        {
+            extracted = PdfTextExtractor.Extract(buffer);
+        }
+        catch (Exception ex) when (IsPasswordProtected(ex))
+        {
+            _logger.LogWarning(ex, "Password-protected PDF for work item {WorkItemId}", workItemId);
+            throw new ValidationException(AiFillSourceKinds.PasswordMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "PDF text extract failed for work item {WorkItemId}", workItemId);
+            extracted = string.Empty;
+        }
+
+        if (PdfTextExtractor.IsUsable(extracted))
+        {
+            return new PreparedContent(extracted, [], false);
+        }
+
+        buffer.Position = 0;
+        IReadOnlyList<AiFillVisionImage> pageImages;
+        try
+        {
+            pageImages = PdfPageImageRenderer.Render(buffer);
+        }
+        catch (Exception ex) when (IsPasswordProtected(ex))
+        {
+            _logger.LogWarning(ex, "Password-protected PDF render for work item {WorkItemId}", workItemId);
+            throw new ValidationException(AiFillSourceKinds.PasswordMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "PDF page render failed for work item {WorkItemId}", workItemId);
+            throw new ValidationException("This file could not be read as a PDF. Replace it with a text PDF, or type the fields.");
+        }
+
+        if (pageImages.Count == 0)
+        {
+            throw new ValidationException("This PDF could not be converted to page images for AI fill. Try again, or type the fields.");
+        }
+
+        return new PreparedContent(extracted, pageImages, true);
+    }
+
+    private static PreparedContent PrepareOffice(MemoryStream buffer, Func<Stream, string> extract, string kindLabel)
+    {
+        try
+        {
+            var extracted = extract(buffer);
+            if (!OfficeTextExtractor.IsUsable(extracted))
+            {
+                throw new ValidationException(AiFillSourceKinds.EmptyOfficeMessage);
+            }
+
+            return new PreparedContent(extracted, [], false);
+        }
+        catch (ValidationException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (IsPasswordProtected(ex))
+        {
+            throw new ValidationException(AiFillSourceKinds.PasswordMessage);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or FileFormatException or OpenXmlPackageException)
+        {
+            var message = string.IsNullOrWhiteSpace(ex.Message)
+                ? $"This {kindLabel} could not be read. Replace it with a supported file, or type the fields."
+                : ex.Message;
+            throw new ValidationException(message);
+        }
+    }
+
+    private PreparedContent PrepareImage(MemoryStream buffer, Guid workItemId)
+    {
+        try
+        {
+            var pageImages = DocumentImageRenderer.Render(buffer);
+            if (pageImages.Count == 0)
+            {
+                throw new ValidationException(AiFillSourceKinds.EmptyImageMessage);
+            }
+
+            return new PreparedContent(string.Empty, pageImages, true);
+        }
+        catch (ValidationException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is InvalidDataException or ImageFormatException or NotSupportedException)
+        {
+            _logger.LogWarning(ex, "Image render failed for work item {WorkItemId}", workItemId);
+            throw new ValidationException(AiFillSourceKinds.EmptyImageMessage);
+        }
+    }
+
+    private sealed record PreparedContent(
+        string Extracted,
+        IReadOnlyList<AiFillVisionImage> PageImages,
+        bool UsedVision);
+
+    private static bool HasUsableText(AiFillSourceKind kind, string? extracted) =>
+        kind is AiFillSourceKind.Docx or AiFillSourceKind.Xlsx
+            ? OfficeTextExtractor.IsUsable(extracted)
+            : PdfTextExtractor.IsUsable(extracted);
+
+    private static bool IsPasswordProtected(Exception ex)
+    {
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            var name = current.GetType().Name;
+            if (name.Contains("Encrypt", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("Password", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var text = current.Message ?? string.Empty;
+            if (text.Contains("password", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("encrypt", StringComparison.OrdinalIgnoreCase)
+                || text.Equals(AiFillSourceKinds.PasswordMessage, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string VisionExtractNote(AiFillSourceKind kind) =>
+        kind == AiFillSourceKind.Image
+            ? "[Scanned image. Fields and difficulty scored from the image page(s) on this pass.]"
+            : "[Scanned or image-only PDF. Fields and difficulty scored from rendered page images on this pass.]";
 
     private static string SharedJsonContract(string allowed) =>
         "Return a single JSON object. No markdown.\n" +
@@ -346,37 +473,68 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         "Signals: scan readability; legal type/length (lot-block vs metes-and-bounds); parcel count; parties; easements/exceptions; extract gaps/conflicts; many unlabeled or crowded map labels.\n" +
         "difficulty is { \"band\": \"Easy\"|\"Medium\"|\"Hard\", \"why\": string or 1-3 short bullets, \"reasons\": optional string array }.";
 
-    private static string SystemPrompt(IEnumerable<string> typeNames) =>
-        "You extract GIS work-item fields from PDF text already extracted from the file.\n" +
-        SharedJsonContract(string.Join(", ", typeNames));
-
-    private static string VisionSystemPrompt(IEnumerable<string> typeNames) =>
-        "You extract GIS work-item fields from scanned or image-only PDF page images.\n" +
-        "Read the attached page images. Do not require a text layer.\n" +
-        SharedJsonContract(string.Join(", ", typeNames));
-
-    private static string UserPrompt(string fileName, string title, string typeName, string extracted) =>
-        $"""
-        File name: {fileName}
-        Current title: {title}
-        Current type: {typeName}
-
-        Extracted PDF text:
-        {extracted}
-        """;
-
-    private static string VisionUserPrompt(string fileName, string title, string typeName, string extracted, int pageCount)
+    private static string SystemPrompt(IEnumerable<string> typeNames, AiFillSourceKind kind)
     {
-        var leftover = string.IsNullOrWhiteSpace(extracted)
-            ? "None."
-            : extracted.Trim();
+        var source = kind switch
+        {
+            AiFillSourceKind.Docx => "DOCX text already extracted from the file",
+            AiFillSourceKind.Xlsx => "XLSX first-sheet text already extracted from the file",
+            _ => "PDF text already extracted from the file"
+        };
+        return $"You extract GIS work-item fields from {source}.\n" +
+               SharedJsonContract(string.Join(", ", typeNames));
+    }
+
+    private static string VisionSystemPrompt(IEnumerable<string> typeNames, AiFillSourceKind kind)
+    {
+        var source = kind == AiFillSourceKind.Image
+            ? "scanned JPG/JPEG, PNG, or TIFF/TIF page images"
+            : "scanned or image-only PDF page images";
+        return $"You extract GIS work-item fields from {source}.\n" +
+               "Read the attached page images. Do not require a text layer.\n" +
+               SharedJsonContract(string.Join(", ", typeNames));
+    }
+
+    private static string UserPrompt(string fileName, string title, string typeName, string extracted, AiFillSourceKind kind)
+    {
+        var label = kind switch
+        {
+            AiFillSourceKind.Docx => "Extracted DOCX text",
+            AiFillSourceKind.Xlsx => "Extracted XLSX first-sheet text",
+            _ => "Extracted PDF text"
+        };
         return
             $"""
             File name: {fileName}
             Current title: {title}
             Current type: {typeName}
 
-            This PDF has no usable text layer. {pageCount} page image(s) are attached in order.
+            {label}:
+            {extracted}
+            """;
+    }
+
+    private static string VisionUserPrompt(
+        string fileName,
+        string title,
+        string typeName,
+        string extracted,
+        int pageCount,
+        AiFillSourceKind kind)
+    {
+        var leftover = string.IsNullOrWhiteSpace(extracted)
+            ? "None."
+            : extracted.Trim();
+        var source = kind == AiFillSourceKind.Image
+            ? "This image has no separate text layer."
+            : "This PDF has no usable text layer.";
+        return
+            $"""
+            File name: {fileName}
+            Current title: {title}
+            Current type: {typeName}
+
+            {source} {pageCount} page image(s) are attached in order.
             Extract fields and difficulty from the page images on this same pass.
             Do not extract Property IDs. Staff enter those manually.
 
@@ -419,7 +577,7 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         string? warning = null;
         if (present.Count == 0)
         {
-            warning = "No fields could be filled from this PDF.";
+            warning = "No fields could be filled from this file.";
         }
 
         var fields = new AiFillFields(title, type, propertyIds, annex, corr, deeds, plats, worked);

@@ -238,7 +238,7 @@ public sealed class EnvironmentStatusService : IEnvironmentStatusService
                 "Azure OpenAI",
                 "not_configured",
                 "configured",
-                "AzureOpenAI__Endpoint and AzureOpenAI__ApiKey are not set. AI fill from PDF fails closed. Prefer resource oai-bis-deed-ai, deployment gpt-4.1-mini. This is a configuration check, not a live chat ping.",
+                "AzureOpenAI__Endpoint and AzureOpenAI__ApiKey are not set. AI fill fails closed. Prefer resource oai-bis-deed-ai, deployment gpt-4.1-mini. This is a configuration check, not a live chat ping.",
                 null);
         }
 

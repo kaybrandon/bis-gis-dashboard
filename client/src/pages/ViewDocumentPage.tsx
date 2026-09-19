@@ -10,6 +10,7 @@ import {
   applyAutoAiScan,
   isAiScanFailed,
   isAiScanInFlight,
+  isAiScanSkipped,
   type AiFieldKey,
   type AiFillDraft,
   type AiHint,
@@ -303,7 +304,7 @@ export function ViewDocumentPage() {
         message.info('Staff difficulty override kept. Confirm re-score or clear the override to use the new AI band.')
       }
       if (Object.keys(applied.hints).length === 0) {
-        message.warning(result.warning || 'No fields could be filled from this PDF.')
+        message.warning(result.warning || 'No fields could be filled from this file.')
         return
       }
       setDraft(applied.next)
@@ -319,7 +320,7 @@ export function ViewDocumentPage() {
     if (item?.difficulty?.overridden) {
       Modal.confirm({
         title: 'Replace staff difficulty override?',
-        content: 'This document has a staff Easy / Medium / Hard override. Re-score only if you confirm. Keep override still fills fields from the PDF.',
+        content: 'This document has a staff Easy / Medium / Hard override. Re-score only if you confirm. Keep override still fills fields from the file.',
         okText: 'Fill and re-score',
         cancelText: 'Fill, keep override',
         onOk: () => runAiFill(true),
@@ -334,8 +335,8 @@ export function ViewDocumentPage() {
     if (dirty) {
       Modal.confirm({
         title: 'Replace unsaved edits?',
-        content: 'AI fill from PDF will overwrite Title, Type, counts, and Worked date when the PDF has them — including scanned or image-only files read from page images. Property IDs stay as you typed them. Status, assignee, and flags stay as they are. Save is still required for those fields. A staff difficulty override is not wiped unless you confirm re-score.',
-        okText: 'Fill from PDF',
+        content: 'AI fill will overwrite Title, Type, counts, and Worked date when the file has them — including scanned or image-only files read from page images, and text from DOCX or the first XLSX sheet. Property IDs stay as you typed them. Status, assignee, and flags stay as they are. Save is still required for those fields. A staff difficulty override is not wiped unless you confirm re-score.',
+        okText: 'Fill from file',
         onOk: () => startAiFill(),
       })
       return
@@ -469,14 +470,14 @@ export function ViewDocumentPage() {
   }
 
   const aiButton = item.canMutate ? (
-    <Tooltip title="Fills Title, Type, counts, and Worked date from the PDF text, or from page images when the file is scanned / image-only. Property IDs stay manual — AI does not suggest or overwrite them. Scores Easy / Medium / Hard on the same pass. Status, assignee, and flags are not changed. Field fill still needs Save. A staff difficulty override sticks unless you confirm re-score.">
+    <Tooltip title="Fills Title, Type, counts, and Worked date from PDF, JPG/JPEG, PNG, TIFF/TIF, DOCX, or XLSX (first sheet). Scanned images and image-only PDFs are read from page images. Property IDs stay manual — AI does not suggest or overwrite them. Scores Easy / Medium / Hard on the same pass. Status, assignee, and flags are not changed. Field fill still needs Save. A staff difficulty override sticks unless you confirm re-score.">
       <Button
         size="small"
         icon={<ThunderboltOutlined />}
         loading={filling}
         onClick={requestAiFill}
       >
-        AI fill from PDF
+        AI fill
       </Button>
     </Tooltip>
   ) : null
@@ -575,7 +576,15 @@ export function ViewDocumentPage() {
                 className="ai-scan-banner"
                 type="warning"
                 showIcon
-                message={item.aiScan?.message || 'AI scan failed. Use AI fill from PDF to retry.'}
+                message={item.aiScan?.message || 'AI scan failed. Use AI fill to retry.'}
+              />
+            )}
+            {isAiScanSkipped(item.aiScan?.status) && (
+              <Alert
+                className="ai-scan-banner"
+                type="warning"
+                showIcon
+                message={item.aiScan?.message || 'AI scan skipped — this file type is not analyzed.'}
               />
             )}
             <div className="document-difficulty-panel">
@@ -613,9 +622,11 @@ export function ViewDocumentPage() {
                   {isAiScanInFlight(item.aiScan?.status)
                     ? 'AI scan pending… Easy / Medium / Hard will appear on this same pass.'
                     : isAiScanFailed(item.aiScan?.status)
-                      ? 'AI scan failed. Use AI fill from PDF to retry Easy / Medium / Hard.'
+                      ? 'AI scan failed. Use AI fill to retry Easy / Medium / Hard.'
+                      : isAiScanSkipped(item.aiScan?.status)
+                        ? 'AI scan skipped — this file type is not analyzed.'
                       : item.canMutate
-                        ? 'Run AI fill from PDF to score Easy / Medium / Hard from this extract.'
+                        ? 'Run AI fill to score Easy / Medium / Hard from this extract.'
                         : 'Not scored yet.'}
                 </Typography.Text>
               )}

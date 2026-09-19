@@ -1535,7 +1535,7 @@ public sealed class WorkItemService : IWorkItemService
         }
         catch
         {
-            // Upload already committed — staff can retry with AI fill from PDF.
+            // Upload already committed — staff can retry with AI fill.
         }
     }
 

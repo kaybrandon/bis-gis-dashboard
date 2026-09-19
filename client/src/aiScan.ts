@@ -31,6 +31,10 @@ export function isAiScanFailed(status?: string | null): boolean {
   return status === 'failed' || status === 'unconfigured'
 }
 
+export function isAiScanSkipped(status?: string | null): boolean {
+  return status === 'skipped'
+}
+
 export function applyAiFill<T extends AiFillDraft>(
   current: T,
   result: AiFillResponse,

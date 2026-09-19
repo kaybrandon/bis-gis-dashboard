@@ -30,8 +30,12 @@ public sealed class WorkItemAutoAiScanScheduler : IWorkItemAutoAiScanScheduler
         try
         {
             item.AiScanBaselineJson = WorkItemAiScanJson.CaptureBaseline(item);
-            if (!WorkItemAiScanStatus.IsPdf(item.FileName, item.ContentType))
+            if (!AiFillSourceKinds.IsAnalyzable(item.FileName, item.ContentType))
             {
+                item.AiScanStatus = WorkItemAiScanStatus.Skipped;
+                item.AiScanMessage = WorkItemAiScanStatus.SkippedMessage;
+                item.AiScanCompletedAt = DateTimeOffset.UtcNow;
+                item.AiScanResultJson = null;
                 return false;
             }
 
