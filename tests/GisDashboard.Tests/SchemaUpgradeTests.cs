@@ -36,6 +36,10 @@ public sealed class SchemaUpgradeTests
         phase55.Should().BeGreaterThan(-1, "Phase55 must still run");
         phase55.Should().BeGreaterThan(phase54, "Phase55 ALTERs WorkItems after Phase54");
         source.Split("await Phase55Schema.ApplyAsync", StringSplitOptions.None).Length.Should().Be(2);
+        var phase56 = source.IndexOf("await Phase56Schema.ApplyAsync", StringComparison.Ordinal);
+        phase56.Should().BeGreaterThan(-1, "Phase56 must still run");
+        phase56.Should().BeGreaterThan(phase55, "Phase56 ALTERs WorkItems after Phase55");
+        source.Split("await Phase56Schema.ApplyAsync", StringSplitOptions.None).Length.Should().Be(2);
     }
 
     [Fact]

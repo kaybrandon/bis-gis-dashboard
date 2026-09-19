@@ -58,6 +58,11 @@ export type WorkItemListItem = {
   priorityNote?: string | null
   isReviewed?: boolean
   difficulty?: DocumentDifficulty | null
+  survey?: string | null
+  abstract?: string | null
+  lotBlock?: string | null
+  subdivision?: string | null
+  legalDescription?: string | null
 }
 
 export type DocumentDifficultyBand = 'Easy' | 'Medium' | 'Hard'
@@ -246,6 +251,12 @@ export type WorkItemDetail = WorkItemListItem & {
   deedCount: number
   platCount: number
   propertyIds?: string | null
+  survey?: string | null
+  abstract?: string | null
+  lotBlock?: string | null
+  subdivision?: string | null
+  legalDescription?: string | null
+  deedPlatManual?: WorkItemDeedPlatManual | null
   isPriority?: boolean
   priorityNote?: string | null
   priorityRequestedAt?: string | null
@@ -307,7 +318,20 @@ export type AiFillResponse = {
     deedCount: AiFillIntField
     platCount: AiFillIntField
     workedOn: AiFillDateField
+    survey?: AiFillStringField
+    abstract?: AiFillStringField
+    lotBlock?: AiFillStringField
+    subdivision?: AiFillStringField
+    legalDescription?: AiFillStringField
   }
+}
+
+export type WorkItemDeedPlatManual = {
+  survey: boolean
+  abstract: boolean
+  lotBlock: boolean
+  subdivision: boolean
+  legalDescription: boolean
 }
 
 export type WorkItemAiScanStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'unconfigured' | 'skipped' | string
@@ -321,6 +345,11 @@ export type WorkItemAiScanBaseline = {
   deedCount: number
   platCount: number
   workedOn?: string | null
+  survey?: string | null
+  abstract?: string | null
+  lotBlock?: string | null
+  subdivision?: string | null
+  legalDescription?: string | null
 }
 
 export type WorkItemAiScan = {
@@ -671,9 +700,10 @@ export const api = {
     }),
   workItems: (query: WorkItemQuery) =>
     request<WorkItemListResponse>(`/api/work-items?${queryString(query)}`),
-  exportWorkItems: async (query: WorkItemQuery) => {
+  exportWorkItems: async (query: WorkItemQuery, format: 'csv' | 'xlsx' = 'csv') => {
     const token = getToken()
-    const response = await fetch(`/api/work-items/export?${queryString(query)}`, {
+    const qs = queryString(query)
+    const response = await fetch(`/api/work-items/export?${qs}${qs ? '&' : ''}format=${format}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     })
     if (!response.ok) throw new Error('Export failed.')
@@ -681,7 +711,7 @@ export const api = {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'gis-work-items.csv'
+    link.download = format === 'xlsx' ? 'gis-work-items.xlsx' : 'gis-work-items.csv'
     link.click()
     URL.revokeObjectURL(url)
   },

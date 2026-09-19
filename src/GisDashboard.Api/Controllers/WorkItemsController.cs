@@ -24,9 +24,12 @@ public sealed class WorkItemsController : ControllerBase
         _workItems.ListAsync(query, cancellationToken);
 
     [HttpGet("export")]
-    public async Task<IActionResult> Export([FromQuery] WorkItemQuery query, CancellationToken cancellationToken)
+    public async Task<IActionResult> Export(
+        [FromQuery] WorkItemQuery query,
+        [FromQuery] string? format,
+        CancellationToken cancellationToken)
     {
-        var file = await _workItems.ExportAsync(query, cancellationToken);
+        var file = await _workItems.ExportAsync(query, format, cancellationToken);
         return File(file.Content, file.ContentType, file.FileName);
     }
 

@@ -581,6 +581,32 @@ public sealed class ScriptedOpenAiCompletions : IAzureOpenAiCompletions
             """;
     }
 
+    public static string JsonWithDeedPlat(
+        string survey,
+        string @abstract,
+        string lotBlock,
+        string subdivision,
+        string legalDescription) =>
+        $$"""
+            {
+              "overallConfidence": 0.84,
+              "title": { "present": true, "value": "N-14-042 Final Plat", "confidence": 0.91 },
+              "type": { "present": true, "value": "Plat", "confidence": 0.93 },
+              "propertyIds": { "present": false, "value": null, "confidence": 0 },
+              "annexationCount": { "present": true, "value": 0, "confidence": 0.55 },
+              "correctionCount": { "present": false, "value": null, "confidence": 0 },
+              "deedCount": { "present": true, "value": 0, "confidence": 0.6 },
+              "platCount": { "present": true, "value": 1, "confidence": 0.88 },
+              "workedOn": { "present": true, "value": "2026-03-15", "confidence": 0.64 },
+              "survey": { "present": true, "value": {{System.Text.Json.JsonSerializer.Serialize(survey)}}, "confidence": 0.8 },
+              "abstract": { "present": true, "value": {{System.Text.Json.JsonSerializer.Serialize(@abstract)}}, "confidence": 0.78 },
+              "lotBlock": { "present": true, "value": {{System.Text.Json.JsonSerializer.Serialize(lotBlock)}}, "confidence": 0.9 },
+              "subdivision": { "present": true, "value": {{System.Text.Json.JsonSerializer.Serialize(subdivision)}}, "confidence": 0.86 },
+              "legalDescription": { "present": true, "value": {{System.Text.Json.JsonSerializer.Serialize(legalDescription)}}, "confidence": 0.82 },
+              "difficulty": { "band": "Easy", "why": "Lot-and-block plat with one parcel.", "reasons": ["Lot-and-block plat with one parcel."] }
+            }
+            """;
+
     public static string JsonWithPropertyIds(string value) =>
         $$"""
             {

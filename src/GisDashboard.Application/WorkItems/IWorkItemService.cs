@@ -10,7 +10,7 @@ public interface IWorkItemService
     Task<FileDownload> OpenFileAsync(Guid id, CancellationToken cancellationToken = default);
     Task<FilePreview> OpenPreviewAsync(Guid id, CancellationToken cancellationToken = default);
     Task<DashboardResponse> GetDashboardAsync(DashboardQuery query, CancellationToken cancellationToken = default);
-    Task<ExcelExport> ExportAsync(WorkItemQuery query, CancellationToken cancellationToken = default);
+    Task<ExcelExport> ExportAsync(WorkItemQuery query, string? format = null, CancellationToken cancellationToken = default);
     Task<PublicUploadInfo> GetPublicUploadAsync(string token, CancellationToken cancellationToken = default);
     Task<PublicUploadResult> UploadByTokenAsync(string token, UploadWorkItemRequest request, CancellationToken cancellationToken = default);
     Task NotifyPublicUploadReceivedAsync(string token, PublicUploadReceivedRequest request, CancellationToken cancellationToken = default);

@@ -9,7 +9,7 @@ import {
   ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { App, Button, Card, ConfigProvider, DatePicker, Flex, Input, Menu, Pagination, Select, Space, Table, Tag, Typography } from 'antd'
+import { App, Button, Card, ConfigProvider, DatePicker, Dropdown, Flex, Input, Menu, Pagination, Select, Space, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
@@ -376,10 +376,10 @@ export function ManageDocumentsPage() {
     }
   }
 
-  const onExport = async () => {
+  const onExport = async (format: 'csv' | 'xlsx') => {
     setExporting(true)
     try {
-      await api.exportWorkItems(query())
+      await api.exportWorkItems(query(), format)
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Export failed.')
     } finally {
@@ -700,9 +700,18 @@ export function ManageDocumentsPage() {
           </Typography.Title>
         </div>
         <Space wrap>
-          <Button icon={<DownloadOutlined />} loading={exporting} onClick={() => void onExport()}>
-            {isMobile ? 'Export' : 'Export to Excel'}
-          </Button>
+          <Dropdown
+            menu={{
+              items: [
+                { key: 'xlsx', label: 'Export Excel', onClick: () => void onExport('xlsx') },
+                { key: 'csv', label: 'Export CSV', onClick: () => void onExport('csv') },
+              ],
+            }}
+          >
+            <Button icon={<DownloadOutlined />} loading={exporting}>
+              {isMobile ? 'Export' : 'Export'}
+            </Button>
+          </Dropdown>
           {user?.canUpload ? (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/upload-documents')}>
               Upload

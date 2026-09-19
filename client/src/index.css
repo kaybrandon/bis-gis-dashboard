@@ -1108,6 +1108,30 @@ body,
   padding-right: 2px;
 }
 
+.deed-plat-panel {
+  min-width: 0;
+}
+
+.deed-plat-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.deed-plat-field span {
+  font-size: 12px;
+  color: var(--mask-text);
+}
+
+.deed-plat-field .ant-input,
+.deed-plat-field .ant-input-affix-wrapper,
+.deed-plat-field textarea {
+  width: 100%;
+  max-width: 100%;
+}
+
 .viewer-pane {
   min-height: 0;
   height: 100%;

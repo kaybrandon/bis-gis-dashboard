@@ -48,6 +48,17 @@ public sealed class WorkItem
     public int PlatCount { get; set; }
     public string? PropertyIds { get; set; }
 
+    public string? Survey { get; set; }
+    public string? Abstract { get; set; }
+    public string? LotBlock { get; set; }
+    public string? Subdivision { get; set; }
+    public string? LegalDescription { get; set; }
+    public bool SurveyManual { get; set; }
+    public bool AbstractManual { get; set; }
+    public bool LotBlockManual { get; set; }
+    public bool SubdivisionManual { get; set; }
+    public bool LegalDescriptionManual { get; set; }
+
     public string? BlobPath { get; set; }
     public string? ContentType { get; set; }
     public long FileSizeBytes { get; set; }
