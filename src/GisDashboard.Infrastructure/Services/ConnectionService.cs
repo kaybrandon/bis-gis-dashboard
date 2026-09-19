@@ -296,8 +296,14 @@ public sealed class ConnectionService : IConnectionService
     public async Task<IReadOnlyList<FileServerDto>> ListFileServersAsync(CancellationToken cancellationToken = default)
     {
         EnsureCanSee();
-        var rows = await _db.FileServers.AsNoTracking().OrderBy(x => x.Name).ToListAsync(cancellationToken);
-        return rows.Select(x => new FileServerDto(x.Id, x.Name, x.RootPath, x.RootPath)).ToList();
+        return await _db.FileServers.AsNoTracking()
+            .OrderBy(x => x.Name)
+            .Select(x => new FileServerDto(
+                x.Id,
+                x.Name ?? string.Empty,
+                x.RootPath ?? string.Empty,
+                x.RootPath ?? string.Empty))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<FileServerDto> CreateFileServerAsync(string name, string rootPath, CancellationToken cancellationToken = default)
@@ -312,7 +318,7 @@ public sealed class ConnectionService : IConnectionService
         };
         _db.FileServers.Add(row);
         await _db.SaveChangesAsync(cancellationToken);
-        return new FileServerDto(row.Id, row.Name, row.RootPath, row.RootPath);
+        return MapFileServer(row);
     }
 
     public async Task<SyncControlDto> GetSyncControlAsync(CancellationToken cancellationToken = default)
@@ -866,14 +872,21 @@ public sealed class ConnectionService : IConnectionService
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
         ?? throw new NotFoundException("Connection was not found.");
 
+    private static FileServerDto MapFileServer(FileServer row) =>
+        new(
+            row.Id,
+            row.Name ?? string.Empty,
+            row.RootPath ?? string.Empty,
+            row.RootPath ?? string.Empty);
+
     private FileConnectionDto MapFile(FileConnection row) =>
         new(
             row.Id,
             row.OrganizationId,
             row.Organization?.Name ?? "Client",
             row.FileServerId,
-            row.FileServer?.RootPath,
-            row.FileServer?.RootPath,
+            row.FileServer is null ? null : row.FileServer.RootPath ?? string.Empty,
+            row.FileServer is null ? null : row.FileServer.RootPath ?? string.Empty,
             ConnectionPath.Canonicalize(row.SourcePath),
             row.FtpFolder,
             row.FtpUrl,

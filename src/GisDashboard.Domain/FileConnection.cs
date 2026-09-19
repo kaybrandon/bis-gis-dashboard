@@ -8,7 +8,7 @@ public sealed class FileConnection
     public Organization? Organization { get; set; }
     public Guid? FileServerId { get; set; }
     public FileServer? FileServer { get; set; }
-    public string SourcePath { get; set; } = string.Empty;
+    public string? SourcePath { get; set; }
     public string? FtpFolder { get; set; }
     public string? FtpUrl { get; set; }
     public string? FtpUserName { get; set; }

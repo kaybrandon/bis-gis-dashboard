@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using GisDashboard.Domain;
 using GisDashboard.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GisDashboard.Tests;
 
@@ -244,5 +247,80 @@ public sealed class ConnectionsTests : IClassFixture<ApiFactory>
         run.GetProperty("lastError").GetString().Should().NotContain("[PATH_NOT_FOUND]");
         run.GetProperty("heartbeatLabel").GetString().Should().NotBe("—");
         run.GetProperty("lastHeartbeatAt").ValueKind.Should().NotBe(System.Text.Json.JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task File_servers_and_connections_survive_null_string_columns()
+    {
+        var nullServerId = Guid.Parse("12121212-0000-0000-0000-000000000099");
+        var nullConnId = Guid.Parse("12121212-0000-0000-0000-000000000098");
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.FileServers.Add(new FileServer
+            {
+                Id = nullServerId,
+                Name = null,
+                RootPath = null,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            db.FileConnections.Add(new FileConnection
+            {
+                Id = nullConnId,
+                OrganizationId = SeedIds.OtherClient,
+                FileServerId = nullServerId,
+                SourcePath = null,
+                Enabled = true,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                UPDATE FileServers SET Name = NULL, RootPath = NULL WHERE Id = {0};
+                UPDATE FileConnections SET SourcePath = NULL WHERE Id = {1};
+                """,
+                nullServerId.ToString(),
+                nullConnId.ToString());
+        }
+
+        var client = await _factory.LoginAsync("admin@bisconsultants.local");
+        (await client.GetAsync("/api/health")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var serversResponse = await client.GetAsync("/api/file-servers");
+        serversResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var servers = await serversResponse.ReadJsonAsync();
+        servers.GetArrayLength().Should().BeGreaterThan(1);
+
+        var demo = servers.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == SeedIds.LocalFileServer);
+        demo.GetProperty("name").GetString().Should().Be("Local files");
+        demo.GetProperty("rootPath").GetString().Should().Be("workfiles");
+        demo.GetProperty("sourceRoot").GetString().Should().Be("workfiles");
+
+        var broken = servers.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == nullServerId);
+        broken.GetProperty("name").GetString().Should().BeEmpty();
+        broken.GetProperty("rootPath").GetString().Should().BeEmpty();
+        broken.GetProperty("sourceRoot").GetString().Should().BeEmpty();
+
+        var filesResponse = await client.GetAsync("/api/connections");
+        filesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var files = await filesResponse.ReadJsonAsync();
+        files.GetArrayLength().Should().BeGreaterThan(1);
+
+        var demoConn = files.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == SeedIds.DemoFileConnection);
+        demoConn.GetProperty("sourcePath").GetString().Should().Be("workfiles/orgs/democlient/shapefiles");
+        demoConn.GetProperty("fileServerRoot").GetString().Should().Be("workfiles");
+
+        var brokenConn = files.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == nullConnId);
+        brokenConn.GetProperty("sourcePath").GetString().Should().BeEmpty();
+        brokenConn.GetProperty("fileServerId").GetGuid().Should().Be(nullServerId);
+        (brokenConn.GetProperty("sourceRoot").GetString() ?? string.Empty).Should().BeEmpty();
+        (brokenConn.GetProperty("fileServerRoot").GetString() ?? string.Empty).Should().BeEmpty();
     }
 }
