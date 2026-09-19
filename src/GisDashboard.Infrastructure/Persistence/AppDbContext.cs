@@ -314,14 +314,15 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
         builder.Entity<FileServer>(entity =>
         {
             entity.ToTable("FileServers");
-            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
-            entity.Property(x => x.RootPath).HasMaxLength(1024).IsRequired();
+            // Live rows can have DB-null strings; required mapping throws SqlNullValueException on list.
+            entity.Property(x => x.Name).HasMaxLength(200);
+            entity.Property(x => x.RootPath).HasMaxLength(1024);
         });
 
         builder.Entity<FileConnection>(entity =>
         {
             entity.ToTable("FileConnections");
-            entity.Property(x => x.SourcePath).HasMaxLength(1024).IsRequired();
+            entity.Property(x => x.SourcePath).HasMaxLength(1024);
             entity.Property(x => x.FtpFolder).HasMaxLength(260);
             entity.Property(x => x.FtpUrl).HasMaxLength(500);
             entity.Property(x => x.FtpUserName).HasMaxLength(200);
