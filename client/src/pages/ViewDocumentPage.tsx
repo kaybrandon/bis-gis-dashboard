@@ -1,4 +1,4 @@
-import { DownloadOutlined, ExportOutlined, LeftOutlined, RightOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { DownloadOutlined, ExportOutlined, LeftOutlined, QuestionCircleOutlined, RightOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Checkbox, Col, DatePicker, Dropdown, Input, InputNumber, Modal, Row, Select, Space, Spin, Tag, Tooltip, Typography, message } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -14,6 +14,8 @@ import {
   type AiFillDraft,
   type AiHint,
 } from '../aiScan'
+import { AI_FILL_HELP_TITLE } from '../aiFillHelp'
+import { AiFillHelpFirstReviewTip, AiFillHelpModal, AiFillHelpOpenButton } from '../components/AiFillHelpScreen'
 import { CommentsPanel } from '../components/CommentsPanel'
 import { LoadError } from '../components/LoadError'
 import { DocumentViewer } from '../components/DocumentViewer'
@@ -172,6 +174,7 @@ export function ViewDocumentPage() {
   const [aiHints, setAiHints] = useState<Partial<Record<AiFieldKey, AiHint>>>({})
   const [aiOverall, setAiOverall] = useState<number | null>(null)
   const [appliedScanKey, setAppliedScanKey] = useState<string | null>(null)
+  const [aiFillHelpOpen, setAiFillHelpOpen] = useState(false)
 
   const query: WorkItemQuery = {
     search: params.get('search') ?? undefined,
@@ -495,6 +498,7 @@ export function ViewDocumentPage() {
           )}
         </div>
         <Space size={8} wrap>
+          <AiFillHelpOpenButton onOpen={() => setAiFillHelpOpen(true)} />
           {aiOverall != null && pendingAi.length > 0 && (
             <Button size="small" onClick={approveAll}>Approve AI fields</Button>
           )}
@@ -533,7 +537,19 @@ export function ViewDocumentPage() {
         <div className="detail-pane">
           <Card
             className="detail-form-card bis-theme-panel"
-            title="Work item"
+            title={(
+              <span className="title-with-help">
+                Work item
+                <button
+                  type="button"
+                  className="help-tip-button"
+                  aria-label={AI_FILL_HELP_TITLE}
+                  onClick={() => setAiFillHelpOpen(true)}
+                >
+                  <QuestionCircleOutlined className="help-tip" />
+                </button>
+              </span>
+            )}
             size="small"
             extra={(
               <Space size={8} wrap>
@@ -545,6 +561,7 @@ export function ViewDocumentPage() {
             )}
           >
             {priorityStrip}
+            <AiFillHelpFirstReviewTip onOpen={() => setAiFillHelpOpen(true)} />
             {isAiScanInFlight(item.aiScan?.status) && (
               <Alert
                 className="ai-scan-banner"
@@ -782,6 +799,7 @@ export function ViewDocumentPage() {
         </Card>
         )}
       </div>
+      <AiFillHelpModal open={aiFillHelpOpen} onClose={() => setAiFillHelpOpen(false)} />
     </div>
   )
 }
