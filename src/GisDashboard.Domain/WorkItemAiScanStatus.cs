@@ -11,10 +11,11 @@ public static class WorkItemAiScanStatus
 
     public const string PendingMessage = "AI scan pending.";
     public const string UnconfiguredMessage =
-        "AI scan failed — Azure OpenAI is not configured. Use AI fill from PDF after it is configured.";
-    public const string FailedMessage = "AI scan failed. Use AI fill from PDF to retry.";
+        "AI scan failed — Azure OpenAI is not configured. Use AI fill after it is configured.";
+    public const string FailedMessage = "AI scan failed. Use AI fill to retry.";
     public const string SucceededMessage = "AI scan finished. Review amber fields, then Save.";
-    public const string SkippedMessage = "AI scan skipped — not a PDF.";
+    public const string SkippedMessage =
+        "AI scan skipped — this file type is not analyzed. Use PDF, JPG/JPEG, PNG, TIFF/TIF, DOCX, or XLSX.";
 
     public static bool IsPdf(string? fileName, string? contentType)
     {

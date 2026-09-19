@@ -19,14 +19,14 @@ const review = readFileSync(join(here, 'pages/ViewDocumentPage.tsx'), 'utf8')
 
 const stamped = [
   'AI **assists** Review — it does **not** finalize the document for you.',
-  'After upload, a scan may run automatically. Status can show **pending**, **finished**, or **failed** (use **Retry** / **AI fill from PDF** if it fails). Upload still succeeds even if AI fails.',
-  '**Scanned / image-only PDFs** are supported — you do not need a selectable text layer for AI fill to run.',
+  'After upload, a scan may run automatically. Status can show **pending**, **finished**, or **failed** (use **Retry** / **AI fill** if it fails). Upload still succeeds even if AI fails.',
+  '**PDF, JPG/JPEG, PNG, TIFF/TIF, DOCX, and XLSX** (first sheet) are analyzed. **Scanned / image-only PDFs** and image uploads do not need a selectable text layer.',
   'Proposed fields show in **amber**. You must **Approve** (or edit) and **Save** before they count. AI never silent-commits alone.',
   '**Difficulty** (Easy / Medium / Hard) is a **hint** for triage — staff can override; it is not a grade of your work.',
   '**Property IDs** are **manual** only — type or paste them yourself. AI does **not** suggest, fill, or approve this field.',
   'On **CAD / web map** PDFs, parcel labels on the map are **not** copied into Property IDs.',
   'Property IDs appear **one per line**. Saved values stay after reopen or an AI re-run.',
-  'Manual **AI fill from PDF** remains available anytime for a re-run.',
+  'Manual **AI fill** remains available anytime for a re-run.',
 ] as const
 
 describe('GIS How AI fill works help', () => {
@@ -41,13 +41,14 @@ describe('GIS How AI fill works help', () => {
 
   it('covers vision PDFs and the same amber Approve \+ Save rule', () => {
     const copy = AI_FILL_HELP_BULLETS.join('\n')
+    assert.match(copy, /JPG\/JPEG, PNG, TIFF\/TIF, DOCX/)
     assert.match(copy, /Scanned \/ image-only PDFs/)
     assert.match(copy, /selectable text layer/)
     assert.match(copy, /\*\*amber\*\*/)
     assert.match(copy, /\*\*Approve\*\* \(or edit\) and \*\*Save\*\*/)
     assert.match(copy, /never silent-commits/)
     assert.match(copy, /\*\*pending\*\*, \*\*finished\*\*, or \*\*failed\*\*/)
-    assert.match(copy, /\*\*Retry\*\* \/ \*\*AI fill from PDF\*\*/)
+    assert.match(copy, /\*\*Retry\*\* \/ \*\*AI fill\*\*/)
     assert.match(copy, /hint\*\* for triage/)
     assert.match(copy, /\*\*manual\*\* only/)
     assert.match(copy, /\*\*CAD \/ web map\*\*/)

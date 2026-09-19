@@ -6,6 +6,7 @@ import {
   fieldMatchesBaseline,
   isAiScanFailed,
   isAiScanInFlight,
+  isAiScanSkipped,
   type AiFillDraft,
 } from './aiScan.ts'
 import type { AiFillResponse, WorkItemAiScanBaseline } from './api.ts'
@@ -80,6 +81,8 @@ describe('auto AI-scan apply rules', () => {
     assert.equal(isAiScanInFlight('running'), true)
     assert.equal(isAiScanFailed('unconfigured'), true)
     assert.equal(isAiScanFailed('failed'), true)
+    assert.equal(isAiScanSkipped('skipped'), true)
+    assert.equal(isAiScanSkipped('failed'), false)
     assert.equal(isAiScanInFlight('succeeded'), false)
   })
 })
