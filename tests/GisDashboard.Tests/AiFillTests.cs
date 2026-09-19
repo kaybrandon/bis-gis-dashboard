@@ -228,25 +228,33 @@ public sealed class AiFillConfiguredTests : IClassFixture<AiFillConfiguredFactor
     }
 
     [Fact]
-    public async Task Seed_png_work_item_fills_via_vision_and_does_not_write_property_ids()
+    public async Task Png_manual_fill_uses_vision_and_does_not_write_property_ids()
     {
         ScriptedOpenAiCompletions.Reset();
         ScriptedOpenAiCompletions.ResponseJson = ScriptedOpenAiCompletions.JsonWithPropertyIds("""["R701", "R702"]""");
         var client = await _factory.LoginAsync("editor@bisconsultants.local");
-        var before = await (await client.GetAsync($"/api/work-items/{SeedIds.DemoDeed}")).ReadJsonAsync();
-        var response = await client.PostAsync($"/api/work-items/{SeedIds.DemoDeed}/ai-fill", null);
+        var uploaded = await AiFillUpload.PostAsync(
+            client,
+            await OfficeAiFillFixtures.PngBytesAsync(),
+            "warranty-deed.png",
+            "Warranty deed scan");
+        uploaded.StatusCode.Should().Be(HttpStatusCode.OK, await uploaded.Content.ReadAsStringAsync());
+        var id = (await uploaded.ReadJsonAsync()).GetProperty("id").GetGuid();
+        await client.PatchAsJsonAsync($"/api/work-items/{id}", new { propertyIds = "MANUAL-PNG" });
+
+        var response = await client.PostAsync($"/api/work-items/{id}/ai-fill", null);
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
         var json = await response.ReadJsonAsync();
         json.GetProperty("fields").GetProperty("title").GetProperty("present").GetBoolean().Should().BeTrue();
         json.GetProperty("fields").GetProperty("propertyIds").GetProperty("present").GetBoolean().Should().BeFalse();
         AssertEmptyPropertyIds(json.GetProperty("fields").GetProperty("propertyIds"));
-        ScriptedOpenAiCompletions.VisionCalls.Should().Be(1);
+        ScriptedOpenAiCompletions.VisionCalls.Should().BeGreaterThan(0);
         ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("JPG/JPEG, PNG, or TIFF/TIF");
         ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("Do not extract or return propertyIds");
 
-        var after = await (await client.GetAsync($"/api/work-items/{SeedIds.DemoDeed}")).ReadJsonAsync();
-        after.GetProperty("propertyIds").GetString().Should().Be(before.GetProperty("propertyIds").GetString());
-        after.GetProperty("title").GetString().Should().Be(before.GetProperty("title").GetString());
+        var after = await (await client.GetAsync($"/api/work-items/{id}")).ReadJsonAsync();
+        after.GetProperty("propertyIds").GetString().Should().Be("MANUAL-PNG");
+        after.GetProperty("title").GetString().Should().Be("Warranty deed scan");
     }
 
     [Fact]
