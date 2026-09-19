@@ -338,6 +338,8 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         $"type.value must be one of: {allowed}.\n" +
         "Do not extract or return propertyIds. Property IDs are entered manually by staff.\n" +
         "Always omit propertyIds or set present=false with an empty value. Never copy CAD, web-map, or plat parcel labels into propertyIds.\n" +
+        "Also extract survey, abstract, lotBlock, subdivision, and legalDescription when the document supports them.\n" +
+        "Leave present=false and do not guess when a deed/plat field is missing. legalDescription may be multiline.\n" +
         "Counts are non-negative integers.\n" +
         "workedOn is YYYY-MM-DD only when a work, recording, or file date is obvious.\n" +
         "Each field is { \"present\": bool, \"value\": ..., \"confidence\": number from 0 to 1 }.\n" +
@@ -400,6 +402,11 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         var plats = ReadInt(root, "platCount");
         var worked = ReadDate(root, "workedOn");
         var type = ReadType(root, types);
+        var survey = ReadString(root, "survey");
+        var abstractField = ReadString(root, "abstract");
+        var lotBlock = ReadString(root, "lotBlock");
+        var subdivision = ReadString(root, "subdivision");
+        var legalDescription = ReadString(root, "legalDescription");
 
         var present = new List<double>();
         AddIfPresent(present, title.Present, title.Confidence);
@@ -409,6 +416,11 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         AddIfPresent(present, deeds.Present, deeds.Confidence);
         AddIfPresent(present, plats.Present, plats.Confidence);
         AddIfPresent(present, worked.Present, worked.Confidence);
+        AddIfPresent(present, survey.Present, survey.Confidence);
+        AddIfPresent(present, abstractField.Present, abstractField.Confidence);
+        AddIfPresent(present, lotBlock.Present, lotBlock.Confidence);
+        AddIfPresent(present, subdivision.Present, subdivision.Confidence);
+        AddIfPresent(present, legalDescription.Present, legalDescription.Confidence);
 
         var overall = ReadConfidence(root, "overallConfidence");
         if (overall is null)
@@ -422,7 +434,20 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
             warning = "No fields could be filled from this PDF.";
         }
 
-        var fields = new AiFillFields(title, type, propertyIds, annex, corr, deeds, plats, worked);
+        var fields = new AiFillFields(
+            title,
+            type,
+            propertyIds,
+            annex,
+            corr,
+            deeds,
+            plats,
+            worked,
+            survey,
+            abstractField,
+            lotBlock,
+            subdivision,
+            legalDescription);
         var scored = ReadDifficulty(root, extracted, fields, Clamp(overall.Value));
         return new AiFillResponse(
             Clamp(overall.Value),
@@ -690,6 +715,7 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         var hadOverride = entity.DifficultyOverridden;
         var keepOverride = hadOverride && !rescore;
         entity.ApplyAiDifficulty(scored.Band, scored.Why, replaceOverride: rescore);
+        ApplyDeedPlatAi(entity, response.Fields);
         await _db.SaveChangesAsync(cancellationToken);
 
         return response with
@@ -702,6 +728,64 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
                 effectiveBand: entity.DifficultyBand,
                 effectiveWhy: entity.DifficultyWhy)
         };
+    }
+
+    private static void ApplyDeedPlatAi(WorkItem item, AiFillFields fields)
+    {
+        if (DeedPlatFields.TryApplyAi(
+                item.SurveyManual,
+                item.Survey,
+                fields.SurveyOrEmpty.Present,
+                fields.SurveyOrEmpty.Value,
+                DeedPlatFields.ShortMaxLength,
+                out var survey))
+        {
+            item.Survey = survey;
+        }
+
+        if (DeedPlatFields.TryApplyAi(
+                item.AbstractManual,
+                item.Abstract,
+                fields.AbstractOrEmpty.Present,
+                fields.AbstractOrEmpty.Value,
+                DeedPlatFields.ShortMaxLength,
+                out var abstractValue))
+        {
+            item.Abstract = abstractValue;
+        }
+
+        if (DeedPlatFields.TryApplyAi(
+                item.LotBlockManual,
+                item.LotBlock,
+                fields.LotBlockOrEmpty.Present,
+                fields.LotBlockOrEmpty.Value,
+                DeedPlatFields.ShortMaxLength,
+                out var lotBlock))
+        {
+            item.LotBlock = lotBlock;
+        }
+
+        if (DeedPlatFields.TryApplyAi(
+                item.SubdivisionManual,
+                item.Subdivision,
+                fields.SubdivisionOrEmpty.Present,
+                fields.SubdivisionOrEmpty.Value,
+                DeedPlatFields.ShortMaxLength,
+                out var subdivision))
+        {
+            item.Subdivision = subdivision;
+        }
+
+        if (DeedPlatFields.TryApplyAi(
+                item.LegalDescriptionManual,
+                item.LegalDescription,
+                fields.LegalDescriptionOrEmpty.Present,
+                fields.LegalDescriptionOrEmpty.Value,
+                DeedPlatFields.LegalDescriptionMaxLength,
+                out var legal))
+        {
+            item.LegalDescription = legal;
+        }
     }
 
     private static DocumentDifficulty ToDto(

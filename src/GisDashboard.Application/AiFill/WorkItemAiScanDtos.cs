@@ -20,7 +20,12 @@ public sealed record WorkItemAiScanBaseline(
     int CorrectionCount,
     int DeedCount,
     int PlatCount,
-    string? WorkedOn);
+    string? WorkedOn,
+    string? Survey = null,
+    string? Abstract = null,
+    string? LotBlock = null,
+    string? Subdivision = null,
+    string? LegalDescription = null);
 
 public static class WorkItemAiScanJson
 {
@@ -41,7 +46,12 @@ public static class WorkItemAiScanJson
                 item.CorrectionCount,
                 item.DeedCount,
                 item.PlatCount,
-                item.WorkedOn?.ToString("yyyy-MM-dd")),
+                item.WorkedOn?.ToString("yyyy-MM-dd"),
+                item.Survey,
+                item.Abstract,
+                item.LotBlock,
+                item.Subdivision,
+                item.LegalDescription),
             Options);
 
     public static WorkItemAiScan? FromStored(

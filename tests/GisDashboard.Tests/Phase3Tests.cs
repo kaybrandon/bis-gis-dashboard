@@ -106,7 +106,7 @@ public sealed class Phase3Tests : IClassFixture<ApiFactory>
         var bytes = await response.Content.ReadAsByteArrayAsync();
         bytes[0].Should().Be(0xEF);
         var text = Encoding.UTF8.GetString(bytes);
-        text.Should().Contain("FileName,Client Name,Status,Assigned To,Upload Date,Worked Date,Hours,Priority,Needed By");
+        text.Should().Contain("FileName,Client Name,Status,Assigned To,Upload Date,Worked Date,Hours,Priority,Needed By,Survey,Abstract,Lot/Block,Subdivision,Legal Description");
         text.Should().Contain("N-14-042 Plat.pdf");
         text.Should().NotContain("assignedToUserId");
         text.Should().NotContain(SeedIds.EditorDemo.ToString());

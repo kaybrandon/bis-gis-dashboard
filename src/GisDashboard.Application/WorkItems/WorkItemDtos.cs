@@ -29,7 +29,12 @@ public sealed record WorkItemListItem(
     bool IsPriority,
     string? PriorityNote,
     bool IsReviewed,
-    DocumentDifficulty? Difficulty);
+    DocumentDifficulty? Difficulty,
+    string? Survey = null,
+    string? Abstract = null,
+    string? LotBlock = null,
+    string? Subdivision = null,
+    string? LegalDescription = null);
 
 public sealed record NamedCount(Guid Id, string Name, string? Color, int Count);
 
@@ -90,7 +95,20 @@ public sealed record WorkItemDetail(
     bool IsReviewed,
     DateTimeOffset? PriorityNeededBy,
     DocumentDifficulty? Difficulty,
+    string? Survey = null,
+    string? Abstract = null,
+    string? LotBlock = null,
+    string? Subdivision = null,
+    string? LegalDescription = null,
+    WorkItemDeedPlatManual? DeedPlatManual = null,
     WorkItemAiScan? AiScan = null);
+
+public sealed record WorkItemDeedPlatManual(
+    bool Survey,
+    bool Abstract,
+    bool LotBlock,
+    bool Subdivision,
+    bool LegalDescription);
 
 public sealed record WorkItemNeighbors(Guid? PreviousId, Guid? NextId);
 
@@ -136,6 +154,11 @@ public sealed class UpdateWorkItemRequest
     public int? DeedCount { get; set; }
     public int? PlatCount { get; set; }
     public string? PropertyIds { get; set; }
+    public string? Survey { get; set; }
+    public string? Abstract { get; set; }
+    public string? LotBlock { get; set; }
+    public string? Subdivision { get; set; }
+    public string? LegalDescription { get; set; }
     public bool? IsPriority { get; set; }
     public string? PriorityNote { get; set; }
     public DateTimeOffset? PriorityNeededBy { get; set; }

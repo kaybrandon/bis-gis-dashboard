@@ -17,7 +17,21 @@ public sealed record AiFillFields(
     AiFillIntField CorrectionCount,
     AiFillIntField DeedCount,
     AiFillIntField PlatCount,
-    AiFillDateField WorkedOn);
+    AiFillDateField WorkedOn,
+    AiFillStringField? Survey = null,
+    AiFillStringField? Abstract = null,
+    AiFillStringField? LotBlock = null,
+    AiFillStringField? Subdivision = null,
+    AiFillStringField? LegalDescription = null)
+{
+    public AiFillStringField SurveyOrEmpty => Survey ?? EmptyString;
+    public AiFillStringField AbstractOrEmpty => Abstract ?? EmptyString;
+    public AiFillStringField LotBlockOrEmpty => LotBlock ?? EmptyString;
+    public AiFillStringField SubdivisionOrEmpty => Subdivision ?? EmptyString;
+    public AiFillStringField LegalDescriptionOrEmpty => LegalDescription ?? EmptyString;
+
+    private static readonly AiFillStringField EmptyString = new(false, null, 0);
+}
 
 public sealed record AiFillStringField(bool Present, string? Value, double Confidence);
 

@@ -480,6 +480,44 @@ public sealed class WorkItemService : IWorkItemService
             item.PropertyIds = string.IsNullOrWhiteSpace(request.PropertyIds) ? null : request.PropertyIds.Trim();
         }
 
+        if (request.Survey is not null
+            || request.Abstract is not null
+            || request.LotBlock is not null
+            || request.Subdivision is not null
+            || request.LegalDescription is not null)
+        {
+            EnsureCanMutate();
+            if (request.Survey is not null)
+            {
+                item.Survey = DeedPlatFields.NormalizeShort(request.Survey);
+                item.SurveyManual = true;
+            }
+
+            if (request.Abstract is not null)
+            {
+                item.Abstract = DeedPlatFields.NormalizeShort(request.Abstract);
+                item.AbstractManual = true;
+            }
+
+            if (request.LotBlock is not null)
+            {
+                item.LotBlock = DeedPlatFields.NormalizeShort(request.LotBlock);
+                item.LotBlockManual = true;
+            }
+
+            if (request.Subdivision is not null)
+            {
+                item.Subdivision = DeedPlatFields.NormalizeShort(request.Subdivision);
+                item.SubdivisionManual = true;
+            }
+
+            if (request.LegalDescription is not null)
+            {
+                item.LegalDescription = DeedPlatFields.NormalizeLegal(request.LegalDescription);
+                item.LegalDescriptionManual = true;
+            }
+        }
+
         if (request.StatusId is { } nextStatus &&
             (nextStatus == SeedIds.StatusWorked || nextStatus == SeedIds.StatusQcd) &&
             item.WorkedOn is null)
@@ -915,7 +953,7 @@ public sealed class WorkItemService : IWorkItemService
         }
     }
 
-    public async Task<ExcelExport> ExportAsync(WorkItemQuery query, CancellationToken cancellationToken = default)
+    public async Task<ExcelExport> ExportAsync(WorkItemQuery query, string? format = null, CancellationToken cancellationToken = default)
     {
         await EnsureOrganizationFilterAsync(query.OrganizationId, cancellationToken);
         var allowed = await _orgScope.GetAllowedOrganizationIdsAsync(cancellationToken);
@@ -961,7 +999,12 @@ public sealed class WorkItemService : IWorkItemService
                 x.DifficultyBand,
                 x.DifficultyWhy,
                 x.DifficultyOverridden,
-                x.AiDifficultyBand
+                x.AiDifficultyBand,
+                x.Survey,
+                x.Abstract,
+                x.LotBlock,
+                x.Subdivision,
+                x.LegalDescription
             })
             .ToListAsync(cancellationToken);
 
@@ -981,9 +1024,22 @@ public sealed class WorkItemService : IWorkItemService
             x.UpdatedAt,
             x.WorkedOn, TimeDurations.ToHours(x.Minutes), TimeDurations.Format(x.Minutes), x.FirstDeadline, x.FinalDeadline,
             x.ContentType, x.FileSizeBytes, x.IsPriority, x.PriorityNote, x.IsReviewed,
-            DocumentDifficulty.FromStored(x.DifficultyBand, x.DifficultyWhy, x.DifficultyOverridden, x.AiDifficultyBand))).ToList();
-        return WorkItemCsvExport.Build(items);
+            DocumentDifficulty.FromStored(x.DifficultyBand, x.DifficultyWhy, x.DifficultyOverridden, x.AiDifficultyBand),
+            x.Survey,
+            x.Abstract,
+            x.LotBlock,
+            x.Subdivision,
+            x.LegalDescription)).ToList();
+        return IsExcelWorkbook(format)
+            ? WorkItemExcelExport.Build(items)
+            : WorkItemCsvExport.Build(items, IsPlainCsv(format) ? "text/csv" : "application/vnd.ms-excel");
     }
+
+    private static bool IsExcelWorkbook(string? format) =>
+        string.Equals(format, "xlsx", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsPlainCsv(string? format) =>
+        string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase);
 
     private async Task<Organization> FindOrgByTokenAsync(string token, CancellationToken cancellationToken)
     {
@@ -1513,6 +1569,17 @@ public sealed class WorkItemService : IWorkItemService
             item.IsReviewed,
             item.PriorityNeededBy,
             DocumentDifficulty.FromStored(item.DifficultyBand, item.DifficultyWhy, item.DifficultyOverridden, item.AiDifficultyBand),
+            item.Survey,
+            item.Abstract,
+            item.LotBlock,
+            item.Subdivision,
+            item.LegalDescription,
+            new WorkItemDeedPlatManual(
+                item.SurveyManual,
+                item.AbstractManual,
+                item.LotBlockManual,
+                item.SubdivisionManual,
+                item.LegalDescriptionManual),
             WorkItemAiScanJson.FromStored(
                 item.AiScanStatus,
                 item.AiScanMessage,

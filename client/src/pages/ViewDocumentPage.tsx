@@ -22,6 +22,7 @@ import { DocumentViewer } from '../components/DocumentViewer'
 import { InternalNotesPanel } from '../components/InternalNotesPanel'
 import { WorkPresenceMarks } from '../components/PresencePeople'
 import { TimeLogPanel } from '../components/TimeLogPanel'
+import { DeedPlatPanel } from '../components/DeedPlatPanel'
 import { ASSIGNED_TO_HELP, ASSIGNED_TO_LABEL, UNASSIGNED_LABEL } from '../assignmentLabels'
 import { isNeededByOverdue } from '../neededBy'
 import { statusSelectOptions } from '../statusSelectOptions'
@@ -108,6 +109,11 @@ function toAiDraft(draft: Draft): AiFillDraft {
     deedCount: draft.deedCount,
     platCount: draft.platCount,
     workedOn: draft.workedOn ? draft.workedOn.format('YYYY-MM-DD') : null,
+    survey: '',
+    abstract: '',
+    lotBlock: '',
+    subdivision: '',
+    legalDescription: '',
   }
 }
 
@@ -127,7 +133,13 @@ function mergeAiDraft(current: Draft, next: AiFillDraft): Draft {
 
 function applyAiFill(current: Draft, result: AiFillResponse): { next: Draft; hints: Partial<Record<AiFieldKey, AiHint>> } {
   const applied = applyAiFillFields(toAiDraft(current), result)
-  return { next: mergeAiDraft(current, applied.next), hints: applied.hints }
+  const hints = { ...applied.hints }
+  delete hints.survey
+  delete hints.abstract
+  delete hints.lotBlock
+  delete hints.subdivision
+  delete hints.legalDescription
+  return { next: mergeAiDraft(current, applied.next), hints }
 }
 
 function AiField({
@@ -175,6 +187,8 @@ export function ViewDocumentPage() {
   const [aiOverall, setAiOverall] = useState<number | null>(null)
   const [appliedScanKey, setAppliedScanKey] = useState<string | null>(null)
   const [aiFillHelpOpen, setAiFillHelpOpen] = useState(false)
+  const [deedPlatAiFill, setDeedPlatAiFill] = useState<AiFillResponse | null>(null)
+  const [deedPlatAiFillKey, setDeedPlatAiFillKey] = useState<string | null>(null)
 
   const query: WorkItemQuery = {
     search: params.get('search') ?? undefined,
@@ -194,6 +208,8 @@ export function ViewDocumentPage() {
     setAiHints({})
     setAiOverall(null)
     setAppliedScanKey(null)
+    setDeedPlatAiFill(null)
+    setDeedPlatAiFillKey(null)
     Promise.all([
       api.workItem(id),
       api.neighbors(id, query),
@@ -295,6 +311,8 @@ export function ViewDocumentPage() {
     setFilling(true)
     try {
       const result = await api.aiFillFromPdf(item.id, { rescore })
+      setDeedPlatAiFill(result)
+      setDeedPlatAiFillKey(`${item.id}:fill:${Date.now()}`)
       const applied = applyAiFill(draft, result)
       setAiHints(applied.hints)
       setAiOverall(result.overallConfidence)
@@ -469,7 +487,7 @@ export function ViewDocumentPage() {
   }
 
   const aiButton = item.canMutate ? (
-    <Tooltip title="Fills Title, Type, counts, and Worked date from the PDF text, or from page images when the file is scanned / image-only. Property IDs stay manual — AI does not suggest or overwrite them. Scores Easy / Medium / Hard on the same pass. Status, assignee, and flags are not changed. Field fill still needs Save. A staff difficulty override sticks unless you confirm re-score.">
+    <Tooltip title="Fills Title, Type, counts, Worked date, and deed/plat fields from the PDF text, or from page images when the file is scanned / image-only. Property IDs stay manual — AI does not suggest or overwrite them. Saved deed/plat corrections are kept. Scores Easy / Medium / Hard on the same pass. Status, assignee, and flags are not changed. Field fill still needs Save. A staff difficulty override sticks unless you confirm re-score.">
       <Button
         size="small"
         icon={<ThunderboltOutlined />}
@@ -773,9 +791,15 @@ export function ViewDocumentPage() {
             )}
           </Card>
 
+          <TimeLogPanel item={item} />
+          <DeedPlatPanel
+            item={item}
+            onUpdated={setItem}
+            aiFill={deedPlatAiFill}
+            aiFillKey={deedPlatAiFillKey}
+          />
           <CommentsPanel workItemId={id} canPost={item.canPostComments} />
           <InternalNotesPanel item={item} onUpdated={setItem} />
-          <TimeLogPanel item={item} />
           <div className="detail-pane-footer">
             <div>{item.organizationName} · {typeLabel}</div>
             <div>

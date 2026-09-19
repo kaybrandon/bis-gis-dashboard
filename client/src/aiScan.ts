@@ -9,8 +9,21 @@ export type AiFieldKey =
   | 'deedCount'
   | 'platCount'
   | 'workedOn'
+  | 'survey'
+  | 'abstract'
+  | 'lotBlock'
+  | 'subdivision'
+  | 'legalDescription'
 
 export type AiHint = { confidence: number; approved: boolean }
+
+export type DeedPlatManualFlags = {
+  survey?: boolean
+  abstract?: boolean
+  lotBlock?: boolean
+  subdivision?: boolean
+  legalDescription?: boolean
+}
 
 export type AiFillDraft = {
   title: string
@@ -21,6 +34,12 @@ export type AiFillDraft = {
   deedCount: number
   platCount: number
   workedOn: string | null
+  survey: string
+  abstract: string
+  lotBlock: string
+  subdivision: string
+  legalDescription: string
+  deedPlatManual?: DeedPlatManualFlags | null
 }
 
 export function isAiScanInFlight(status?: string | null): boolean {
@@ -85,8 +104,32 @@ function applyAiFillFields<T extends AiFillDraft>(
     next.workedOn = fields.workedOn.value
     hints.workedOn = { confidence: fields.workedOn.confidence, approved: false }
   }
+  applyDeedPlat(next, hints, current, result, allow)
 
   return { next, hints }
+}
+
+function applyDeedPlat<T extends AiFillDraft>(
+  next: T,
+  hints: Partial<Record<AiFieldKey, AiHint>>,
+  current: T,
+  result: AiFillResponse,
+  allow: (key: AiFieldKey, draft: T) => boolean,
+) {
+  const fields: { key: keyof DeedPlatManualFlags & AiFieldKey; field?: { present: boolean; value?: string | null; confidence: number } }[] = [
+    { key: 'survey', field: result.fields.survey },
+    { key: 'abstract', field: result.fields.abstract },
+    { key: 'lotBlock', field: result.fields.lotBlock },
+    { key: 'subdivision', field: result.fields.subdivision },
+    { key: 'legalDescription', field: result.fields.legalDescription },
+  ]
+  for (const { key, field } of fields) {
+    if (current.deedPlatManual?.[key]) continue
+    if (allow(key, current) && field?.present && field.value) {
+      next[key] = field.value
+      hints[key] = { confidence: field.confidence, approved: false }
+    }
+  }
 }
 
 export function fieldMatchesBaseline(
@@ -112,6 +155,16 @@ export function fieldMatchesBaseline(
       return current.platCount === baseline.platCount
     case 'workedOn':
       return normalizeDate(current.workedOn) === normalizeDate(baseline.workedOn)
+    case 'survey':
+      return normalizeText(current.survey) === normalizeText(baseline.survey)
+    case 'abstract':
+      return normalizeText(current.abstract) === normalizeText(baseline.abstract)
+    case 'lotBlock':
+      return normalizeText(current.lotBlock) === normalizeText(baseline.lotBlock)
+    case 'subdivision':
+      return normalizeText(current.subdivision) === normalizeText(baseline.subdivision)
+    case 'legalDescription':
+      return normalizeText(current.legalDescription) === normalizeText(baseline.legalDescription)
     default:
       return false
   }
