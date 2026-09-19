@@ -58,6 +58,7 @@ describe('QC4-07 Time log above Comments + QC4-06 deed/plat panel', () => {
   })
 
   it('Manage Documents exports CSV and Excel and stays usable in the detail pane', () => {
+    assert.match(manage, /Export to Excel/)
     assert.match(manage, /Export Excel/)
     assert.match(manage, /Export CSV/)
     assert.match(api, /format=\$\{format\}/)

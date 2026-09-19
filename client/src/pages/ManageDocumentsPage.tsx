@@ -709,7 +709,7 @@ export function ManageDocumentsPage() {
             }}
           >
             <Button icon={<DownloadOutlined />} loading={exporting}>
-              {isMobile ? 'Export' : 'Export'}
+              {isMobile ? 'Export' : 'Export to Excel'}
             </Button>
           </Dropdown>
           {user?.canUpload ? (
