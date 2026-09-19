@@ -46,6 +46,15 @@ import {
   resolveAssigneeFilter,
   shouldProbeMyQueue,
 } from '../staffQueue'
+import {
+  type ManageDocumentsColumnKey,
+  orderColumns,
+  readColumnOrder,
+  resetColumnOrder,
+  writeColumnOrder,
+} from '../manageDocumentsColumnPrefs'
+import { ManageDocumentsColumnsControl } from '../manageDocumentsColumnsControl'
+import { decorateManageDocumentsColumns } from '../manageDocumentsColumnReorder'
 import { manageDocumentsRowClassName, manageDocumentsTableTheme } from '../theme/bisManageDocuments'
 import '../theme/bisManageDocuments.css'
 import { PENDING_HIGHLIGHT_ITEM_CLASS, PENDING_HIGHLIGHT_ROW_CLASS, isPendingStatus } from '../theme/pendingHighlight'
@@ -188,8 +197,23 @@ export function ManageDocumentsPage() {
   }, [])
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [columnOrder, setColumnOrder] = useState<ManageDocumentsColumnKey[]>(() => readColumnOrder(user?.id))
+  const [columnPrefsUserId, setColumnPrefsUserId] = useState(user?.id)
+  if (user?.id !== columnPrefsUserId) {
+    setColumnPrefsUserId(user?.id)
+    setColumnOrder(readColumnOrder(user?.id))
+  }
 
   const showAssignee = canSeeDashboardAssignee(user)
+
+  const persistColumnOrder = useCallback((next: ManageDocumentsColumnKey[]) => {
+    setColumnOrder(next)
+    writeColumnOrder(user?.id, next)
+  }, [user?.id])
+
+  const restoreDefaultColumns = useCallback(() => {
+    setColumnOrder(resetColumnOrder(user?.id))
+  }, [user?.id])
 
   const loadLookups = useCallback(async () => {
     try {
@@ -568,7 +592,9 @@ export function ManageDocumentsPage() {
       },
     ]
 
-    if (!groupBy) return cols
+    if (!groupBy) {
+      return decorateManageDocumentsColumns(orderColumns(cols, columnOrder), columnOrder, persistColumnOrder)
+    }
 
     const spans = items.map((item, index) => {
       if (index > 0 && groupValue(item, groupBy) === groupValue(items[index - 1], groupBy)) return 0
@@ -580,20 +606,27 @@ export function ManageDocumentsPage() {
       return span
     })
 
-    return [
-      {
-        title: 'Group',
-        key: 'group',
-        width: 160,
-        minWidth: 120,
-        render: (_: unknown, item: WorkItemListItem, index: number) => ({
-          children: groupValue(item, groupBy),
-          props: { rowSpan: spans[index] },
-        }),
-      },
-      ...cols,
-    ]
-  }, [actions, assignees, groupBy, items, savingId, statuses, swallowRowClick, user?.canMutateWorkItems])
+    return decorateManageDocumentsColumns(
+      orderColumns(
+        [
+          {
+            title: 'Group',
+            key: 'group',
+            width: 160,
+            minWidth: 120,
+            render: (_: unknown, item: WorkItemListItem, index: number) => ({
+              children: groupValue(item, groupBy),
+              props: { rowSpan: spans[index] },
+            }),
+          },
+          ...cols,
+        ],
+        columnOrder,
+      ),
+      columnOrder,
+      persistColumnOrder,
+    )
+  }, [actions, assignees, columnOrder, groupBy, items, persistColumnOrder, savingId, statuses, swallowRowClick, user?.canMutateWorkItems])
 
   const filterSelects = (
     <>
@@ -700,6 +733,13 @@ export function ManageDocumentsPage() {
           </Typography.Title>
         </div>
         <Space wrap>
+          {!isMobile && (
+            <ManageDocumentsColumnsControl
+              order={columnOrder}
+              onChange={persistColumnOrder}
+              onReset={restoreDefaultColumns}
+            />
+          )}
           <Button icon={<DownloadOutlined />} loading={exporting} onClick={() => void onExport()}>
             {isMobile ? 'Export' : 'Export to Excel'}
           </Button>

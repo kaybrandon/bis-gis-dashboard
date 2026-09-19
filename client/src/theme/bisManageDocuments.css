@@ -287,18 +287,85 @@
   color: rgba(255, 255, 255, 0.45) !important;
 }
 
+/* QC4-04 — beat Ant Design cell / sticky-left tokens so MD matches Time Report mint/gray zebra. */
+.manage-documents-grid .ant-table,
+.bis-theme-grid .ant-table {
+  --ant-color-bg-container: transparent;
+  --ant-table-cell-bg: transparent;
+}
+
+.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-a,
 .manage-documents-grid .ant-table-tbody > tr.manage-documents-row-a > td,
+.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-a > td.ant-table-cell,
+.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-a > td.ant-table-cell-fix-left,
+.bis-theme-grid .ant-table-tbody > tr:nth-child(odd),
 .bis-theme-grid .ant-table-tbody > tr:nth-child(odd) > td,
 .content-wrap .ant-table-tbody > tr:nth-child(odd) > td {
-  background: var(--bis-row-green);
+  background: var(--bis-row-green) !important;
   color: var(--bis-text-on-row);
 }
 
+.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-b,
 .manage-documents-grid .ant-table-tbody > tr.manage-documents-row-b > td,
+.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-b > td.ant-table-cell,
+.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-b > td.ant-table-cell-fix-left,
+.bis-theme-grid .ant-table-tbody > tr:nth-child(even),
 .bis-theme-grid .ant-table-tbody > tr:nth-child(even) > td,
 .content-wrap .ant-table-tbody > tr:nth-child(even) > td {
-  background: var(--bis-row-gray);
+  background: var(--bis-row-gray) !important;
   color: var(--bis-text-on-row);
+}
+
+.manage-documents-grid .manage-documents-col-title {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  gap: 6px;
+}
+
+.manage-documents-grid .manage-documents-col-drag {
+  cursor: grab;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1;
+}
+
+.manage-documents-grid .manage-documents-col-drag:active {
+  cursor: grabbing;
+}
+
+.manage-documents-grid .manage-documents-col-drag:focus-visible {
+  outline: 2px solid var(--bis-select-border);
+  outline-offset: 2px;
+}
+
+.manage-documents-grid .ant-table-thead > tr > th.manage-documents-filename,
+.manage-documents-grid .ant-table-tbody > tr > td.manage-documents-filename {
+  min-width: 220px;
+}
+
+.manage-documents-columns-panel {
+  background: #ffffff;
+  border: 1px solid var(--bis-navy);
+  padding: 12px;
+  min-width: 280px;
+  max-width: 360px;
+  color: var(--bis-text-on-row);
+}
+
+.manage-documents-columns-list {
+  list-style: none;
+  margin: 10px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.manage-documents-columns-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .manage-documents-grid .ant-table-tbody > tr:hover > td,

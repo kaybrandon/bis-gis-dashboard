@@ -57,7 +57,17 @@
   color: var(--pending-highlight-text);
 }
 
-.manage-documents-grid .ant-table-tbody > tr.pending-highlight-row > td {
+.manage-documents-grid .ant-table-tbody > tr.pending-highlight-row > td,
+.manage-documents-grid .ant-table-tbody > tr.pending-highlight-row > td.ant-table-cell {
   background: var(--pending-highlight);
+  color: var(--pending-highlight-text);
+}
+
+.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-a.pending-highlight-row > td {
+  background: var(--pending-highlight) !important;
+}
+
+.manage-documents-grid .ant-table-tbody > tr.manage-documents-row-b.pending-highlight-row > td {
+  background: #f4faff !important;
   color: var(--pending-highlight-text);
 }
