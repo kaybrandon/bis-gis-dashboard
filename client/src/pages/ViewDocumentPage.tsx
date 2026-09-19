@@ -334,7 +334,7 @@ export function ViewDocumentPage() {
     if (dirty) {
       Modal.confirm({
         title: 'Replace unsaved edits?',
-        content: 'AI fill from PDF will overwrite Title, Type, Property IDs, counts, and Worked date when the PDF has them — including scanned or image-only files read from page images. Status, assignee, and flags stay as they are. Save is still required for those fields. A staff difficulty override is not wiped unless you confirm re-score.',
+        content: 'AI fill from PDF will overwrite Title, Type, counts, and Worked date when the PDF has them — including scanned or image-only files read from page images. Property IDs stay as you typed them. Status, assignee, and flags stay as they are. Save is still required for those fields. A staff difficulty override is not wiped unless you confirm re-score.',
         okText: 'Fill from PDF',
         onOk: () => startAiFill(),
       })
@@ -469,7 +469,7 @@ export function ViewDocumentPage() {
   }
 
   const aiButton = item.canMutate ? (
-    <Tooltip title="Fills Title, Type, Property IDs, counts, and Worked date from the PDF text, or from page images when the file is scanned / image-only. Scores Easy / Medium / Hard on the same pass. Status, assignee, and flags are not changed. Field fill still needs Save. A staff difficulty override sticks unless you confirm re-score.">
+    <Tooltip title="Fills Title, Type, counts, and Worked date from the PDF text, or from page images when the file is scanned / image-only. Property IDs stay manual — AI does not suggest or overwrite them. Scores Easy / Medium / Hard on the same pass. Status, assignee, and flags are not changed. Field fill still needs Save. A staff difficulty override sticks unless you confirm re-score.">
       <Button
         size="small"
         icon={<ThunderboltOutlined />}
@@ -733,14 +733,16 @@ export function ViewDocumentPage() {
                     </AiField>
                   </Col>
                 </Row>
-                <AiField field="propertyIds" hints={aiHints} onApprove={approveField}>
+                <div>
+                  <div className="detail-field-label">Property IDs</div>
                   <Input.TextArea
                     rows={3}
                     value={draft.propertyIds}
-                    onChange={(e) => patchDraft({ propertyIds: e.target.value }, 'propertyIds')}
-                    placeholder="Property IDs — one per line"
+                    onChange={(e) => patchDraft({ propertyIds: e.target.value })}
+                    placeholder="One Property ID per line — manual entry only"
+                    aria-label="Property IDs"
                   />
-                </AiField>
+                </div>
                 <Space>
                   <Button size="small" disabled={!dirty} onClick={() => {
                     if (saved) setDraft(saved)

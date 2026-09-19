@@ -52,22 +52,25 @@ describe('auto AI-scan apply rules', () => {
   it('pre-populates unchanged upload fields and leaves dirty human edits', () => {
     const clean = applyAutoAiScan(draft, result, baseline)
     assert.equal(clean.next.title, 'CORRECTION CR 315A')
-    assert.equal(clean.next.propertyIds, '11402\n11418')
+    assert.equal(clean.next.propertyIds, '')
+    assert.equal(clean.hints.propertyIds, undefined)
     assert.ok(clean.hints.title)
     assert.equal(clean.hints.title?.approved, false)
 
-    const edited = applyAutoAiScan({ ...draft, title: 'Staff title', propertyIds: '' }, result, baseline)
+    const edited = applyAutoAiScan({ ...draft, title: 'Staff title', propertyIds: 'R-KEEP' }, result, baseline)
     assert.equal(edited.next.title, 'Staff title')
     assert.equal(edited.hints.title, undefined)
-    assert.equal(edited.next.propertyIds, '11402\n11418')
-    assert.ok(edited.hints.propertyIds)
+    assert.equal(edited.next.propertyIds, 'R-KEEP')
+    assert.equal(edited.hints.propertyIds, undefined)
   })
 
-  it('manual fill still overwrites when the user confirms', () => {
-    const edited = { ...draft, title: 'Staff title' }
+  it('manual fill still overwrites other fields when the user confirms, but never Property IDs', () => {
+    const edited = { ...draft, title: 'Staff title', propertyIds: 'R-KEEP' }
     const applied = applyAiFill(edited, result)
     assert.equal(applied.next.title, 'CORRECTION CR 315A')
     assert.ok(applied.hints.title)
+    assert.equal(applied.next.propertyIds, 'R-KEEP')
+    assert.equal(applied.hints.propertyIds, undefined)
   })
 
   it('matches baseline dates and blank property IDs', () => {

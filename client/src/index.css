@@ -869,6 +869,11 @@ body,
   max-width: 100%;
 }
 
+.documents-main .manage-documents-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .dashboard-kpis {
   display: flex;
   flex-wrap: wrap;
