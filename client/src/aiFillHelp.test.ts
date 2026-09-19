@@ -70,7 +70,7 @@ describe('GIS How AI fill works help', () => {
   })
 
   it('does not change Approve \/ Save rules on Review', () => {
-    assert.match(review, /function approveField/)
+    assert.match(review, /const approveField =/)
     assert.match(review, /<Button size="small" type="primary" loading=\{saving\} disabled=\{!dirty\} onClick=\{\(\) => void save\(\)\}>Save<\/Button>/)
     assert.match(review, /Approve AI fields/)
     assert.match(review, /Review amber fields, then Save/)
