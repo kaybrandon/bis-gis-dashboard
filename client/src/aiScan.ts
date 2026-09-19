@@ -63,10 +63,8 @@ function applyAiFillFields<T extends AiFillDraft>(
     next.documentTypeId = fields.type.documentTypeId
     hints.documentTypeId = { confidence: fields.type.confidence, approved: false }
   }
-  if (allow('propertyIds', current) && fields.propertyIds.present && fields.propertyIds.value != null) {
-    next.propertyIds = fields.propertyIds.value
-    hints.propertyIds = { confidence: fields.propertyIds.confidence, approved: false }
-  }
+  // QC4-01: Property IDs are manual-only. Never apply AI values or confidence hints,
+  // including cached auto-scan results that still carry propertyIds.
   if (allow('annexationCount', current) && fields.annexationCount.present && fields.annexationCount.value != null) {
     next.annexationCount = fields.annexationCount.value
     hints.annexationCount = { confidence: fields.annexationCount.confidence, approved: false }

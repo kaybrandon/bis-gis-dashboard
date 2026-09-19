@@ -22,6 +22,38 @@
   --bis-text-on-navy: #ffffff;
   --bis-text-on-row: #111827;
   color: var(--bis-text-on-row);
+  min-width: 0;
+  overflow-x: auto;
+}
+
+/* QC4-02: File Name stays visible; columns never collapse to zero. */
+.manage-documents-grid .ant-table-container,
+.manage-documents-grid .ant-table-content,
+.manage-documents-grid .ant-table-body {
+  overflow-x: auto !important;
+}
+
+.manage-documents-grid .ant-table-cell {
+  min-width: 72px;
+}
+
+.manage-documents-grid .manage-documents-filename,
+.manage-documents-grid th.manage-documents-filename,
+.manage-documents-grid td.manage-documents-filename,
+.manage-documents-grid .ant-table-cell-fix-left.manage-documents-filename {
+  display: table-cell !important;
+  min-width: 220px;
+  max-width: none;
+}
+
+.manage-documents-filename-text {
+  display: inline-block;
+  max-width: min(240px, 100%);
+  vertical-align: middle;
+}
+
+.manage-documents-grid .ant-table-cell-fix-left {
+  z-index: 2;
 }
 
 .bis-theme-panel,

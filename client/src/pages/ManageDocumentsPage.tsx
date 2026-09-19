@@ -405,14 +405,26 @@ export function ManageDocumentsPage() {
         title: 'File name',
         dataIndex: 'fileName',
         key: 'filename',
+        className: 'manage-documents-filename',
         sorter: true,
-        ellipsis: true,
+        ellipsis: { showTitle: false },
+        width: 280,
+        minWidth: 220,
+        fixed: 'left',
+        onHeaderCell: () => ({ className: 'manage-documents-filename', style: { minWidth: 220 } }),
+        onCell: () => ({ className: 'manage-documents-filename', style: { minWidth: 220 } }),
         render: (name: string, row) => {
           const due = neededByBadgeText({ neededBy: row.priorityNeededBy, workedOn: row.workedOn })
           const overdue = isNeededByOverdue(row.isPriority, row.priorityNeededBy)
           return (
             <Space size={6} wrap>
-              <span>{name}</span>
+              <Typography.Text
+                className="manage-documents-filename-text"
+                ellipsis={{ tooltip: name }}
+                title={name}
+              >
+                {name}
+              </Typography.Text>
               <DocumentDifficultyChip difficulty={row.difficulty} />
               {row.isPriority && <Tag color="red">Priority</Tag>}
               {due && <Tag color={overdue ? 'volcano' : 'gold'}>{overdue ? `Overdue · ${due}` : due}</Tag>}
@@ -420,13 +432,14 @@ export function ManageDocumentsPage() {
           )
         },
       },
-      { title: 'Client name', dataIndex: 'organizationName', key: 'client', sorter: true, width: 160 },
+      { title: 'Client name', dataIndex: 'organizationName', key: 'client', sorter: true, width: 160, minWidth: 120 },
       {
         title: 'Status',
         dataIndex: 'statusName',
         key: 'status',
         sorter: true,
         width: 160,
+        minWidth: 120,
         render: (name: string, row) => {
           if (!user?.canMutateWorkItems || !actions) return statusLabel(name)
           return (
@@ -464,6 +477,7 @@ export function ManageDocumentsPage() {
         key: 'assignedto',
         sorter: true,
         width: 180,
+        minWidth: 140,
         render: (v: string | null, row) => {
           if (!user?.canMutateWorkItems) {
             return (
@@ -513,6 +527,7 @@ export function ManageDocumentsPage() {
         key: 'uploadedAt',
         sorter: true,
         width: 170,
+        minWidth: 140,
         render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
       },
       {
@@ -521,6 +536,7 @@ export function ManageDocumentsPage() {
         key: 'workedon',
         sorter: true,
         width: 140,
+        minWidth: 110,
         render: (v: string | null) => (v ? dayjs(v).format('YYYY-MM-DD') : '—'),
       },
       {
@@ -529,6 +545,7 @@ export function ManageDocumentsPage() {
         key: 'difficulty',
         sorter: true,
         width: 120,
+        minWidth: 96,
         render: (_: unknown, row) => <DocumentDifficultyChip difficulty={row.difficulty} />,
       },
       {
@@ -537,6 +554,7 @@ export function ManageDocumentsPage() {
         key: 'reviewed',
         sorter: true,
         width: 90,
+        minWidth: 72,
         render: (value: boolean | undefined) => reviewLabel(value),
       },
       {
@@ -545,6 +563,7 @@ export function ManageDocumentsPage() {
         key: 'hours',
         sorter: true,
         width: 110,
+        minWidth: 88,
         render: (value: string | undefined) => value || '0m',
       },
     ]
@@ -566,6 +585,7 @@ export function ManageDocumentsPage() {
         title: 'Group',
         key: 'group',
         width: 160,
+        minWidth: 120,
         render: (_: unknown, item: WorkItemListItem, index: number) => ({
           children: groupValue(item, groupBy),
           props: { rowSpan: spans[index] },
@@ -789,7 +809,7 @@ export function ManageDocumentsPage() {
               loading={loading}
               dataSource={items}
               columns={columns}
-              scroll={{ x: 980 }}
+              scroll={{ x: 'max-content' }}
               rowClassName={(row, index) => {
                 const zebra = manageDocumentsRowClassName(index, selectedId === row.id)
                 return isPendingStatus(row.statusName) ? `${zebra} ${PENDING_HIGHLIGHT_ROW_CLASS}` : zebra

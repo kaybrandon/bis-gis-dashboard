@@ -73,7 +73,8 @@ public sealed class AiFillTests : IClassFixture<ApiFactory>
         json.GetProperty("features").GetProperty("aiFillFromPdf").GetProperty("note").GetString().Should().Contain("gpt-4.1-mini");
         json.GetProperty("features").GetProperty("aiFillFromPdf").GetProperty("note").GetString().Should().Contain("scanned");
         json.GetProperty("features").GetProperty("aiFillFromPdf").GetProperty("note").GetString().Should().Contain("automatically");
-        json.GetProperty("features").GetProperty("aiFillFromPdf").GetProperty("note").GetString().Should().Contain("subject PID");
+        json.GetProperty("features").GetProperty("aiFillFromPdf").GetProperty("note").GetString().Should().Contain("manual-only");
+        json.GetProperty("features").GetProperty("aiFillFromPdf").GetProperty("note").GetString().Should().Contain("Property IDs");
     }
 
     [Fact]
@@ -119,7 +120,8 @@ public sealed class AiFillConfiguredTests : IClassFixture<AiFillConfiguredFactor
         json.GetProperty("fields").GetProperty("title").GetProperty("present").GetBoolean().Should().BeTrue();
         json.GetProperty("fields").GetProperty("title").GetProperty("value").GetString().Should().Be("N-14-042 Final Plat");
         json.GetProperty("fields").GetProperty("type").GetProperty("documentTypeId").GetGuid().Should().Be(SeedIds.TypePlat);
-        json.GetProperty("fields").GetProperty("propertyIds").GetProperty("value").GetString().Should().Contain("R123");
+        json.GetProperty("fields").GetProperty("propertyIds").GetProperty("present").GetBoolean().Should().BeFalse();
+        AssertEmptyPropertyIds(json.GetProperty("fields").GetProperty("propertyIds"));
         json.GetProperty("fields").GetProperty("platCount").GetProperty("value").GetInt32().Should().Be(1);
         json.GetProperty("fields").GetProperty("workedOn").GetProperty("value").GetString().Should().Be("2026-03-15");
         json.GetProperty("difficulty").GetProperty("band").GetString().Should().Be("Easy");
@@ -135,6 +137,8 @@ public sealed class AiFillConfiguredTests : IClassFixture<AiFillConfiguredFactor
         after.GetProperty("isSketch").GetBoolean().Should().Be(before.GetProperty("isSketch").GetBoolean());
         after.GetProperty("isPriority").GetBoolean().Should().Be(before.GetProperty("isPriority").GetBoolean());
         after.GetProperty("isReviewed").GetBoolean().Should().Be(before.GetProperty("isReviewed").GetBoolean());
+        after.GetProperty("propertyIds").GetString().Should().Be(before.GetProperty("propertyIds").GetString());
+        after.GetProperty("propertyIds").GetString().Should().Contain("R12345");
         after.GetProperty("difficulty").GetProperty("band").GetString().Should().Be("Easy");
         after.GetProperty("difficulty").GetProperty("why").GetString().Should().Contain("Lot-and-block");
         ScriptedOpenAiCompletions.VisionCalls.Should().Be(0);
@@ -253,7 +257,8 @@ public sealed class AiFillConfiguredTests : IClassFixture<AiFillConfiguredFactor
         ScriptedOpenAiCompletions.LastImageCount.Should().BeGreaterThan(0);
         ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("page images");
         ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("difficulty");
-        ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("subject");
+        ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("manual");
+        AssertEmptyPropertyIds(after.GetProperty("aiScan").GetProperty("result").GetProperty("fields").GetProperty("propertyIds"));
     }
 
     [Fact]
@@ -279,35 +284,41 @@ public sealed class AiFillConfiguredTests : IClassFixture<AiFillConfiguredFactor
     }
 
     [Fact]
-    public async Task Cad_web_map_property_ids_are_not_a_mass_dump()
+    public async Task Cad_web_map_property_ids_are_never_filled()
     {
         ScriptedOpenAiCompletions.Reset();
         ScriptedOpenAiCompletions.ResponseJson = ScriptedOpenAiCompletions.CadMapDumpJson();
         var client = await _factory.LoginAsync("editor@bisconsultants.local");
+        var before = await (await client.GetAsync($"/api/work-items/{SeedIds.DemoPlat}")).ReadJsonAsync();
         var json = await (await client.PostAsync($"/api/work-items/{SeedIds.DemoPlat}/ai-fill", null)).ReadJsonAsync();
         json.GetProperty("fields").GetProperty("propertyIds").GetProperty("present").GetBoolean().Should().BeFalse();
-        json.GetProperty("fields").GetProperty("propertyIds").TryGetProperty("value", out var value)
-            .Should().BeTrue();
-        if (value.ValueKind != System.Text.Json.JsonValueKind.Null)
-        {
-            value.GetString().Should().BeNullOrEmpty();
-        }
+        AssertEmptyPropertyIds(json.GetProperty("fields").GetProperty("propertyIds"));
 
         json.GetRawText().Should().NotContain("[\"11402\"");
         json.GetProperty("fields").GetProperty("title").GetProperty("present").GetBoolean().Should().BeTrue();
-        ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("subject");
+        ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("manual");
+        ScriptedOpenAiCompletions.LastSystemPrompt.Should().Contain("Do not extract or return propertyIds");
+
+        var after = await (await client.GetAsync($"/api/work-items/{SeedIds.DemoPlat}")).ReadJsonAsync();
+        after.GetProperty("propertyIds").GetString().Should().Be(before.GetProperty("propertyIds").GetString());
     }
 
     [Fact]
-    public async Task Json_array_of_two_subject_pids_is_unwrapped_to_lines()
+    public async Task Model_property_ids_are_dropped_and_saved_values_persist()
     {
         ScriptedOpenAiCompletions.Reset();
         ScriptedOpenAiCompletions.ResponseJson = ScriptedOpenAiCompletions.JsonWithPropertyIds("""["R701", "R702"]""");
         var client = await _factory.LoginAsync("editor@bisconsultants.local");
+        var patched = await client.PatchAsJsonAsync($"/api/work-items/{SeedIds.DemoOakGrove}", new { propertyIds = "MANUAL-1\nMANUAL-2" });
+        patched.StatusCode.Should().Be(HttpStatusCode.OK);
+
         var json = await (await client.PostAsync($"/api/work-items/{SeedIds.DemoOakGrove}/ai-fill", null)).ReadJsonAsync();
-        json.GetProperty("fields").GetProperty("propertyIds").GetProperty("present").GetBoolean().Should().BeTrue();
-        json.GetProperty("fields").GetProperty("propertyIds").GetProperty("value").GetString().Should().Be("R701\nR702");
-        json.GetProperty("fields").GetProperty("propertyIds").GetProperty("value").GetString().Should().NotContain("[");
+        json.GetProperty("fields").GetProperty("propertyIds").GetProperty("present").GetBoolean().Should().BeFalse();
+        AssertEmptyPropertyIds(json.GetProperty("fields").GetProperty("propertyIds"));
+        json.GetProperty("fields").GetProperty("title").GetProperty("present").GetBoolean().Should().BeTrue();
+
+        var after = await (await client.GetAsync($"/api/work-items/{SeedIds.DemoOakGrove}")).ReadJsonAsync();
+        after.GetProperty("propertyIds").GetString().Should().Be("MANUAL-1\nMANUAL-2");
     }
 
     [Fact]
@@ -355,6 +366,22 @@ public sealed class AiFillConfiguredTests : IClassFixture<AiFillConfiguredFactor
         var succeeded = await (await client.GetAsync($"/api/work-items/{id}")).ReadJsonAsync();
         succeeded.GetProperty("aiScan").GetProperty("status").GetString().Should().Be("succeeded");
         succeeded.GetProperty("title").GetString().Should().Be("Fail scan");
+    }
+
+    private static void AssertEmptyPropertyIds(System.Text.Json.JsonElement field)
+    {
+        field.GetProperty("present").GetBoolean().Should().BeFalse();
+        if (!field.TryGetProperty("value", out var value))
+        {
+            return;
+        }
+
+        if (value.ValueKind is System.Text.Json.JsonValueKind.Null or System.Text.Json.JsonValueKind.Undefined)
+        {
+            return;
+        }
+
+        value.GetString().Should().BeNullOrEmpty();
     }
 
     private static byte[] EmptyPagePdf()
@@ -499,7 +526,8 @@ public sealed class ScriptedOpenAiCompletions : IAzureOpenAiCompletions
         systemPrompt.Should().Contain("difficulty");
         systemPrompt.Should().Contain("lot-block");
         systemPrompt.Should().Contain("easements");
-        systemPrompt.Should().Contain("subject");
+        systemPrompt.Should().Contain("manual");
+        systemPrompt.Should().Contain("Do not extract or return propertyIds");
         return ResponseJson;
     }
 

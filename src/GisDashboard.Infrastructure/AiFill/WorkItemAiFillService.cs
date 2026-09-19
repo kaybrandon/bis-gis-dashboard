@@ -336,18 +336,14 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         "Never invent or return Status, Assignee, Split, Sketch, Priority, or Reviewed.\n" +
         "Only set present=true when the document supports the value. Do not guess.\n" +
         $"type.value must be one of: {allowed}.\n" +
-        "propertyIds lists only the subject Property IDs of this instrument / work item — usually 1 or 2.\n" +
-        "Never vacuum every parcel label from a CAD map, web map, or plat background.\n" +
-        "On CAD/web maps prefer title/body callouts, highlighted or circled parcels, instrument or handwritten notes, or an explicit PID / Property ID / Parcel field.\n" +
-        "If the subject set is ambiguous, set propertyIds.present=false and leave value empty with low confidence. Do not emit dozens of map labels at high confidence.\n" +
-        "propertyIds.value is plain text, one identifier per line. Never a JSON array or object string.\n" +
+        "Do not extract or return propertyIds. Property IDs are entered manually by staff.\n" +
+        "Always omit propertyIds or set present=false with an empty value. Never copy CAD, web-map, or plat parcel labels into propertyIds.\n" +
         "Counts are non-negative integers.\n" +
         "workedOn is YYYY-MM-DD only when a work, recording, or file date is obvious.\n" +
         "Each field is { \"present\": bool, \"value\": ..., \"confidence\": number from 0 to 1 }.\n" +
         "Also include overallConfidence from 0 to 1.\n" +
         "On the same pass, score document difficulty from what this extract already sees — no extra OCR or Document Intelligence.\n" +
-        "Signals: scan readability; legal type/length (lot-block vs metes-and-bounds); parcel count; parties; easements/exceptions; extract gaps/conflicts; many map labels with ambiguous subject PIDs.\n" +
-        "Difficulty may note map-label ambiguity. That does not allow dumping all map labels into propertyIds.\n" +
+        "Signals: scan readability; legal type/length (lot-block vs metes-and-bounds); parcel count; parties; easements/exceptions; extract gaps/conflicts; many unlabeled or crowded map labels.\n" +
         "difficulty is { \"band\": \"Easy\"|\"Medium\"|\"Hard\", \"why\": string or 1-3 short bullets, \"reasons\": optional string array }.";
 
     private static string SystemPrompt(IEnumerable<string> typeNames) =>
@@ -382,7 +378,7 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
 
             This PDF has no usable text layer. {pageCount} page image(s) are attached in order.
             Extract fields and difficulty from the page images on this same pass.
-            Property IDs are subject PIDs of this instrument only — not every parcel label on a CAD or web map.
+            Do not extract Property IDs. Staff enter those manually.
 
             Unusable extracted text (ignore if the images disagree):
             {leftover}
@@ -396,7 +392,8 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         var root = doc.RootElement;
 
         var title = ReadString(root, "title");
-        var propertyIds = ReadPropertyIds(root);
+        // QC4-01: Property IDs are manual-only. Ignore any model propertyIds and never emit a suggestion.
+        var propertyIds = new AiFillStringField(false, null, 0);
         var annex = ReadInt(root, "annexationCount");
         var corr = ReadInt(root, "correctionCount");
         var deeds = ReadInt(root, "deedCount");
@@ -407,7 +404,6 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         var present = new List<double>();
         AddIfPresent(present, title.Present, title.Confidence);
         AddIfPresent(present, type.Present, type.Confidence);
-        AddIfPresent(present, propertyIds.Present, propertyIds.Confidence);
         AddIfPresent(present, annex.Present, annex.Confidence);
         AddIfPresent(present, corr.Present, corr.Confidence);
         AddIfPresent(present, deeds.Present, deeds.Confidence);
@@ -464,27 +460,6 @@ public sealed class WorkItemAiFillService : IWorkItemAiFillService
         }
 
         return new AiFillStringField(present, present ? value : null, ReadFieldConfidence(field));
-    }
-
-    private static AiFillStringField ReadPropertyIds(JsonElement root)
-    {
-        if (!TryGetField(root, "propertyIds", out var field))
-        {
-            return new AiFillStringField(false, null, 0);
-        }
-
-        var present = ReadPresent(field);
-        var confidence = ReadFieldConfidence(field);
-        string? raw = null;
-        if (field.TryGetProperty("value", out var value)
-            && value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
-        {
-            raw = value.ValueKind == JsonValueKind.String
-                ? value.GetString()
-                : value.GetRawText();
-        }
-
-        return PropertyIdsNormalizer.Normalize(present, raw, confidence);
     }
 
     private static AiFillIntField ReadInt(JsonElement root, string name)

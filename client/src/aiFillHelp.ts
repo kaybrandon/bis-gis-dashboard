@@ -10,9 +10,9 @@ export const AI_FILL_HELP_BULLETS = [
   '**Scanned / image-only PDFs** are supported — you do not need a selectable text layer for AI fill to run.',
   'Proposed fields show in **amber**. You must **Approve** (or edit) and **Save** before they count. AI never silent-commits alone.',
   '**Difficulty** (Easy / Medium / Hard) is a **hint** for triage — staff can override; it is not a grade of your work.',
-  '**Property IDs** list only the **subject** parcel(s) of this instrument — usually one or a few.',
-  'On **CAD / web map** PDFs with many labels, AI will **not** dump every parcel on the map. If the subject set is unclear, Property IDs may stay **empty** (or minimal) — that is expected, not a bug.',
-  'Property IDs appear **one per line**, never as a JSON list.',
+  '**Property IDs** are **manual** only — type or paste them yourself. AI does **not** suggest, fill, or approve this field.',
+  'On **CAD / web map** PDFs, parcel labels on the map are **not** copied into Property IDs.',
+  'Property IDs appear **one per line**. Saved values stay after reopen or an AI re-run.',
   'Manual **AI fill from PDF** remains available anytime for a re-run.',
 ] as const
 

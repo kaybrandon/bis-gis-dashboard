@@ -10,9 +10,9 @@ const api = readFileSync(join(here, 'api.ts'), 'utf8')
 const fill = readFileSync(join(here, '../..', 'src/GisDashboard.Infrastructure/AiFill/WorkItemAiFillService.cs'), 'utf8')
 const upload = readFileSync(join(here, '../..', 'src/GisDashboard.Infrastructure/Services/WorkItemService.cs'), 'utf8')
 const settings = readFileSync(join(here, '../..', 'src/GisDashboard.Api/Controllers/SettingsController.cs'), 'utf8')
-const normalizer = readFileSync(join(here, '../..', 'src/GisDashboard.Infrastructure/AiFill/PropertyIdsNormalizer.cs'), 'utf8')
+const scan = readFileSync(join(here, 'aiScan.ts'), 'utf8')
 
-describe('P1 auto AI-scan on upload + P0 subject PIDs', () => {
+describe('P1 auto AI-scan on upload + QC4-01 manual Property IDs', () => {
   it('kicks AI scan from the server after a successful upload', () => {
     assert.match(upload, /PrepareNewUpload/)
     assert.match(upload, /TryEnqueueAiScan/)
@@ -23,6 +23,7 @@ describe('P1 auto AI-scan on upload + P0 subject PIDs', () => {
     assert.match(review, /AI fill from PDF/)
     assert.match(api, /aiScan/)
     assert.match(settings, /upload kicks the same AI-fill/)
+    assert.match(settings, /Property IDs are manual-only/)
   })
 
   it('keeps amber Approve / Save and does not overwrite dirty edits', () => {
@@ -39,14 +40,16 @@ describe('P1 auto AI-scan on upload + P0 subject PIDs', () => {
     assert.doesNotMatch(fill, /documentIntelligence|DocumentIntelligence|formrecognizer/i)
     assert.match(fill, /SanitizeScanMessage/)
     assert.match(fill, /page images/)
-    assert.match(fill, /subject Property IDs|subject PIDs/)
+    assert.match(fill, /Do not extract or return propertyIds/)
   })
 
-  it('normalizes CAD\/web-map Property IDs to subject-only or empty', () => {
-    assert.match(normalizer, /MaxSubjectIds/)
-    assert.match(normalizer, /IsMassDump/)
-    assert.match(fill, /ReadPropertyIds/)
-    assert.match(fill, /Never vacuum every parcel label/)
+  it('never writes Property IDs from any AI path', () => {
+    assert.match(fill, /Property IDs are entered manually|Do not extract or return propertyIds/)
+    assert.match(fill, /new AiFillStringField\(false, null, 0\)/)
+    assert.doesNotMatch(fill, /ReadPropertyIds/)
+    assert.match(scan, /Property IDs are manual-only/)
+    assert.doesNotMatch(review, /<AiField field="propertyIds"/)
+    assert.match(review, /manual entry only/)
     assert.doesNotMatch(review, /AzureOpenAI__ApiKey/)
     assert.doesNotMatch(api, /AzureOpenAI__ApiKey|sk-[a-zA-Z0-9]/)
   })
